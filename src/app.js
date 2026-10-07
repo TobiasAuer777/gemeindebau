@@ -3,7 +3,7 @@ const $ = (s,r=document)=>r.querySelector(s);
 const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
 const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const S = {me:null,profil:[],leitung:[],team:[],team_mitglied:[],aufgabe:[],eintrag:[],verfuegbarkeit:[],material:[],werkzeug:[],planobjekt:[],urls:{}};
-let B=null, ansicht="start", kalMonat=new Date(), mehrfach=null, filterA={art:"alle",gewerk:""}, filterM="alle", halleReiter="plan", planAuswahl=null, dreiD=null, suchW="";
+let B=null, ansicht="start", kalMonat=new Date(), mehrfach=null, filterA={art:"alle",gewerk:"",phase:""}, filterM="alle", halleReiter="plan", planAuswahl=null, dreiD=null, suchW="";
 
 const IC = {
   start:'<path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
@@ -15,6 +15,7 @@ const IC = {
   material:'<path d="M3 8 12 3l9 5-9 5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
   werkzeug:'<path d="M14.5 6.5a4 4 0 0 0 5 5L12 19a2.1 2.1 0 0 1-3-3z"/><path d="M14.5 6.5 17 4l3 3-2.5 2.5"/>',
   profil:'<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>',
+  benutzer:'<path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
   mehr:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
   plus:'<path d="M12 5v14M5 12h14"/>', foto:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
   zu:'<path d="M6 6l12 12M18 6 6 18"/>', links:'<path d="m15 5-7 7 7 7"/>', rechts:'<path d="m9 5 7 7-7 7"/>', check:'<path d="m5 12 4 4 10-10"/>',
@@ -57,7 +58,7 @@ function rahmen(){
   return `<div class="app">
   <aside class="seite">
     <div class="marke"><img src="${LOGO}" alt="Logo Tabernacle Church"><div><b>Gemeindebau</b><span>Tabernacle Church · Konzstraße 9</span></div></div>
-    <nav class="nav" aria-label="Bereiche">${NAV.map(n=>n==="-"?'<div class="trenn"></div>':navBtn(n)).join("")}</nav>
+    <nav class="nav" aria-label="Bereiche">${[...NAV,...(istAdmin()?[["benutzer","Benutzer"]]:[])].map(n=>n==="-"?'<div class="trenn"></div>':navBtn(n)).join("")}</nav>
     <button class="ich" data-a="geh" data-ziel="profil">${ava(ich.id,34)}<span><b>${esc(ich.name)}</b><small>${rolleText(ich.rolle)}</small></span></button>
   </aside>
   <main class="haupt" id="haupt">
@@ -66,7 +67,7 @@ function rahmen(){
     ${B.modus==="demo"?`<div class="demo-band"><b>Vorschau mit Beispieldaten.</b> Alles, was du hier einträgst, bleibt nur in diesem Browser. Die echte Seite für die Gemeinde läuft mit eigener Anmeldung. <button class="btn klein" data-a="demoReset">Beispieldaten zurücksetzen</button></div>`:""}
     <div id="ansicht">${ANSICHTEN[ansicht]()}</div>
   </main>
-  <nav class="unten" aria-label="Bereiche">${[["start","Start"],["kalender","Kalender"],["aufgaben","Aufgaben"],["halle","Halle"],["mehr","Mehr"]].map(([k,l])=>`<button data-a="${k==="mehr"?"mehr":"geh"}" data-ziel="${k}" ${ansicht===k||(k==="mehr"&&["tagebuch","teams","material","werkzeug","profil"].includes(ansicht))?'aria-current="page"':''}>${icon(k)}${l}</button>`).join("")}</nav>
+  <nav class="unten" aria-label="Bereiche">${[["start","Start"],["kalender","Kalender"],["aufgaben","Aufgaben"],["halle","Halle"],["mehr","Mehr"]].map(([k,l])=>`<button data-a="${k==="mehr"?"mehr":"geh"}" data-ziel="${k}" ${ansicht===k||(k==="mehr"&&["tagebuch","teams","material","werkzeug","profil","benutzer"].includes(ansicht))?'aria-current="page"':''}>${icon(k)}${l}</button>`).join("")}</nav>
 </div>`;
 }
 const rolleText = r => ({admin:"Admin · Bauleitung",bauleitung:"Bauleitung",mitglied:"Gemeindemitglied"})[r]||r;
@@ -182,43 +183,113 @@ function verfDialog(daten){
 }
 
 /* ---------- Aufgaben ---------- */
-const PLAN_VORSCHLAEGE = [
-  ["Nicht benötigte Wände zurückbauen","Wände, die laut aktuellem Plan wegfallen, abbrechen und Schutt entsorgen.","Rückbau & Abbruch","Ganze Halle","Rückbau"],
-  ["Trennwand Gemeinschaftsraum | Gottesdienstraum","Lange Wand, ca. 20 m, Ytong, mit Ringanker (gelb im Plan).","Mauern (Ytong)","Gemeinschaftsraum","Mauern"],
-  ["Wand hinter der Bühne","Lange Wand, ca. 20 m, Ytong, mit Ringanker. Trägt später die LED-Leinwand 10 × 3 m.","Mauern (Ytong)","Bühne","Mauern"],
-  ["Wände Küche und WC-Block","Neue Wände Küche und WC-Block (je NGF 20,96 m²), gelb im Plan.","Mauern (Ytong)","Küche","Mauern"],
-  ["Wand unten im Gemeinschaftsraum","Neue Wand, ca. 11 m, gelb im Plan (trennt den Flur zum Eingang).","Mauern (Ytong)","Gemeinschaftsraum","Mauern"],
-  ["Bühne bauen","Bühne vor der Stirnwand, ca. 10 m breit.","Bühne & Technik","Bühne",null],
-  ["LED-Leinwand 10 × 3 m vorbereiten","Unterkonstruktion an der Bühnenwand, Stromversorgung und Signalwege.","Elektrik","Bühne","Elektrik"],
-  ["Elektro-Planung Halle","Stromkreise, Licht, Steckdosen und Verteilung festlegen.","Elektrik","Ganze Halle","Elektrik"],
-  ["Fliesen WC-Block und Küche","Boden- und Wandfliesen.","Fliesen","WC-Block","Fliesen"]
+const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich, team-gewerk, prio] – abgestimmt mit Tobis Checkliste
+  [0, "Baugenehmigung verfolgen", "Nutzungsänderung, Az. 20261647. Klären, welche Arbeiten vorher erlaubt sind; Nutzung als Versammlungsstätte erst nach Genehmigung und Abnahme.", "Planung & Organisation", "Ganze Halle", null, 1],
+  [0, "Auflagen aus dem Bescheid übernehmen", "Brandschutz, Rettungswege, Sicherheitsbeleuchtung, Personenzahl – als Aufgaben ergänzen, sobald der Bescheid da ist.", "Planung & Organisation", "Ganze Halle", null, 1],
+  [0, "Statiker beauftragen", "Rückbau der roten Wände, Ytong-Wände auf der Bodenplatte, Ringanker inkl. Anschluss an Außenwände, Last der LED-Wand.", "Planung & Organisation", "Ganze Halle", null, 1],
+  [0, "Schadstoffe vor dem Rückbau prüfen", "Asbest in Bodenplatten, Kleber, Dach- oder Fassadenplatten; alte Dämmwolle; Öl im Boden. Bei Verdacht Probe nehmen lassen.", "Planung & Organisation", "Ganze Halle", null, 1],
+  [0, "Helfer bei der BG BAU anmelden", "Unfallversicherung für ehrenamtliche Bauhelfer; Bauherren-Haftpflicht prüfen.", "Planung & Organisation", "Ganze Halle", null, 1],
+  [0, "Hausanschluss und Leistung prüfen", "Netzbetreiber: Leistung für Küche, LED-Wand und Technik; ggf. Leistungserhöhung beantragen. Fachbetrieb nötig.", "Elektrik", "Ganze Halle", "Elektrik", 2],
+  [0, "Bestandsaufnahme mit Fotos", "Alle Räume fotografieren, Zählerstände notieren.", "Planung & Organisation", "Ganze Halle", null, 2],
+  [0, "Baustelle einrichten", "Baustrom-Verteiler, Container für Bauschutt und Mischabfall, Erste-Hilfe-Kasten, Feuerlöscher, Baustellen-Regeln aushängen.", "Aufräumen & Entsorgen", "Ganze Halle", "Rückbau", 2],
+  [0, "Gerüst bzw. Hubarbeitsbühne organisieren", "Für Decke und Lampen; Raumhöhe 3,70 m (Traufe) bis 5,09 m (First).", "Einkauf & Transport", "Ganze Halle", null, 2],
+  [0, "Materialliste und Lieferzeiten erfassen", "Vor allem Küche, Gastherme, Bodenbelag, LED-Wand und Türen.", "Einkauf & Transport", "Ganze Halle", null, 2],
+  [1, "Strom abschalten, alte Elektrik stilllegen", "Betroffene Bereiche spannungsfrei schalten und sichern. Fachbetrieb nötig.", "Elektrik", "Ganze Halle", "Elektrik", 1],
+  [1, "Gas absperren, alte Gastherme demontieren", "Fachbetrieb nötig.", "Heizung & Gas", "Ganze Halle", null, 1],
+  [1, "Alte Lampen abbauen", "Gottesdienstraum und Gemeinschaftsraum.", "Rückbau & Abbruch", "Ganze Halle", "Rückbau", 2],
+  [1, "Alte Leitungen, Dosen und Verteiler zurückbauen", "Elektrik kommt komplett neu.", "Elektrik", "Ganze Halle", "Elektrik", 2],
+  [1, "Rote Wand oben rechts abbrechen", "Gottesdienstraum, ca. 4,2 m (rot im Plan). Vorher vom Statiker freigeben lassen.", "Rückbau & Abbruch", "Gottesdienstraum", "Rückbau", 1],
+  [1, "Rote Wand unten rechts abbrechen", "Gottesdienstraum, Winkel ca. 4,6 m + 6,2 m (rot im Plan). Vorher vom Statiker freigeben lassen.", "Rückbau & Abbruch", "Gottesdienstraum", "Rückbau", 1],
+  [1, "Alte Küche bzw. Einbauten ausbauen", "Sofern vorhanden.", "Rückbau & Abbruch", "Küche", "Rückbau", 2],
+  [1, "Alte Bodenbeläge entfernen", "Kleberreste auf Schadstoffe prüfen.", "Rückbau & Abbruch", "Ganze Halle", "Rückbau", 2],
+  [1, "Schutt getrennt entsorgen", "Bauschutt, Holz, Metall, Elektroschrott, Mischabfall.", "Aufräumen & Entsorgen", "Ganze Halle", "Rückbau", 2],
+  [1, "Halle besenrein, Fotos ins Bautagebuch", "", "Aufräumen & Entsorgen", "Ganze Halle", "Rückbau", 3],
+  [2, "Neue Wände anreißen", "Mit dem aktuellen Plan abgleichen: Türbreiten, Fluchtwege.", "Mauern (Ytong)", "Ganze Halle", "Mauern", 1],
+  [2, "Dosen und Leerrohre in neuen Wänden festlegen", "Elektro-Planung abschließen, bevor gemauert wird.", "Elektrik", "Ganze Halle", "Elektrik", 1],
+  [2, "Wand hinter der Bühne mit Ringanker", "Ca. 19,9 m, durchgehend von Außenwand zu Außenwand, Ytong, Ringanker aus U-Schalen, Bewehrung und Beton nach Statik.", "Mauern (Ytong)", "Bühne", "Mauern", 1],
+  [2, "Anschluss Wand hinter der Bühne festlegen", "Maueranker zu den Außenwänden, Kopfanschluss an Dach bzw. Decke. Vorher vom Statiker freigeben lassen.", "Mauern (Ytong)", "Bühne", "Mauern", 1],
+  [2, "Trennwand Gemeinschaftsraum | Gottesdienstraum", "Ca. 19,9 m, Ytong, ohne Ringanker, mit 2 Türöffnungen und Stürzen.", "Mauern (Ytong)", "Gemeinschaftsraum", "Mauern", 2],
+  [2, "Wand zum Flur im Gemeinschaftsraum", "Ca. 11 m, Ytong.", "Mauern (Ytong)", "Gemeinschaftsraum", "Mauern", 2],
+  [2, "Wände Küche", "NGF 20,96 m², mit Türöffnung.", "Mauern (Ytong)", "Küche", "Mauern", 2],
+  [2, "Wände WC-Block", "2 × WC D/H + 1 × barrierefrei, NGF 20,96 m².", "Mauern (Ytong)", "WC-Block", "Mauern", 2],
+  [2, "Erste Steinlage mit Sperrbahn", "Ausgleichsmörtel und Sperrbahn gegen aufsteigende Feuchte – bei allen neuen Wänden.", "Mauern (Ytong)", "Ganze Halle", "Mauern", 2],
+  [2, "Durchbrüche vorsehen", "Abwasser, Wasser, Abgas und Lüftung für Küche, WC und Therme.", "Mauern (Ytong)", "Ganze Halle", "Mauern", 2],
+  [2, "Türzargen bzw. Türmaße", "Maße für Türbestellung nehmen; Brandschutztüren nach Auflage.", "Trockenbau", "Ganze Halle", null, 2],
+  [3, "Elektroplan erstellen", "Stromkreise je Raum, Steckdosen, Schalter, Licht, Küche, Therme, Bühne, LED-Wand, Technikbereich.", "Elektrik", "Ganze Halle", "Elektrik", 1],
+  [3, "Neue Unterverteilung", "FI/LS-Schutz, Zählerplatz prüfen. Fachbetrieb nötig.", "Elektrik", "Ganze Halle", "Elektrik", 1],
+  [3, "Neue Leitungen ziehen", "Kabeltrassen an der Decke, Leerrohre in den Wänden.", "Elektrik", "Ganze Halle", "Elektrik", 2],
+  [3, "Bühnenstrom und Stromkreis LED-Wand", "Steckdosen und ggf. CEE-Anschluss an der Bühne, eigener Stromkreis für die LED-Wand.", "Elektrik", "Bühne", "Elektrik", 2],
+  [3, "Daten- und Audioleitungen Technik → Bühne", "Leerrohr oder Bodenkanal vom Technikbereich zur Bühne und LED-Wand – vor dem neuen Boden!", "Elektrik", "Gottesdienstraum", "Elektrik", 1],
+  [3, "Netzwerk und WLAN", "Für Technik und Gemeinde.", "Elektrik", "Ganze Halle", "Elektrik", 3],
+  [3, "Sicherheitsbeleuchtung und Rettungszeichen", "Nach Auflage aus der Genehmigung.", "Elektrik", "Ganze Halle", "Elektrik", 2],
+  [3, "Elektro-Prüfung und Messprotokoll", "Fertigmeldung an den Netzbetreiber. Fachbetrieb nötig.", "Elektrik", "Ganze Halle", "Elektrik", 1],
+  [3, "Heizlast berechnen, Therme auswählen", "Gottesdienstraum 528,97 m², Gemeinschaftsraum 209,21 m². Fachbetrieb nötig.", "Heizung & Gas", "Ganze Halle", null, 1],
+  [3, "Neue Gastherme einbauen", "Abgasführung, Abnahme durch den Schornsteinfeger. Fachbetrieb nötig.", "Heizung & Gas", "Ganze Halle", null, 1],
+  [3, "Heizkörper bzw. Heizflächen", "Prüfen oder neu planen.", "Heizung & Gas", "Ganze Halle", null, 2],
+  [3, "Sanitär WC-Block", "Wasser, Abwasser, Warmwasser; barrierefreies WC.", "Sanitär", "WC-Block", null, 2],
+  [3, "Sanitär Küche", "Wasser, Abwasser, Spülmaschine.", "Sanitär", "Küche", null, 2],
+  [3, "Lüftung", "Konzept für den Saal, Abluft WC, Dunstabzug Küche.", "Planung & Organisation", "Ganze Halle", null, 2],
+  [4, "Decke vorbereiten", "Gottesdienstraum und Gemeinschaftsraum: reinigen, Risse schließen, abdecken.", "Malern", "Ganze Halle", null, 2],
+  [4, "Decke streichen", "Mit Hubarbeitsbühne oder Rollgerüst – vor dem neuen Boden.", "Malern", "Ganze Halle", null, 2],
+  [4, "Neue Lampen Gottesdienstraum", "Lichtplanung (Helligkeit, dimmbar, Bühnenlicht getrennt), Montage; Anschluss durch Elektrofachkraft.", "Elektrik", "Gottesdienstraum", "Elektrik", 2],
+  [4, "Neue Lampen Gemeinschaftsraum", "Auswahl und Montage.", "Elektrik", "Gemeinschaftsraum", "Elektrik", 2],
+  [4, "Wände verputzen bzw. spachteln", "Neue Wände; Bestandswände ausbessern.", "Trockenbau", "Ganze Halle", null, 2],
+  [4, "Wände streichen", "", "Malern", "Ganze Halle", null, 2],
+  [4, "Raumakustik Gottesdienstraum", "Absorber an Decke oder Wänden gegen Nachhall planen.", "Bühne & Technik", "Gottesdienstraum", null, 2],
+  [4, "Fliesen WC-Block", "Boden und Wände.", "Fliesen", "WC-Block", "Fliesen", 2],
+  [4, "Fliesen Küche", "Boden und Spritzschutz.", "Fliesen", "Küche", "Fliesen", 2],
+  [4, "Neue Küche planen und bestellen", "Lieferzeit beachten.", "Küche", "Küche", null, 1],
+  [4, "Küche montieren und anschließen", "Elektro- und Wasseranschluss durch Fachleute.", "Küche", "Küche", null, 2],
+  [4, "Untergrund für den Boden prüfen", "Ebenheit, Feuchte, Ölreste; ggf. ausgleichen oder Estrich.", "Boden", "Ganze Halle", null, 2],
+  [4, "Bodenbelag auswählen", "Belastbar, rutschhemmend, mindestens schwer entflammbar (falls gefordert).", "Boden", "Ganze Halle", null, 2],
+  [4, "Neuen Boden verlegen", "Inkl. Sockelleisten.", "Boden", "Ganze Halle", null, 2],
+  [4, "Türen einbauen", "", "Trockenbau", "Ganze Halle", null, 2],
+  [5, "Bühne bauen", "Ca. 2,9 × 9,9 m, ca. 0,6 m hoch, mit Treppe; Rampe bzw. Zugang für Rollstuhl prüfen.", "Bühne & Technik", "Bühne", null, 2],
+  [5, "Bühnenkante sichern, Kabeldurchführungen", "", "Bühne & Technik", "Bühne", null, 2],
+  [5, "LED-Wand auswählen, Angebot einholen", "Pixelabstand für den Sichtabstand, Gewicht, Stromverbrauch.", "Bühne & Technik", "Bühne", null, 1],
+  [5, "Unterkonstruktion LED-Wand", "10 × 3 m an der Wand hinter der Bühne, Unterkante ca. 0,9 m. Vorher vom Statiker freigeben lassen.", "Bühne & Technik", "Bühne", null, 2],
+  [5, "LED-Wand montieren und anschließen", "Strom und Signal; Fachbetrieb bzw. Lieferant.", "Bühne & Technik", "Bühne", "Elektrik", 2],
+  [5, "Technikbereich einrichten", "Ca. 2,4 × 6,4 m an der Rückseite: Pult für Ton, Licht und Video, Strom, Netzwerk, Verbindung zur Bühne.", "Bühne & Technik", "Gottesdienstraum", null, 2],
+  [5, "Tonanlage", "Lautsprecherpositionen, Kabelwege, Monitor auf der Bühne.", "Bühne & Technik", "Gottesdienstraum", null, 2],
+  [5, "Bestuhlung planen", "In der App unter „Halle“; Rettungswegbreiten einhalten.", "Planung & Organisation", "Gottesdienstraum", null, 3],
+  [6, "Rettungswege und Notausgänge", "Frei, gekennzeichnet und beleuchtet.", "Planung & Organisation", "Ganze Halle", null, 1],
+  [6, "Feuerlöscher und Rauchmelder", "Bzw. Brandmeldeanlage nach Auflage.", "Planung & Organisation", "Ganze Halle", null, 2],
+  [6, "Barrierefreiheit prüfen", "Eingang, WC, Zugang Bühne.", "Planung & Organisation", "Ganze Halle", null, 2],
+  [6, "Abnahme Elektrik", "Messprotokoll. Fachbetrieb nötig.", "Elektrik", "Ganze Halle", "Elektrik", 1],
+  [6, "Abnahme Gastherme", "Durch den Schornsteinfeger. Fachbetrieb nötig.", "Heizung & Gas", "Ganze Halle", null, 1],
+  [6, "Schlussabnahme Bauaufsicht", "Stadt Mannheim, falls im Bescheid gefordert.", "Planung & Organisation", "Ganze Halle", null, 1],
+  [6, "Restarbeiten und Endreinigung", "", "Aufräumen & Entsorgen", "Ganze Halle", "Rückbau", 2],
+  [6, "Unterlagen sammeln", "Pläne, Protokolle, Rechnungen, Garantien.", "Planung & Organisation", "Ganze Halle", null, 3],
+  [6, "Einweihung planen", "", "Planung & Organisation", "Ganze Halle", null, 3]
 ];
 ANSICHTEN.aufgaben = () => {
   let liste=S.aufgabe; const f=filterA;
   if(f.art==="meine") liste=liste.filter(a=>a.zugewiesen.includes(S.me.id));
   if(f.art==="ohne") liste=liste.filter(a=>!a.zugewiesen.length);
   if(f.gewerk) liste=liste.filter(a=>a.gewerk===f.gewerk);
+  if(f.phase!=="") liste=liste.filter(a=>a.phase===+f.phase);
   const gewerke=[...new Set(S.aufgabe.map(a=>a.gewerk).filter(Boolean))];
-  const spalte=st=>{ const l=liste.filter(a=>a.status===st).sort((a,b)=>(a.prio-b.prio)||((a.datum||"9")<(b.datum||"9")?-1:1));
+  const spalte=st=>{ const l=liste.filter(a=>a.status===st).sort((a,b)=>((a.phase??9)-(b.phase??9))||(a.prio-b.prio)||((a.datum||"9")<(b.datum||"9")?-1:1));
     return `<section class="spalte"><h3>${STATUS[st]} <span class="pille ${st}">${l.length}</span></h3>${l.map(aufgabeKarte).join("")||`<p class="klein leise" style="padding:4px">–</p>`}</section>`; };
   return `<div class="kopf"><div><p class="etikett">Arbeiten & Zuständigkeiten</p><h1>Aufgaben</h1><p class="unter">${istLeitung()?"Lege Arbeiten an, teile Teams und Leute ein.":"Hier siehst du, was ansteht und was dir zugewiesen ist."}</p></div>
     ${istLeitung()?`<button class="btn primaer" data-a="aufgabeNeu">${icon("plus")}Aufgabe anlegen</button>`:""}</div>
-  <div class="zeile weit" style="margin-bottom:14px"><div class="reiter" role="group" aria-label="Filter">${[["alle","Alle"],["meine","Meine"],["ohne","Ohne Zuweisung"]].map(([k,l])=>`<button data-a="filterA" data-k="${k}" aria-pressed="${f.art===k}">${l}</button>`).join("")}</div>
-    <select id="f-gewerk" data-a="filterG" style="width:auto;min-width:200px"><option value="">Alle Tätigkeiten</option>${gewerke.map(g=>`<option ${f.gewerk===g?"selected":""}>${esc(g)}</option>`).join("")}</select></div>
+  <div class="zeile" style="margin-bottom:14px;gap:10px"><div class="reiter" role="group" aria-label="Filter">${[["alle","Alle"],["meine","Meine"],["ohne","Ohne Zuweisung"]].map(([k,l])=>`<button data-a="filterA" data-k="${k}" aria-pressed="${f.art===k}">${l}</button>`).join("")}</div>
+    <select id="f-gewerk" data-a="filterG" style="width:auto;min-width:200px"><option value="">Alle Tätigkeiten</option>${gewerke.map(g=>`<option ${f.gewerk===g?"selected":""}>${esc(g)}</option>`).join("")}</select>
+    <select id="f-phase" data-a="filterP" style="width:auto;min-width:200px"><option value="">Alle Phasen</option>${PHASEN.map((p,i)=>`<option value="${i}" ${f.phase===String(i)?"selected":""}>${i} · ${esc(p)}</option>`).join("")}</select></div>
   ${S.aufgabe.length?`<div class="brett">${Object.keys(STATUS).map(spalte).join("")}</div>`:
-    `<div class="leer stapel" style="align-items:center"><p>Noch keine Aufgaben angelegt.</p>${istLeitung()?`<p class="klein">Ich habe aus dem aktuellen Plan ${PLAN_VORSCHLAEGE.length} Arbeiten abgeleitet (Rückbau, Ytong-Wände mit Ringanker, Bühne, LED-Wand …). Übernimm sie als Start und passe sie an.</p><button class="btn flamme" data-a="vorschlaege">Vorschläge aus dem Plan übernehmen</button>`:""}</div>`}`;
+    `<div class="leer stapel" style="align-items:center"><p>Noch keine Aufgaben angelegt.</p>${istLeitung()?`<p class="klein">Aus dem aktuellen Plan und deiner Checkliste stehen ${PLAN_VORSCHLAEGE.length} Arbeiten in ${PHASEN.length} Phasen bereit – von Genehmigung und Statik über Rückbau, Ytong-Wände, Elektrik, Gastherme, Decke, Boden und Küche bis zu Bühne, LED-Wand und Abnahmen.</p><button class="btn flamme" data-a="vorschlaege">Vorschläge aus dem Plan übernehmen</button>`:""}</div>`}`;
 };
 function aufgabeKarte(a){ const t=teamVon(a.team_id);
   return `<button class="akarte" style="--farbe:${gewerkFarbe(a)}" data-a="aufgabe" data-id="${a.id}">
     <b>${a.prio===1?'<span style="color:var(--flamme)">●</span> ':""}${esc(a.titel)}</b>
-    <span class="zeile klein leise" style="gap:6px">${a.datum?`<span class="mass">${dKurz(a.datum)}</span>`:""}${a.bereich?`<span>${esc(a.bereich)}</span>`:""}${a.vorschlag?`<span class="pille vorschlag">Vorschlag</span>`:""}</span>
+    <span class="zeile klein leise" style="gap:6px">${a.phase!=null?`<span class="pille" title="${esc(PHASEN[a.phase]||"")}">P${a.phase}</span>`:""}${a.datum?`<span class="mass">${dKurz(a.datum)}</span>`:""}${a.bereich?`<span>${esc(a.bereich)}</span>`:""}${a.vorschlag?`<span class="pille vorschlag">Vorschlag</span>`:""}</span>
     <span class="zeile weit">${a.zugewiesen.length?avas(a.zugewiesen,4):`<span class="klein leise">niemand zugewiesen</span>`}${t?`<span class="klein" style="color:${t.farbe};font-weight:600">${esc(t.name)}</span>`:""}</span></button>`; }
 function aufgabeDialog(id){
   const a=S.aufgabe.find(x=>x.id===id); if(!a) return; const t=teamVon(a.team_id); const darf=istLeitung()||a.zugewiesen.includes(S.me.id);
   const ein=S.eintrag.filter(e=>e.aufgabe_id===id).sort((x,y)=>y.erstellt<x.erstellt?-1:1); const mat=S.material.filter(m=>m.aufgabe_id===id);
   const daAmTag=a.datum?S.verfuegbarkeit.filter(v=>v.datum===a.datum):[];
   oeffne(a.titel, `
-    <div class="zeile"><span class="pille ${a.status}">${STATUS[a.status]}</span>${a.gewerk?`<span class="pille">${esc(a.gewerk)}</span>`:""}${a.bereich?`<span class="pille">${esc(a.bereich)}</span>`:""}${a.datum?`<span class="pille mass">${dKurz(a.datum)}</span>`:""}${a.prio===1?`<span class="pille" style="color:var(--flamme)">Wichtig</span>`:""}${a.vorschlag?`<span class="pille vorschlag">Vorschlag aus dem Plan</span>`:""}</div>
+    <div class="zeile"><span class="pille ${a.status}">${STATUS[a.status]}</span>${a.phase!=null?`<span class="pille">Phase ${a.phase} · ${esc(PHASEN[a.phase]||"")}</span>`:""}${a.gewerk?`<span class="pille">${esc(a.gewerk)}</span>`:""}${a.bereich?`<span class="pille">${esc(a.bereich)}</span>`:""}${a.datum?`<span class="pille mass">${dKurz(a.datum)}</span>`:""}${a.prio===1?`<span class="pille" style="color:var(--flamme)">Wichtig</span>`:""}${a.vorschlag?`<span class="pille vorschlag">Vorschlag aus dem Plan</span>`:""}</div>
     ${a.beschreibung?`<p>${esc(a.beschreibung)}</p>`:""}
     <div class="stapel" style="gap:6px"><span class="etikett">Team & Zuständige</span><div class="zeile">${t?`<span class="punkt" style="background:${t.farbe}"></span><b>${esc(t.name)}</b><span class="leise klein">Leitung: ${esc(t.leiter||"–")}</span>`:`<span class="leise">kein Team</span>`}</div>
       <div class="zeile">${a.zugewiesen.map(z=>`<span class="zeile" style="gap:6px">${ava(z,26)}<span class="klein">${esc(nameVon(z))}</span></span>`).join("")||`<span class="leise klein">Noch niemand zugewiesen.</span>`}</div>
@@ -244,12 +315,13 @@ function aufgabeForm(a){
       <label class="feld">Beschreibung<textarea name="beschreibung" id="af-beschr">${esc(a?.beschreibung||"")}</textarea></label>
       <div class="felder"><label class="feld">Tätigkeit<select name="gewerk" id="af-gewerk"><option value="">–</option>${TAETIGKEITEN.map(t=>`<option ${a?.gewerk===t?"selected":""}>${esc(t)}</option>`).join("")}</select></label>
         <label class="feld">Bereich<select name="bereich" id="af-bereich"><option value="">–</option>${BEREICHE.map(t=>`<option ${a?.bereich===t?"selected":""}>${esc(t)}</option>`).join("")}</select></label>
+        <label class="feld">Phase<select name="phase" id="af-phase"><option value="">–</option>${PHASEN.map((p,i)=>`<option value="${i}" ${a?.phase===i?"selected":""}>${i} · ${esc(p)}</option>`).join("")}</select></label>
         <label class="feld">Datum<input type="date" name="datum" id="af-datum" value="${datum}"></label>
         <label class="feld">Team<select name="team_id" id="af-team"><option value="">–</option>${S.team.map(t=>`<option value="${t.id}" ${a?.team_id===t.id?"selected":""}>${esc(t.name)}</option>`).join("")}</select></label>
         <label class="feld">Wichtigkeit<select name="prio" id="af-prio"><option value="1" ${a?.prio===1?"selected":""}>Wichtig</option><option value="2" ${!a||a.prio===2?"selected":""}>Normal</option><option value="3" ${a?.prio===3?"selected":""}>Kann warten</option></select></label>
         ${a?`<label class="feld">Status<select name="status" id="af-status">${Object.entries(STATUS).map(([k,l])=>`<option value="${k}" ${a.status===k?"selected":""}>${l}</option>`).join("")}</select></label>`:""}</div>
       <div class="stapel" style="gap:6px"><span class="etikett">Zuweisen</span>${datum?`<p class="klein leise">Oben stehen die, die am ${dKurz(datum)} eingetragen sind.</p>`:`<p class="klein leise">Tipp: Mit Datum siehst du, wer an dem Tag da ist.</p>`}
-        <div class="chips">${leute.map(p=>`<button type="button" class="chip" data-a="zug" data-id="${p.id}" aria-pressed="${zug.has(p.id)}">${verf.has(p.id)?"● ":""}${esc(p.name)}</button>`).join("")}</div></div>
+        <div class="chips">${leute.filter(p=>!p.gesperrt||zug.has(p.id)).map(p=>`<button type="button" class="chip" data-a="zug" data-id="${p.id}" aria-pressed="${zug.has(p.id)}">${verf.has(p.id)?"● ":""}${esc(p.name)}</button>`).join("")}</div></div>
       <div class="zeile"><button class="btn primaer" type="submit">${icon("check")}Speichern</button>${a?`<button class="btn gefahr" type="button" data-a="aufgabeLoeschenFrage" data-id="${a.id}">Löschen</button>`:""}</div>
       <div data-loeschfrage></div>
     </form>`);
@@ -358,8 +430,10 @@ ANSICHTEN.halle = () => {
       <div class="halle-rahmen" id="plan-rahmen" style="overflow-x:auto"><div style="min-width:760px" id="plan-svg">${planSvg(S.planobjekt,{bearbeiten:true,auswahl:planAuswahl})}</div></div>
       <div id="auswahl-leiste" style="margin-top:12px">${auswahlLeiste()}</div>
       <div class="zeile klein leise" style="margin-top:14px;gap:16px">
-        <span class="zeile" style="gap:6px"><span style="width:22px;height:5px;background:var(--gold);display:inline-block;border-radius:2px"></span>Neue Wände (Ytong + Ringanker)</span>
-        <span class="zeile" style="gap:6px"><span style="width:22px;height:5px;background:var(--glut);display:inline-block;border-radius:2px"></span>Bühnenseiten (rot im Plan)</span>
+        <span class="zeile" style="gap:6px"><span style="width:22px;height:5px;background:var(--gold);display:inline-block;border-radius:2px"></span>Neue Wände (Ytong)</span>
+        <span class="zeile" style="gap:6px"><span style="width:22px;height:5px;background:linear-gradient(var(--gold) 0 30%,var(--tinte) 30% 55%,var(--gold) 55%);display:inline-block;border-radius:2px"></span>Mit Ringanker (Wand hinter der Bühne)</span>
+        <span class="zeile" style="gap:6px"><span style="width:22px;height:0;border-top:4px dashed var(--glut);display:inline-block"></span>Wird abgerissen (rot im Plan)</span>
+        <span class="zeile" style="gap:6px"><span style="width:14px;height:10px;background:radial-gradient(var(--text3) 1px,transparent 1.5px) 0 0/4px 4px;border:1px solid var(--text3);display:inline-block"></span>Technikbereich</span>
         <span class="zeile" style="gap:6px"><span style="width:22px;height:4px;background:var(--text2);display:inline-block;border-radius:2px"></span>Bestand</span>
         <span class="zeile" style="gap:6px"><span style="width:22px;height:5px;background:var(--flamme);display:inline-block;border-radius:2px"></span>LED-Wand 10 × 3 m</span>
         <span>1 Kästchen = 1 m · Objekte ziehen zum Verschieben</span></div></section>
@@ -405,15 +479,57 @@ ANSICHTEN.profil = () => {
     <button class="btn primaer" type="submit">${icon("check")}Speichern</button></form></section>
   ${istAdmin()?`<section class="karte stapel"><h2>Gemeinde-Code</h2><p class="klein">Neue Mitglieder registrieren sich mit diesem Code. Gib ihn nur an Leute aus der Gemeinde weiter. Wenn er die Runde macht, ändere ihn hier.</p>
     ${B.modus==="live"?`<form class="zeile" data-form="code"><input type="text" name="code" id="p-code" required placeholder="neuer Code" style="flex:1;min-width:160px"><button class="btn" type="submit">Ändern</button></form>`:`<p class="klein leise">In der Vorschau nicht aktiv.</p>`}
-    <h2 style="margin-top:8px">Rollen</h2><p class="klein">Unter <b>Teams & Leitung → Alle Mitglieder</b> machst du jemanden zur Bauleitung.</p></section>`:""}</div>`;
+    <h2 style="margin-top:8px">Benutzer</h2><p class="klein">Rollen vergeben, Zugänge sperren und sehen, wer zuletzt angemeldet war.</p><button class="btn" data-a="geh" data-ziel="benutzer">${icon("benutzer")}Benutzer verwalten</button></section>`:""}
+  <section class="karte stapel"><h2>Zugang & Geräte</h2>
+    <p class="klein">Du bist angemeldet als <b>${esc(B.email?.()||"–")}</b>. Mit dieser E-Mail und deinem Passwort meldest du dich auf jedem Gerät an – Handy, Tablet, PC. Alles ist überall gleich, weil es zentral gespeichert wird.</p>
+    ${B.modus==="live"?`<form class="stapel" data-form="pwAendern"><span class="etikett">Passwort ändern</span>
+      <div class="felder"><label class="feld">Neues Passwort<input type="password" name="pw1" id="p-pw1" minlength="8" required autocomplete="new-password"></label>
+      <label class="feld">Wiederholen<input type="password" name="pw2" id="p-pw2" minlength="8" required autocomplete="new-password"></label></div>
+      <button class="btn" type="submit">Passwort ändern</button></form>
+    <button class="btn still" data-a="abmelden">Auf diesem Gerät abmelden</button>`:`<p class="klein leise">In der Vorschau nicht aktiv.</p>`}</section></div>`;
+};
+
+/* ---------- Benutzerverwaltung (nur Admin) ---------- */
+let benutzerInfo=null;   // {id:{email,zuletzt,registriert}}
+async function benutzerLaden(){ try{ const l=await B.benutzerListe(); benutzerInfo=Object.fromEntries(l.map(x=>[x.id,x])); }catch(e){ benutzerInfo={fehler:e.message}; } if(ansicht==="benutzer") render(); }
+const datumZeit = s => s ? new Date(s).toLocaleString("de-DE",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}) : "noch nie";
+ANSICHTEN.benutzer = () => {
+  if(!istAdmin()) return `<div class="leer">Nur für Admins.</div>`;
+  if(benutzerInfo===null){ benutzerLaden(); }
+  const info=benutzerInfo&&!benutzerInfo.fehler?benutzerInfo:{};
+  const liste=[...S.profil].sort((a,b)=>(!!a.gesperrt-!!b.gesperrt)||a.name.localeCompare(b.name));
+  const aktiv=liste.filter(p=>!p.gesperrt).length;
+  return `<div class="kopf"><div><p class="etikett">Admin</p><h1>Benutzer</h1><p class="unter">${aktiv} aktiv${liste.length-aktiv?` · ${liste.length-aktiv} gesperrt`:""}. Jeder hat ein eigenes Konto (E-Mail + Passwort) und kann sich damit auf beliebig vielen Geräten anmelden.</p></div>
+    <button class="btn" data-a="benutzerNeuLaden">${icon("drehen")}Aktualisieren</button></div>
+  ${benutzerInfo?.fehler?`<div class="hinweis klein">E-Mail-Adressen und letzte Anmeldung konnten nicht geladen werden (${esc(benutzerInfo.fehler)}). Ist die Datenbank-Erweiterung 2 eingespielt?</div>`:""}
+  <section class="karte"><div class="tabelle-rahmen"><table><thead><tr><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Zuletzt angemeldet</th><th>Zugang</th></tr></thead><tbody>
+  ${liste.map(p=>{ const i=info[p.id]||{}; const ich=p.id===S.me.id;
+    return `<tr${p.gesperrt?' style="opacity:.55"':""}><td><span class="zeile" style="flex-wrap:nowrap">${ava(p.id,26)}<b>${esc(p.name)}</b>${ich?'<span class="pille">du</span>':""}</span></td>
+      <td class="klein">${esc(i.email||"–")}</td>
+      <td>${!ich?`<select data-a="rolle" data-id="${p.id}" style="width:auto">${["mitglied","bauleitung","admin"].map(r=>`<option value="${r}" ${p.rolle===r?"selected":""}>${rolleText(r)}</option>`).join("")}</select>`:`<span class="pille">${rolleText(p.rolle)}</span>`}</td>
+      <td class="klein mass">${datumZeit(i.zuletzt)}</td>
+      <td>${ich?"":p.gesperrt?`<button class="btn klein" data-a="sperren" data-id="${p.id}" data-k="0">Entsperren</button>`:`<button class="btn klein gefahr" data-a="sperren" data-id="${p.id}" data-k="1">Sperren</button>`}</td></tr>`; }).join("")}
+  </tbody></table></div></section>
+  <div class="raster r2" style="margin-top:16px">
+    <section class="karte stapel"><h2>Neue Leute einladen</h2><p class="klein">Schick ihnen den Link zur Seite und den Gemeinde-Code. Sie registrieren sich selbst mit E-Mail und Passwort. Wer zur Leitungsgruppe gehört, wird beim Beitritt automatisch Bauleitung.</p>
+      ${B.modus==="live"?`<form class="zeile" data-form="code"><input type="text" name="code" id="b-code" required placeholder="neuer Gemeinde-Code" style="flex:1;min-width:160px"><button class="btn" type="submit">Code ändern</button></form>`:`<p class="klein leise">In der Vorschau nicht aktiv.</p>`}</section>
+    <section class="karte stapel"><h2>Passwort vergessen?</h2><p class="klein">Auf der Anmeldeseite gibt es „Passwort vergessen“. Dann kommt eine E-Mail mit einem Link. Gesperrte Personen können sich nicht mehr anmelden. Ihre Einträge, Fotos und ihr Werkzeug bleiben aber sichtbar.</p></section>
+  </div>`;
 };
 
 /* ---------- Anmeldung (live) ---------- */
-function zeigeTor(art,fehler=""){
-  const reg=art==="registrieren", beit=art==="beitreten";
+function zeigeTor(art,fehler="",info=""){
+  const reg=art==="registrieren", beit=art==="beitreten", verg=art==="vergessen", neuPw=art==="neuesPasswort";
   document.getElementById("wurzel").innerHTML=`<div class="tor"><div class="karte">
     <div class="marke"><img src="${LOGO}" alt="Logo Tabernacle Church"><div><b>Gemeindebau</b><span>Tabernacle Church · Konzstraße 9</span></div></div>
-    ${beit?`<form class="stapel" data-form="beitreten"><p>Fast geschafft. Gib deinen Namen und den Gemeinde-Code ein.</p>
+    ${verg?`<form class="stapel" data-form="vergessen"><p>Gib deine E-Mail ein. Du bekommst einen Link, mit dem du ein neues Passwort festlegst.</p>
+      <label class="feld">E-Mail<input type="email" name="email" id="t-e" required autocomplete="email"></label>
+      ${fehler?`<p class="fehler">${esc(fehler)}</p>`:""}<button class="btn primaer" type="submit">Link schicken</button><button class="btn still" type="button" data-a="tor" data-k="anmelden">Zurück zur Anmeldung</button></form>`:
+    neuPw?`<form class="stapel" data-form="neuesPasswort"><p>Lege dein neues Passwort fest.</p>
+      <label class="feld">Neues Passwort<input type="password" name="pw1" id="t-p1" minlength="8" required autocomplete="new-password"></label>
+      <label class="feld">Wiederholen<input type="password" name="pw2" id="t-p2" minlength="8" required autocomplete="new-password"></label>
+      ${fehler?`<p class="fehler">${esc(fehler)}</p>`:""}<button class="btn primaer" type="submit">Speichern und weiter</button></form>`:
+    beit?`<form class="stapel" data-form="beitreten"><p>Fast geschafft. Gib deinen Namen und den Gemeinde-Code ein.</p>
       <label class="feld">Dein Name<input type="text" name="name" id="t-n" required autocomplete="name"></label>
       <label class="feld">Gemeinde-Code<input type="text" name="code" id="t-c" required></label>
       ${fehler?`<p class="fehler">${esc(fehler)}</p>`:""}<button class="btn primaer" type="submit">Beitreten</button><button class="btn still" type="button" data-a="abmelden">Abmelden</button></form>`:`
@@ -421,18 +537,18 @@ function zeigeTor(art,fehler=""){
     <form class="stapel" data-form="${reg?"registrieren":"anmelden"}">
       ${reg?`<label class="feld">Dein Name<input type="text" name="name" id="t-n" required autocomplete="name" placeholder="Vorname Nachname"></label>`:""}
       <label class="feld">E-Mail<input type="email" name="email" id="t-e" required autocomplete="email"></label>
-      <label class="feld">Passwort<input type="password" name="pw" id="t-p" required minlength="6" autocomplete="${reg?"new-password":"current-password"}"></label>
+      <label class="feld">Passwort<input type="password" name="pw" id="t-p" required minlength="${reg?8:6}" autocomplete="${reg?"new-password":"current-password"}"></label>${reg?"":`<button type="button" class="link klein" data-a="tor" data-k="vergessen" style="align-self:flex-end">Passwort vergessen?</button>`}
       ${reg?`<label class="feld">Gemeinde-Code<input type="text" name="code" id="t-c" required placeholder="bekommst du von der Bauleitung"></label>`:""}
-      ${fehler?`<p class="fehler">${esc(fehler)}</p>`:""}
+      ${fehler?`<p class="fehler">${esc(fehler)}</p>`:""}${info?`<p class="hinweis">${esc(info)}</p>`:""}
       <button class="btn primaer" type="submit">${reg?"Registrieren":"Anmelden"}</button></form>
-    <p class="klein leise" style="margin-top:14px;text-align:center">${reg?"Nur für die Tabernacle Church. Den Code bekommst du von der Bauleitung.":"Noch kein Zugang? Tippe oben auf „Neu registrieren“."}</p>`}
+    <p class="klein leise" style="margin-top:14px;text-align:center">${reg?"Nur für die Tabernacle Church. Den Code bekommst du von der Bauleitung.":"Noch kein Zugang? Tippe oben auf „Neu registrieren“. Ein Konto gilt für alle deine Geräte."}</p>`}
   </div></div>`;
 }
 
 /* ================= Aktionen ================= */
 const AKT = {
   geh:t=>{ ansicht=t.dataset.ziel; schliesse(); render(); window.scrollTo(0,0); },
-  mehr:()=>oeffne("Mehr", `<nav class="nav">${[["tagebuch","Bautagebuch"],["teams","Teams & Leitung"],["material","Material"],["werkzeug","Werkzeug"],["profil","Mein Profil"]].map(([k,l])=>`<button data-a="geh" data-ziel="${k}">${icon(k)}<span>${l}</span></button>`).join("")}</nav>`),
+  mehr:()=>oeffne("Mehr", `<nav class="nav">${[["tagebuch","Bautagebuch"],["teams","Teams & Leitung"],["material","Material"],["werkzeug","Werkzeug"],["profil","Mein Profil"],...(istAdmin()?[["benutzer","Benutzer verwalten"]]:[])].map(([k,l])=>`<button data-a="geh" data-ziel="${k}">${icon(k)}<span>${l}</span></button>`).join("")}</nav>`),
   zu:()=>schliesse(),
   demoReset:()=>{ DemoBackend.zuruecksetzen(); ladeAlles().then(()=>{ S.me=S.profil.find(p=>p.id===DemoBackend.d.me); render(); toast("Beispieldaten zurückgesetzt"); }); },
   monat:t=>{ const d=+t.dataset.d; kalMonat = d===0?new Date():new Date(kalMonat.getFullYear(),kalMonat.getMonth()+d,1); render(); },
@@ -455,7 +571,8 @@ const AKT = {
   frageZu:t=>{ t.closest("[data-loeschfrage],[data-leerfrage]").innerHTML=""; },
   aufgabeLoeschen:async t=>{ await speichere(()=>B.loeschen("aufgabe",t.dataset.id),"Gelöscht"); await neu("aufgabe"); schliesse(); render(); },
   vorschlaege:async ()=>{ const tm=g=>S.team.find(t=>t.gewerk===g)?.id||null;
-    for(const [titel,beschreibung,gewerk,bereich,tg] of PLAN_VORSCHLAEGE) await B.neu("aufgabe",{titel,beschreibung,gewerk,bereich,status:"offen",prio:2,team_id:tg?tm(tg):null,zugewiesen:[],vorschlag:true});
+    const zeilen=PLAN_VORSCHLAEGE.map(([phase,titel,beschreibung,gewerk,bereich,tg,prio])=>({titel,beschreibung:beschreibung||null,gewerk,bereich,phase,status:"offen",prio,team_id:tg?tm(tg):null,zugewiesen:[],vorschlag:true}));
+    await speichere(()=>B.neuViele("aufgabe",zeilen));
     await neu("aufgabe"); render(); toast(PLAN_VORSCHLAEGE.length+" Aufgaben übernommen"); },
   eintragNeu:()=>eintragDialog(null),
   materialNeu:t=>materialDialog(t.dataset.aufgabe||null),
@@ -478,13 +595,16 @@ const AKT = {
   planLeeren:async ()=>{ for(const o of [...S.planobjekt]) await B.loeschen("planobjekt",o.id); planAuswahl=null; await neu("planobjekt"); render(); },
   blick:t=>dreiD?.ansicht(t.dataset.k),
   tor:t=>zeigeTor(t.dataset.k),
-  abmelden:async ()=>{ await B.abmelden(); location.reload(); }
+  abmelden:async ()=>{ await B.abmelden(); location.reload(); },
+  benutzerNeuLaden:()=>{ benutzerInfo=null; neu("profil").then(render); },
+  sperren:async t=>{ const an=t.dataset.k==="1"; await speichere(()=>B.sperren(t.dataset.id,an),an?"Zugang gesperrt":"Zugang wieder frei"); await neu("profil"); render(); }
 };
 async function neu(t){ try{ S[t]=await B.alle(t); }catch(e){} }
 document.addEventListener("click",e=>{ const t=e.target.closest("[data-a]"); if(!t||t.tagName==="SELECT"||(t.tagName==="INPUT"&&t.type!=="checkbox")) return; if(t.type==="checkbox"&&t.dataset.a!=="neuGelb") return; const f=AKT[t.dataset.a]; if(f){ f(t,e); } });
 document.addEventListener("change",async e=>{ const t=e.target; const a=t.dataset?.a;
   if(t.matches('input[type=file]')){ const z=t.closest("form")?.querySelector("[data-fotozahl]"); if(z) z.textContent=t.files.length?`${t.files.length} Foto${t.files.length>1?"s":""} gewählt`:""; }
   if(a==="filterG"){ filterA.gewerk=t.value; render(); }
+  if(a==="filterP"){ filterA.phase=t.value; render(); }
   if(a==="mStatusSel"){ await speichere(()=>B.aendern("material",t.dataset.id,{status:t.value}),MSTATUS[t.value]); await neu("material"); }
   if(a==="rolle"){ await speichere(()=>B.aendern("profil",t.dataset.id,{rolle:t.value}),"Rolle geändert"); await neu("profil"); render(); }
   if(a==="neuGelb") dreiD?.neueHervorheben(t.checked);
@@ -499,7 +619,7 @@ const FORM = {
       await speichere(()=>vorh?B.aendern("verfuegbarkeit",vorh.id,werte):B.neu("verfuegbarkeit",{...werte,datum:d,profil_id:S.me.id})); }
     toast(daten.length>1?`${daten.length} Tage eingetragen`:"Eingetragen"); mehrfach=null; await neu("verfuegbarkeit"); schliesse(); render(); },
   aufgabe:async f=>{ const zug=$$('[data-a="zug"][aria-pressed="true"]',f).map(b=>b.dataset.id);
-    const w={titel:f.titel.value.trim(),beschreibung:f.beschreibung.value.trim()||null,gewerk:f.gewerk.value||null,bereich:f.bereich.value||null,datum:f.datum.value||null,team_id:f.team_id.value||null,prio:+f.prio.value,zugewiesen:zug};
+    const w={titel:f.titel.value.trim(),beschreibung:f.beschreibung.value.trim()||null,gewerk:f.gewerk.value||null,bereich:f.bereich.value||null,phase:f.phase.value===""?null:+f.phase.value,datum:f.datum.value||null,team_id:f.team_id.value||null,prio:+f.prio.value,zugewiesen:zug};
     if(f.status) w.status=f.status.value;
     const id=f.dataset.id; if(id) w.vorschlag=false;
     const r=await speichere(()=>id?B.aendern("aufgabe",id,w):B.neu("aufgabe",{...w,status:"offen"}),"Gespeichert"); await neu("aufgabe"); render(); aufgabeDialog(id||r.id); },
@@ -519,6 +639,12 @@ const FORM = {
     await speichere(()=>B.aendern("profil",S.me.id,{name:f.elements.name.value.trim(),telefon:f.telefon.value.trim()||null,hinweis:f.hinweis.value.trim()||null,schwerpunkte:sw}),"Profil gespeichert");
     await neu("profil"); S.me=S.profil.find(p=>p.id===S.me.id)||S.me; render(); },
   code:async f=>{ await speichere(()=>B.codeSetzen(f.code.value),"Code geändert"); f.reset(); },
+  pwAendern:async f=>{ if(f.pw1.value!==f.pw2.value) return toast("Die Passwörter stimmen nicht überein");
+    await speichere(()=>B.passwortAendern(f.pw1.value),"Passwort geändert – gilt ab jetzt auf allen Geräten"); f.reset(); },
+  vergessen:async f=>{ try{ await B.passwortVergessen(f.email.value.trim()); zeigeTor("anmelden","","Wenn die E-Mail registriert ist, kommt gleich ein Link. Schau auch im Spam-Ordner nach."); }
+    catch(e){ zeigeTor("vergessen",e.message); } },
+  neuesPasswort:async f=>{ if(f.pw1.value!==f.pw2.value) return zeigeTor("neuesPasswort","Die Passwörter stimmen nicht überein.");
+    try{ await B.passwortAendern(f.pw1.value); history.replaceState(null,"",location.pathname); await nachAnmeldung(); }catch(e){ zeigeTor("neuesPasswort",e.message); } },
   anmelden:async f=>{ try{ await B.anmelden(f.email.value.trim(),f.pw.value); await nachAnmeldung(); }catch(e){ zeigeTor("anmelden",e.message==="Invalid login credentials"?"E-Mail oder Passwort stimmt nicht.":e.message); } },
   registrieren:async f=>{ const name=f.elements.name.value.trim(), code=f.code.value.trim();
     try{ await B.registrieren(f.email.value.trim(),f.pw.value); await B.beitreten(code,name); await nachAnmeldung(); }
@@ -527,12 +653,13 @@ const FORM = {
 };
 document.addEventListener("submit",e=>{ const f=e.target; if(!f.dataset?.form) return; e.preventDefault(); FORM[f.dataset.form]?.(f); });
 
-async function nachAnmeldung(){ const p=await B.meinProfil(); if(!p) return zeigeTor("beitreten"); S.me=p; B.abonnieren(nachladen); await ladeAlles(); render(); }
+async function nachAnmeldung(){ const p=await B.meinProfil(); if(!p) return zeigeTor("beitreten"); if(p.gesperrt) return zeigeTor("beitreten","Dein Zugang ist gesperrt. Bitte wende dich an die Bauleitung."); S.me=p; B.abonnieren(nachladen); await ladeAlles(); render(); }
 
 /* ================= Start ================= */
 async function starten(){
   let live=false; try{ live = !!(window.GB_KONFIG&&GB_KONFIG.url) && await LiveBackend.init(); }catch(e){ live=false; }
-  if(live){ B=LiveBackend; const s=await B.sitzung(); if(!s) return zeigeTor("anmelden"); return nachAnmeldung(); }
+  if(live){ B=LiveBackend; const s=await B.sitzung(); if(!s) return zeigeTor("anmelden");
+    if(B.wiederherstellung) return zeigeTor("neuesPasswort"); return nachAnmeldung(); }
   B=DemoBackend; await B.init(); S.me=await B.meinProfil(); await ladeAlles(); render();
 }
 starten();

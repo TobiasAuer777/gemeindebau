@@ -2,7 +2,7 @@
 /* Koordinaten in Metern, Innenmaß. x: von der Konzstraße (links) zur Industriestraße (rechts); y: vom Hof Kinder-Spiel (oben) zum Hof Eingang (unten). */
 const HALLE = { L:47.40, B:19.90, traufe:3.70, first:5.09, wand:0.24 };
 
-// Wände: [x1,y1,x2,y2, art]   art: bestand | neu (gelb im Plan) | rot (rot im Plan)
+// Wände: [x1,y1,x2,y2, art]   art: bestand | neu (gelb im Plan) | neu-ra (gelb, mit Ringanker) | abriss (rot im Plan = wird entfernt)
 const WAENDE = [
   // linker Block (Bestand)
   [9.0,0,9.0,3.0,"bestand"],[9.0,4.0,9.0,7.0,"bestand"],[9.0,8.1,9.0,16.0,"bestand"],[9.0,17.0,9.0,19.9,"bestand"],
@@ -13,14 +13,14 @@ const WAENDE = [
   // Küche + WC-Block (neu, gelb)
   [9.0,3.9,11.9,3.9,"neu"],[12.8,3.9,14.4,3.9,"neu"],[14.4,0,14.4,3.9,"neu"],
   [15.7,0,15.7,3.9,"neu"],[15.7,3.9,16.8,3.9,"neu"],[17.7,3.9,21.2,3.9,"neu"],
-  // Lange Trennwand Gemeinschaftsraum | Gottesdienstraum (Ytong + Ringanker)
+  // Lange Trennwand Gemeinschaftsraum | Gottesdienstraum (Ytong, mit Türöffnungen, ohne Ringanker)
   [21.2,0,21.2,4.3,"neu"],[21.2,5.2,21.2,18.2,"neu"],[21.2,19.1,21.2,19.9,"neu"],
   // Wand unten im Gemeinschaftsraum (11 m)
   [10.4,17.7,21.2,17.7,"neu"],
-  // Lange Wand hinter der Bühne (Ytong + Ringanker)
-  [46.7,0,46.7,19.9,"neu"],
-  // Bühnenseiten (rot im Plan)
-  [40.5,0,40.5,4.2,"rot"],[40.5,15.3,46.7,15.3,"rot"],[40.5,15.3,40.5,19.9,"rot"]
+  // Lange Wand hinter der Bühne: läuft ohne Öffnung von Außenwand zu Außenwand → Ytong + Ringanker
+  [46.7,0,46.7,19.9,"neu-ra"],
+  // Rot im Plan: wird abgerissen
+  [40.2,0,40.2,4.25,"abriss"],[40.2,15.55,46.7,15.55,"abriss"],[40.2,15.55,40.2,19.9,"abriss"]
 ];
 const RAEUME = [
   {n:"Gottesdienstraum",x:21.2,y:0,w:25.5,h:19.9,m2:"528,97",haupt:true,ly:1.6},
@@ -32,7 +32,8 @@ const RAEUME = [
 ];
 const BUEHNE = {x:43.8,y:4.9,w:2.9,h:9.9,hoehe:0.6};
 const LED = {y1:4.9,y2:14.8,unten:0.9,oben:3.9};     // 10 m × 3 m an der Wand hinter der Bühne
-const GEPUNKTET = {x:22.2,y:6.6,w:2.3,h:6.1};          // im Plan gepunktete Fläche
+const TECHNIK = {x:21.8,y:6.6,w:2.4,h:6.4};            // im Plan gepunktet: Technikbereich (Ton, Licht, Video)
+const istNeu = a => a==="neu"||a==="neu-ra";
 const TUEREN_AUSSEN = [{x1:32.6,x2:40.0,y:19.9,n:"Haupteingang"},{x1:40.9,x2:41.9,y:0,n:"Notausgang"}];
 
 const OBJEKTE = {
@@ -62,14 +63,23 @@ function planSvg(objekte, opt={}){
   <rect x="0" y="0" width="${W}" height="${H}" fill="var(--flaeche)"/>
   <rect x="${R}" y="${R}" width="${HALLE.L*S}" height="${HALLE.B*S}" fill="url(#m1)"/>`;
   RAEUME.forEach(r=>{ s+=`<rect x="${p(r.x)}" y="${p(r.y)}" width="${(r.w*S).toFixed(1)}" height="${(r.h*S).toFixed(1)}" fill="${r.haupt?'var(--blau-weich)':'var(--flaeche2)'}" opacity="${r.haupt?.55:.8}"/>`; });
-  s+=`<rect x="${p(GEPUNKTET.x)}" y="${p(GEPUNKTET.y)}" width="${GEPUNKTET.w*S}" height="${GEPUNKTET.h*S}" fill="url(#gp)" stroke="var(--text3)" stroke-width="1"/>`;
+  s+=`<rect x="${p(TECHNIK.x)}" y="${p(TECHNIK.y)}" width="${TECHNIK.w*S}" height="${TECHNIK.h*S}" fill="url(#gp)" stroke="var(--text3)" stroke-width="1"/>`;
+  { const tx=p(TECHNIK.x+TECHNIK.w/2), ty=p(TECHNIK.y+TECHNIK.h/2);
+    s+=`<text x="${tx}" y="${ty}" text-anchor="middle" dominant-baseline="middle" font-family="var(--f-titel)" font-weight="700" font-size="12" letter-spacing="1" fill="var(--tinte)" paint-order="stroke" stroke="var(--flaeche)" stroke-width="3" transform="rotate(-90 ${tx} ${ty})">TECHNIK</text>`; }
   s+=`<rect x="${p(BUEHNE.x)}" y="${p(BUEHNE.y)}" width="${BUEHNE.w*S}" height="${BUEHNE.h*S}" fill="url(#sch)" stroke="var(--tinte)" stroke-width="1.5"/>`;
   s+=`<line x1="${p(46.7-0.08)}" y1="${p(LED.y1)}" x2="${p(46.7-0.08)}" y2="${p(LED.y2)}" stroke="var(--flamme)" stroke-width="6" stroke-linecap="round"/>`;
   // Außenwand
   s+=`<rect x="${R-HALLE.wand*S/2}" y="${R-HALLE.wand*S/2}" width="${HALLE.L*S+HALLE.wand*S}" height="${HALLE.B*S+HALLE.wand*S}" fill="none" stroke="var(--tinte)" stroke-width="${HALLE.wand*S}"/>`;
   TUEREN_AUSSEN.forEach(t=>{ s+=`<line x1="${p(t.x1)}" y1="${p(t.y)}" x2="${p(t.x2)}" y2="${p(t.y)}" stroke="var(--flaeche)" stroke-width="${HALLE.wand*S+2}"/>`; });
-  WAENDE.forEach(([x1,y1,x2,y2,a])=>{ const c=a==="neu"?"var(--gold)":a==="rot"?"var(--glut)":"var(--text2)";
-    s+=`<line x1="${p(x1)}" y1="${p(y1)}" x2="${p(x2)}" y2="${p(y2)}" stroke="${c}" stroke-width="${a==="neu"?6:4.5}" stroke-linecap="square"/>`; });
+  WAENDE.forEach(([x1,y1,x2,y2,a])=>{
+    if(a==="abriss"){ s+=`<line x1="${p(x1)}" y1="${p(y1)}" x2="${p(x2)}" y2="${p(y2)}" stroke="var(--glut)" stroke-width="4.5" stroke-dasharray="7 5" opacity=".9"/>`; return; }
+    const c=istNeu(a)?"var(--gold)":"var(--text2)";
+    s+=`<line x1="${p(x1)}" y1="${p(y1)}" x2="${p(x2)}" y2="${p(y2)}" stroke="${c}" stroke-width="${istNeu(a)?6:4.5}" stroke-linecap="square"/>`;
+    if(a==="neu-ra") s+=`<line x1="${p(x1)}" y1="${p(y1)}" x2="${p(x2)}" y2="${p(y2)}" stroke="var(--tinte)" stroke-width="1.6" stroke-dasharray="10 6"/>`; });
+  // Beschriftung Rückbau + Ringanker
+  s+=`<text x="${p(40.2)-6}" y="${p(2.1)}" text-anchor="end" font-family="var(--f-text)" font-weight="700" font-size="9.5" fill="var(--glut)">✕ Rückbau</text>`;
+  s+=`<text x="${p(40.2)-6}" y="${p(17.8)}" text-anchor="end" font-family="var(--f-text)" font-weight="700" font-size="9.5" fill="var(--glut)">✕ Rückbau</text>`;
+  { const rx=p(46.7)+13, ry=p(2.6); s+=`<text x="${rx}" y="${ry}" text-anchor="middle" font-family="var(--f-text)" font-weight="700" font-size="9" fill="var(--tinte)" transform="rotate(90 ${rx} ${ry})">RINGANKER</text>`; }
   // Beschriftung
   RAEUME.forEach(r=>{ const cx=p(r.x+r.w/2), cy=p(r.ly!=null?r.y+r.ly:r.y+r.h/2); const fs=r.haupt?15:r.klein?8.5:10;
     s+=`<text x="${cx}" y="${cy}" text-anchor="middle" font-family="var(--f-titel)" font-weight="600" font-size="${fs}" fill="var(--tinte)">${r.n}</text>`;
@@ -97,7 +107,7 @@ function planSvg(objekte, opt={}){
 /* Bestuhlung Gottesdienstraum automatisch: zwei Blöcke à 10 Stühle mit Mittelgang, Blick zur Bühne */
 function bestuhlungVorschlag(){
   const reihen=[], abstand=0.95, mitte=(BUEHNE.y+BUEHNE.y+BUEHNE.h)/2;
-  for(let x=BUEHNE.x-3.8; x>GEPUNKTET.x+GEPUNKTET.w+1.6; x-=abstand){
+  for(let x=BUEHNE.x-3.8; x>TECHNIK.x+TECHNIK.w+1.6; x-=abstand){
     reihen.push({typ:"stuhlreihe",x:+x.toFixed(2),y:+(mitte-0.75-2.5).toFixed(2),rot:90});
     reihen.push({typ:"stuhlreihe",x:+x.toFixed(2),y:+(mitte+0.75+2.5).toFixed(2),rot:90});
   }
@@ -126,7 +136,7 @@ function halle3d(container, objekte, opt={}){
     szene.add(new THREE.LineSegments(gg,new THREE.LineBasicMaterial({color:"#a39e93"}))); }
   // Wandhöhe am Ort y (Satteldach über die Breite)
   const hoehe=y=>HALLE.traufe+(HALLE.first-HALLE.traufe)*(1-Math.abs(y-HALLE.B/2)/(HALLE.B/2));
-  const wandMat=M("#ece8df"), neuMat=M("#f2c14e"), rotMat=M("#a8432c"), bestandMat=M("#d9d4ca");
+  const wandMat=M("#ece8df"), neuMat=M("#f2c14e"), bestandMat=M("#d9d4ca");
   // Längswände
   const t=HALLE.wand;
   const laengs=(z)=>{ const mesh=box(HALLE.L+t*2,HALLE.traufe,t,wandMat,HALLE.L/2,HALLE.traufe/2,z); return mesh; };
@@ -151,9 +161,11 @@ function halle3d(container, objekte, opt={}){
   // Innenwände
   const neueWaende=[];
   WAENDE.forEach(([x1,y1,x2,y2,a])=>{ const len=Math.hypot(x2-x1,y2-y1); if(len<0.05) return;
-    const mx=(x1+x2)/2, my=(y1+y2)/2; const h=a==="neu"&&(x1===x2)&&len>15 ? Math.min(hoehe(my),HALLE.traufe+0.6) : 3.0;
-    const mat=a==="neu"?neuMat:a==="rot"?rotMat:bestandMat;
-    const m=box(x1===x2?0.2:len, h, x1===x2?len:0.2, mat, mx, h/2, my); if(a==="neu") neueWaende.push(m); });
+    if(a==="abriss") return;   // wird entfernt – im Zielzustand nicht mehr da
+    const mx=(x1+x2)/2, my=(y1+y2)/2; const h=istNeu(a)&&(x1===x2)&&len>15 ? Math.min(hoehe(my),HALLE.traufe+0.6) : 3.0;
+    const mat=istNeu(a)?neuMat:bestandMat;
+    const m=box(x1===x2?0.2:len, h, x1===x2?len:0.2, mat, mx, h/2, my); if(istNeu(a)) neueWaende.push(m);
+    if(a==="neu-ra") box(0.24,0.25,len,M("#8a8f99"),mx,h-0.125,my); });
   // Bühne + LED-Wand
   box(BUEHNE.w,BUEHNE.hoehe,BUEHNE.h,M("#3b2f2a"),BUEHNE.x+BUEHNE.w/2,BUEHNE.hoehe/2,BUEHNE.y+BUEHNE.h/2);
   const ledCanvas=document.createElement("canvas"); ledCanvas.width=1600; ledCanvas.height=480;
@@ -166,8 +178,11 @@ function halle3d(container, objekte, opt={}){
   const led=new THREE.Mesh(new THREE.PlaneGeometry(LED.y2-LED.y1,LED.oben-LED.unten),new THREE.MeshBasicMaterial({map:ledTex}));
   led.rotation.y=-Math.PI/2; led.position.set(46.7-0.12,(LED.unten+LED.oben)/2,(LED.y1+LED.y2)/2); szene.add(led);
   box(0.06,LED.oben-LED.unten+0.12,LED.y2-LED.y1+0.12,M("#111"),46.7-0.07,(LED.unten+LED.oben)/2,(LED.y1+LED.y2)/2);
-  // gepunktete Fläche als Bodenmarkierung
-  const gp=new THREE.Mesh(new THREE.PlaneGeometry(GEPUNKTET.w,GEPUNKTET.h),M("#9aa3b5")); gp.rotation.x=-Math.PI/2; gp.position.set(GEPUNKTET.x+GEPUNKTET.w/2,0.01,GEPUNKTET.y+GEPUNKTET.h/2); szene.add(gp);
+  // Technikbereich: Podest + Pult mit Blick zur Bühne
+  box(TECHNIK.w,0.15,TECHNIK.h,M("#4b5568"),TECHNIK.x+TECHNIK.w/2,0.075,TECHNIK.y+TECHNIK.h/2);
+  box(0.8,0.95,3.2,M("#1f2937"),TECHNIK.x+TECHNIK.w*0.62,0.15+0.475,TECHNIK.y+TECHNIK.h/2);
+  box(0.05,0.35,0.6,new THREE.MeshBasicMaterial({color:"#3b82f6"}),TECHNIK.x+TECHNIK.w*0.62+0.1,1.3,TECHNIK.y+TECHNIK.h/2-0.7);
+  box(0.05,0.35,0.6,new THREE.MeshBasicMaterial({color:"#3b82f6"}),TECHNIK.x+TECHNIK.w*0.62+0.1,1.3,TECHNIK.y+TECHNIK.h/2+0.7);
   // Planobjekte
   const objGruppe=new THREE.Group(); szene.add(objGruppe);
   function objekteZeichnen(liste){
@@ -206,7 +221,7 @@ function halle3d(container, objekte, opt={}){
     const los=()=>{ jid=null; joyV={x:0,y:0}; knopf.style.transform=""; }; joy.addEventListener("pointerup",los); joy.addEventListener("pointercancel",los); }
   // Kollision: Außenhülle + lange Wände
   function frei(x,z){ if(blick.oben) return true; if(x<0.3||x>HALLE.L-0.3||z<0.3||z>HALLE.B-0.3) return false;
-    for(const [x1,y1,x2,y2] of WAENDE){ const r=0.28; const minx=Math.min(x1,x2)-r, maxx=Math.max(x1,x2)+r, miny=Math.min(y1,y2)-r, maxy=Math.max(y1,y2)+r;
+    for(const [x1,y1,x2,y2,a] of WAENDE){ if(a==="abriss") continue; const r=0.28; const minx=Math.min(x1,x2)-r, maxx=Math.max(x1,x2)+r, miny=Math.min(y1,y2)-r, maxy=Math.max(y1,y2)+r;
       if(x>minx&&x<maxx&&z>miny&&z<maxy) return false; } return true; }
   let zuletzt=performance.now(), laeuft=true;
   function bild(jetzt){ if(!laeuft) return; const dt=Math.min(0.05,(jetzt-zuletzt)/1000); zuletzt=jetzt;

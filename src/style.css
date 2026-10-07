@@ -125,7 +125,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .tabelle-rahmen{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th{font:600 11px/1 var(--f-text);text-transform:uppercase;letter-spacing:.08em;color:var(--text3);text-align:left;padding:10px 10px;border-bottom:1px solid var(--linie);white-space:nowrap}
-td{padding:10px;border-bottom:1px solid var(--linie);vertical-align:top}
+td{padding:10px;border-bottom:1px solid var(--linie);vertical-align:middle}
 tr:last-child td{border-bottom:0}
 .zahl{font:700 34px/1 var(--f-titel);color:var(--tinte)}
 .zahl small{font:500 13px var(--f-text);color:var(--text2);margin-left:4px}
@@ -145,6 +145,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blau);bo
 .chip[aria-pressed="true"]{background:var(--blau);border-color:var(--blau);color:#fff}
 .chip .nr{background:#fff;color:var(--blau);border-radius:999px;min-width:18px;height:18px;display:inline-grid;place-items:center;font-size:11px;font-weight:700}
 .fehler{color:var(--krit);font-size:13.5px}
+.link{background:none;border:0;padding:2px 0;color:var(--blau);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.link:hover{color:var(--flamme)}
 .hinweis{background:var(--blau-weich);color:var(--text);border-radius:var(--r);padding:10px 12px;font-size:13.5px}
 
 /* Dialog (Schublade) */

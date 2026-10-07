@@ -1,6 +1,7 @@
 /* ===== Datenschicht: live (Supabase) oder Vorschau (Beispieldaten im Browser) ===== */
-const TAETIGKEITEN = ["Mauern (Ytong)","Rückbau & Abbruch","Elektrik","Fliesen","Trockenbau","Malern","Boden","Sanitär",
-  "Bühne & Technik","Aufräumen & Entsorgen","Einkauf & Transport","Verpflegung"];
+const TAETIGKEITEN = ["Mauern (Ytong)","Rückbau & Abbruch","Elektrik","Heizung & Gas","Sanitär","Fliesen","Trockenbau","Malern","Boden","Küche",
+  "Bühne & Technik","Aufräumen & Entsorgen","Einkauf & Transport","Planung & Organisation","Verpflegung"];
+const PHASEN = ["Vorbereitung & Genehmigung","Rückbau","Rohbau (Ytong-Wände)","Haustechnik","Ausbau","Bühne, LED-Wand & Technik","Sicherheit & Abnahmen"];
 const BEREICHE = ["Gottesdienstraum","Bühne","Gemeinschaftsraum","Küche","WC-Block","Jugendraum","Stillraum","Kinderraum",
   "Pastor-Büro","Warteraum","Flur & Eingang","Außenbereich","Ganze Halle"];
 const STATUS = {offen:"Offen",geplant:"Geplant",in_arbeit:"In Arbeit",erledigt:"Erledigt"};
@@ -29,7 +30,7 @@ function demoDaten(){
     L(andre,"alles, vor allem Mauern und Fliesenlegen",null,7),L(daniel,"Elektrik",null,8),L(linda,"Verpflegung",null,9),
     L(jonas,"Verpflegung",null,10),L(parfait,"Pastor (übergeordnet, kein Bautrupp)",null,11)];
   const T=(name,gewerk,beschreibung,leiter,farbe,sort)=>({id:uid(),name,gewerk,beschreibung,leiter,farbe,sort});
-  const tMauer=T("Mauerwerk & Ytong","Mauern","Neue Wände (gelb im Plan), Ytong mit Ringanker","Andre, Igor","#c2410c",1),
+  const tMauer=T("Mauerwerk & Ytong","Mauern","Neue Wände (gelb im Plan) in Ytong; Ringanker an der Wand hinter der Bühne","Andre, Igor","#c2410c",1),
     tFliesen=T("Fliesen","Fliesen","WC-Block, Küche, Sanitär","Andre","#0e7490",2),
     tElektro=T("Elektrik","Elektrik","Leitungen, Verteilung, Licht, Bühne & LED-Wand","Daniel Lutz","#ca8a04",3),
     tRueck=T("Rückbau & Allgemein","Rückbau","Wände zurückbauen, Entsorgen, Aufräumen, Helfen","Leitungsgruppe","#475569",4),
@@ -37,14 +38,14 @@ function demoDaten(){
   const team=[tMauer,tFliesen,tElektro,tRueck,tVerpf];
   const tm=(t,p)=>({team_id:t.id,profil_id:p.id});
   const team_mitglied=[tm(tMauer,andre),tm(tMauer,igor),tm(tFliesen,andre),tm(tElektro,daniel),tm(tElektro,tobi),tm(tRueck,andreas),tm(tRueck,roland),tm(tRueck,christoph),tm(tRueck,bernd),tm(tVerpf,linda),tm(tVerpf,jonas)];
-  const A=(titel,beschreibung,gewerk,bereich,status,team,zug,datum,prio)=>({id:uid(),titel,beschreibung,gewerk,bereich,status,prio:prio||2,datum:datum||null,team_id:team?team.id:null,zugewiesen:(zug||[]).map(p=>p.id),vorschlag:true,erstellt_von:tobi.id,erstellt:new Date().toISOString()});
-  const a1=A("Nicht benötigte Wände zurückbauen","Wände, die laut aktuellem Plan wegfallen, abbrechen und Schutt entsorgen.","Rückbau & Abbruch","Ganze Halle","in_arbeit",tRueck,[andreas,roland,christoph],sa),
-    a2=A("Trennwand Gemeinschaftsraum | Gottesdienstraum","Lange Wand, ca. 20 m, Ytong, mit Ringanker (gelb im Plan).","Mauern (Ytong)","Gemeinschaftsraum","geplant",tMauer,[andre,igor],sa2,1),
-    a3=A("Wand hinter der Bühne (LED-Wand)","Lange Wand, ca. 20 m, Ytong, mit Ringanker. Trägt später die LED-Leinwand 10 × 3 m.","Mauern (Ytong)","Bühne","offen",tMauer,[],sa3,1),
-    a4=A("Wände Küche und WC-Block","Neue Wände Küche (NGF 20,96 m²) und WC-Block (NGF 20,96 m²), gelb im Plan.","Mauern (Ytong)","Küche","offen",tMauer,[]),
-    a5=A("Elektro-Planung Bühne & LED-Wand","Stromkreise für LED-Leinwand, Bühnenlicht und Ton festlegen.","Elektrik","Bühne","geplant",tElektro,[daniel,tobi]),
-    a6=A("Fliesen WC-Block","Boden- und Wandfliesen im WC-Block.","Fliesen","WC-Block","offen",tFliesen,[andre]),
-    a7=A("Verpflegung Samstag","Mittagessen und Getränke für alle Helfer.","Verpflegung","Gemeinschaftsraum","geplant",tVerpf,[linda,jonas],sa);
+  const A=(phase,titel,beschreibung,gewerk,bereich,status,team,zug,datum,prio)=>({id:uid(),phase,titel,beschreibung,gewerk,bereich,status,prio:prio||2,datum:datum||null,team_id:team?team.id:null,zugewiesen:(zug||[]).map(p=>p.id),vorschlag:true,erstellt_von:tobi.id,erstellt:new Date().toISOString()});
+  const a1=A(1,"Rote Wände im Gottesdienstraum abbrechen","Drei Abschnitte vor der Bühne (rot im Plan): oben rechts ca. 4,2 m, unten rechts Winkel ca. 4,6 m + 6,2 m. Vorher vom Statiker freigeben lassen.","Rückbau & Abbruch","Gottesdienstraum","in_arbeit",tRueck,[andreas,roland,christoph],sa,1),
+    a2=A(2,"Trennwand Gemeinschaftsraum | Gottesdienstraum","Ca. 19,9 m, Ytong, ohne Ringanker, mit 2 Türöffnungen und Stürzen.","Mauern (Ytong)","Gemeinschaftsraum","geplant",tMauer,[andre,igor],sa2),
+    a3=A(2,"Wand hinter der Bühne mit Ringanker","Ca. 19,9 m, durchgehend von Außenwand zu Außenwand, Ytong, Ringanker nach Statik. Trägt später die LED-Wand 10 × 3 m.","Mauern (Ytong)","Bühne","offen",tMauer,[],sa3,1),
+    a4=A(2,"Wände Küche und WC-Block","Küche (NGF 20,96 m²) und WC-Block (NGF 20,96 m²), gelb im Plan.","Mauern (Ytong)","Küche","offen",tMauer,[]),
+    a5=A(3,"Elektroplan erstellen","Elektrik komplett neu: Stromkreise je Raum, Küche, Therme, Bühne, LED-Wand, Technikbereich.","Elektrik","Ganze Halle","geplant",tElektro,[daniel,tobi],null,1),
+    a6=A(4,"Fliesen WC-Block","Boden und Wände.","Fliesen","WC-Block","offen",tFliesen,[andre]),
+    a7=A(null,"Verpflegung Samstag","Mittagessen und Getränke für alle Helfer.","Verpflegung","Gemeinschaftsraum","geplant",tVerpf,[linda,jonas],sa);
   const aufgabe=[a1,a2,a3,a4,a5,a6,a7];
   const V=(p,datum,von,bis,taet,gleich,notiz)=>({id:uid(),profil_id:p.id,datum,von,bis,taetigkeiten:taet,alles_gleich:!!gleich,notiz:notiz||null});
   const verfuegbarkeit=[V(tobi,sa,"08:00","17:00",["Bühne & Technik","Elektrik"]),V(andreas,sa,"08:00","16:00",[],true),V(roland,sa,"09:00","15:00",["Rückbau & Abbruch","Aufräumen & Entsorgen"]),
@@ -52,12 +53,12 @@ function demoDaten(){
     V(linda,sa,"11:00","15:00",["Verpflegung"]),V(jonas,sa,"11:00","15:00",["Verpflegung","Einkauf & Transport"]),V(andre,sa2,"08:00","17:00",["Mauern (Ytong)","Fliesen"]),
     V(igor,sa2,"09:00","17:00",["Mauern (Ytong)"]),V(bernd,sa2,"09:00","17:00",[],true),V(daniel,plusTage(sa,3),"17:00","20:00",["Elektrik"]),V(tobi,plusTage(sa,3),"17:00","20:00",["Elektrik"])];
   const E=(p,datum,text,a)=>({id:uid(),datum,text,aufgabe_id:a?a.id:null,fotos:[],autor:p.id,erstellt:new Date(datum+"T16:00:00").toISOString()});
-  const eintrag=[E(andreas,plusTage(sa,-7),"Beispiel: Erster Rückbau-Samstag – zwei Zwischenwände im alten Lagerbereich abgebrochen, Schutt in den Container.",a1),
+  const eintrag=[E(andreas,plusTage(sa,-7),"Beispiel: Erster Rückbau-Samstag – alte Lampen abgebaut, mit der roten Wand oben rechts begonnen, Schutt in den Container.",a1),
     E(linda,plusTage(sa,-7),"Beispiel: Mittagessen für 14 Helfer, Getränke reichen noch für nächsten Samstag.",a7)];
   const M=(name,menge,einheit,gewerk,status,notiz,a,p,vorschlag)=>({id:uid(),name,menge,einheit,gewerk,status,notiz:notiz||null,aufgabe_id:a?a.id:null,vorschlag:!!vorschlag,angefragt_von:p.id,erstellt:new Date().toISOString()});
   const material=[M("Ytong-Plansteine",null,"Paletten","Mauern (Ytong)","bedarf","Menge nach Wandhöhe berechnen",a2,tobi,true),
-    M("Dünnbettmörtel",null,"Sack","Mauern (Ytong)","bedarf",null,a2,tobi,true),M("U-Schalen für Ringanker",null,"Stück","Mauern (Ytong)","bedarf",null,a2,tobi,true),
-    M("Bewehrungsstahl Ringanker",null,"m","Mauern (Ytong)","bedarf",null,a2,tobi,true),M("Schuttsäcke",50,"Stück","Rückbau & Abbruch","angefragt","Beispiel-Anfrage",a1,roland)];
+    M("Dünnbettmörtel",null,"Sack","Mauern (Ytong)","bedarf",null,a2,tobi,true),M("U-Schalen für Ringanker",null,"Stück","Mauern (Ytong)","bedarf",null,a3,tobi,true),
+    M("Bewehrungsstahl Ringanker",null,"m","Mauern (Ytong)","bedarf",null,a3,tobi,true),M("Schuttsäcke",50,"Stück","Rückbau & Abbruch","angefragt","Beispiel-Anfrage",a1,roland)];
   const W=(p,name,kategorie,anzahl,verf,notiz)=>({id:uid(),name,kategorie,anzahl,verfuegbarkeit:verf,notiz:notiz||null,besitzer:p.id,erstellt:new Date().toISOString()});
   const werkzeug=[W(igor,"Mörtelrührer","Mauern",1,"Samstags dabei"),W(andre,"Fliesenschneider 1,2 m","Fliesen",1,"nach Absprache"),
     W(roland,"Abbruchhammer","Rückbau",1,"bleibt auf der Baustelle"),W(daniel,"Kabeltrommel 50 m","Elektrik",2,"Samstags dabei"),W(christoph,"Rollgerüst","Allgemein",1,"nach Absprache")];
@@ -67,28 +68,41 @@ function demoDaten(){
 
 const DemoBackend = {
   modus:"demo", d:null,
-  async init(){ let roh=null; try{ roh=localStorage.getItem("gb-demo-v1"); }catch(e){}
+  async init(){ let roh=null; try{ roh=localStorage.getItem("gb-demo-v2"); }catch(e){}
     this.d = roh ? JSON.parse(roh) : demoDaten(); this.speichern(); return true; },
-  speichern(){ try{ const kopie={...this.d}; localStorage.setItem("gb-demo-v1",JSON.stringify(kopie)); }catch(e){} },
+  speichern(){ try{ const kopie={...this.d}; localStorage.setItem("gb-demo-v2",JSON.stringify(kopie)); }catch(e){} },
   zuruecksetzen(){ this.d=demoDaten(); this.speichern(); },
   async sitzung(){ return {user:{id:this.d.me}}; },
   async meinProfil(){ return this.d.profil.find(p=>p.id===this.d.me)||null; },
   async alle(t){ return JSON.parse(JSON.stringify(this.d[t]||[])); },
   async neu(t,o){ const z={id:uid(),...o}; if(t==="team_mitglied") delete z.id; this.d[t].push(z); this.speichern(); return z; },
+  async neuViele(t,liste){ for(const o of liste) this.d[t].push({id:uid(),...o}); this.speichern(); },
   async aendern(t,id,p){ const z=this.d[t].find(r=>r.id===id); Object.assign(z,p); this.speichern(); return z; },
   async loeschen(t,id){ this.d[t]=this.d[t].filter(r=>r.id!==id); this.speichern(); },
   async austreten(teamId,profilId){ this.d.team_mitglied=this.d.team_mitglied.filter(r=>!(r.team_id===teamId&&r.profil_id===profilId)); this.speichern(); },
   async fotoHoch(datei){ return await verkleinern(datei,900,.8); },   // als data-URL (nur Vorschau)
   async fotoUrls(pfade){ const o={}; pfade.forEach(p=>o[p]=p); return o; },
-  abonnieren(){}, async abmelden(){}, async codeSetzen(){ return true; }
+  abonnieren(){}, async abmelden(){}, async codeSetzen(){ return true; },
+  email(){ return "tobi@beispiel.de"; },
+  async benutzerListe(){ const t0=Date.now(); return this.d.profil.map((p,i)=>({id:p.id,email:p.name.toLowerCase().split(" ")[0]+"@beispiel.de",zuletzt:i%4===3?null:new Date(t0-i*7200e3).toISOString(),registriert:p.erstellt})); },
+  async sperren(id,an){ const p=this.d.profil.find(x=>x.id===id); if(p){ p.gesperrt=an; this.speichern(); } },
+  async passwortAendern(){}, async passwortVergessen(){}
 };
 
 /* ---------- Live (Supabase) ---------- */
 const LiveBackend = {
   modus:"live", sb:null, kanal:null,
   async init(){ if(!window.supabase||!GB_KONFIG.url) return false;
-    this.sb = window.supabase.createClient(GB_KONFIG.url, GB_KONFIG.anonKey, {auth:{persistSession:true,autoRefreshToken:true}}); return true; },
-  async sitzung(){ const {data}=await this.sb.auth.getSession(); return data.session; },
+    this.wiederherstellung = /type=recovery/.test(location.hash);
+    this.sb = window.supabase.createClient(GB_KONFIG.url, GB_KONFIG.anonKey, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+    this.sb.auth.onAuthStateChange((ev,s)=>{ this._email=s?.user?.email||this._email; if(ev==="PASSWORD_RECOVERY") this.wiederherstellung=true; });
+    return true; },
+  email(){ return this._email; },
+  async benutzerListe(){ const {data,error}=await this.sb.rpc("benutzer_liste"); if(error) throw new Error(error.message); return data; },
+  async sperren(id,an){ const {error}=await this.sb.rpc("benutzer_sperren",{p_id:id,p_sperren:an}); if(error) throw new Error(error.message); },
+  async passwortAendern(pw){ const {error}=await this.sb.auth.updateUser({password:pw}); if(error) throw new Error(error.message==="New password should be different from the old password."?"Das neue Passwort muss sich vom alten unterscheiden.":error.message); this.wiederherstellung=false; },
+  async passwortVergessen(email){ const {error}=await this.sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname}); if(error) throw new Error(error.message); },
+  async sitzung(){ const {data}=await this.sb.auth.getSession(); if(data.session) this._email=data.session.user.email; return data.session; },
   async anmelden(email,pw){ const {data,error}=await this.sb.auth.signInWithPassword({email,password:pw}); if(error) throw error; return data; },
   async registrieren(email,pw){ const {data,error}=await this.sb.auth.signUp({email,password:pw}); if(error) throw error;
     if(!data.session) throw new Error("Bitte bestätige zuerst die E-Mail, dann anmelden."); return data; },
@@ -98,6 +112,7 @@ const LiveBackend = {
     const {data}=await this.sb.from("profil").select("*").eq("id",s.user.id).maybeSingle(); return data; },
   async alle(t){ const {data,error}=await this.sb.from(t).select("*"); if(error) throw error; return data; },
   async neu(t,o){ const {data,error}=await this.sb.from(t).insert(o).select().maybeSingle(); if(error) throw error; return data; },
+  async neuViele(t,liste){ const {error}=await this.sb.from(t).insert(liste); if(error) throw error; },
   async aendern(t,id,p){ const {data,error}=await this.sb.from(t).update(p).eq("id",id).select().maybeSingle(); if(error) throw error; return data; },
   async loeschen(t,id){ const {error}=await this.sb.from(t).delete().eq("id",id); if(error) throw error; },
   async austreten(teamId,profilId){ const {error}=await this.sb.from("team_mitglied").delete().eq("team_id",teamId).eq("profil_id",profilId); if(error) throw error; },
