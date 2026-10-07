@@ -186,7 +186,7 @@ function verfDialog(daten){
 const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich, team-gewerk, prio] – abgestimmt mit Tobis Checkliste
   [0, "Baugenehmigung verfolgen", "Nutzungsänderung, Az. 20261647. Klären, welche Arbeiten vorher erlaubt sind; Nutzung als Versammlungsstätte erst nach Genehmigung und Abnahme.", "Planung & Organisation", "Ganze Halle", null, 1],
   [0, "Auflagen aus dem Bescheid übernehmen", "Brandschutz, Rettungswege, Sicherheitsbeleuchtung, Personenzahl – als Aufgaben ergänzen, sobald der Bescheid da ist.", "Planung & Organisation", "Ganze Halle", null, 1],
-  [0, "Statiker beauftragen", "Rückbau der roten Wände, Ytong-Wände auf der Bodenplatte, Ringanker inkl. Anschluss an Außenwände, Last der LED-Wand.", "Planung & Organisation", "Ganze Halle", null, 1],
+  [0, "Statiker beauftragen", "Ytong-Wände auf der Bodenplatte, Ringanker an beiden langen Wänden inkl. Anschluss an Außenwände, Last der LED-Wand. Die roten Wände sind nicht tragend.", "Planung & Organisation", "Ganze Halle", null, 1],
   [0, "Schadstoffe vor dem Rückbau prüfen", "Asbest in Bodenplatten, Kleber, Dach- oder Fassadenplatten; alte Dämmwolle; Öl im Boden. Bei Verdacht Probe nehmen lassen.", "Planung & Organisation", "Ganze Halle", null, 1],
   [0, "Helfer bei der BG BAU anmelden", "Unfallversicherung für ehrenamtliche Bauhelfer; Bauherren-Haftpflicht prüfen.", "Planung & Organisation", "Ganze Halle", null, 1],
   [0, "Hausanschluss und Leistung prüfen", "Netzbetreiber: Leistung für Küche, LED-Wand und Technik; ggf. Leistungserhöhung beantragen. Fachbetrieb nötig.", "Elektrik", "Ganze Halle", "Elektrik", 2],
@@ -198,17 +198,17 @@ const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich,
   [1, "Gas absperren, alte Gastherme demontieren", "Fachbetrieb nötig.", "Heizung & Gas", "Ganze Halle", null, 1],
   [1, "Alte Lampen abbauen", "Gottesdienstraum und Gemeinschaftsraum.", "Rückbau & Abbruch", "Ganze Halle", "Rückbau", 2],
   [1, "Alte Leitungen, Dosen und Verteiler zurückbauen", "Elektrik kommt komplett neu.", "Elektrik", "Ganze Halle", "Elektrik", 2],
-  [1, "Rote Wand oben rechts abbrechen", "Gottesdienstraum, ca. 4,2 m (rot im Plan). Vorher vom Statiker freigeben lassen.", "Rückbau & Abbruch", "Gottesdienstraum", "Rückbau", 1],
-  [1, "Rote Wand unten rechts abbrechen", "Gottesdienstraum, Winkel ca. 4,6 m + 6,2 m (rot im Plan). Vorher vom Statiker freigeben lassen.", "Rückbau & Abbruch", "Gottesdienstraum", "Rückbau", 1],
+  [1, "Rote Wand oben rechts abbrechen", "Gottesdienstraum, ca. 4,2 m (rot im Plan). Nicht tragend.", "Rückbau & Abbruch", "Gottesdienstraum", "Rückbau", 1],
+  [1, "Rote Wand unten rechts abbrechen", "Gottesdienstraum, Winkel ca. 4,6 m + 6,2 m (rot im Plan). Nicht tragend.", "Rückbau & Abbruch", "Gottesdienstraum", "Rückbau", 1],
   [1, "Alte Küche bzw. Einbauten ausbauen", "Sofern vorhanden.", "Rückbau & Abbruch", "Küche", "Rückbau", 2],
   [1, "Alte Bodenbeläge entfernen", "Kleberreste auf Schadstoffe prüfen.", "Rückbau & Abbruch", "Ganze Halle", "Rückbau", 2],
   [1, "Schutt getrennt entsorgen", "Bauschutt, Holz, Metall, Elektroschrott, Mischabfall.", "Aufräumen & Entsorgen", "Ganze Halle", "Rückbau", 2],
   [1, "Halle besenrein, Fotos ins Bautagebuch", "", "Aufräumen & Entsorgen", "Ganze Halle", "Rückbau", 3],
   [2, "Neue Wände anreißen", "Mit dem aktuellen Plan abgleichen: Türbreiten, Fluchtwege.", "Mauern (Ytong)", "Ganze Halle", "Mauern", 1],
   [2, "Dosen und Leerrohre in neuen Wänden festlegen", "Elektro-Planung abschließen, bevor gemauert wird.", "Elektrik", "Ganze Halle", "Elektrik", 1],
-  [2, "Wand hinter der Bühne mit Ringanker", "Ca. 19,9 m, durchgehend von Außenwand zu Außenwand, Ytong, Ringanker aus U-Schalen, Bewehrung und Beton nach Statik.", "Mauern (Ytong)", "Bühne", "Mauern", 1],
-  [2, "Anschluss Wand hinter der Bühne festlegen", "Maueranker zu den Außenwänden, Kopfanschluss an Dach bzw. Decke. Vorher vom Statiker freigeben lassen.", "Mauern (Ytong)", "Bühne", "Mauern", 1],
-  [2, "Trennwand Gemeinschaftsraum | Gottesdienstraum", "Ca. 19,9 m, Ytong, ohne Ringanker, mit 2 Türöffnungen und Stürzen.", "Mauern (Ytong)", "Gemeinschaftsraum", "Mauern", 2],
+  [2, "Wand hinter der Bühne mit Ringanker", "Ca. 19,9 m von Außenwand zu Außenwand, Ytong, Ringanker aus U-Schalen, Bewehrung und Beton nach Statik.", "Mauern (Ytong)", "Bühne", "Mauern", 1],
+  [2, "Anschluss der Ringanker-Wände festlegen", "Beide langen Wände: Maueranker zu den Außenwänden, Kopfanschluss an Dach bzw. Decke. Vorher vom Statiker freigeben lassen.", "Mauern (Ytong)", "Bühne", "Mauern", 1],
+  [2, "Trennwand Gemeinschaftsraum | Gottesdienstraum mit Ringanker", "Ca. 19,9 m, Ytong, Ringanker nach Statik (läuft über die 2 Türöffnungen durch), Stürze für die Türen.", "Mauern (Ytong)", "Gemeinschaftsraum", "Mauern", 2],
   [2, "Wand zum Flur im Gemeinschaftsraum", "Ca. 11 m, Ytong.", "Mauern (Ytong)", "Gemeinschaftsraum", "Mauern", 2],
   [2, "Wände Küche", "NGF 20,96 m², mit Türöffnung.", "Mauern (Ytong)", "Küche", "Mauern", 2],
   [2, "Wände WC-Block", "2 × WC D/H + 1 × barrierefrei, NGF 20,96 m².", "Mauern (Ytong)", "WC-Block", "Mauern", 2],
@@ -251,7 +251,7 @@ const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich,
   [5, "LED-Wand montieren und anschließen", "Strom und Signal; Fachbetrieb bzw. Lieferant.", "Bühne & Technik", "Bühne", "Elektrik", 2],
   [5, "Technikbereich einrichten", "Ca. 2,4 × 6,4 m an der Rückseite: Pult für Ton, Licht und Video, Strom, Netzwerk, Verbindung zur Bühne.", "Bühne & Technik", "Gottesdienstraum", null, 2],
   [5, "Tonanlage", "Lautsprecherpositionen, Kabelwege, Monitor auf der Bühne.", "Bühne & Technik", "Gottesdienstraum", null, 2],
-  [5, "Bestuhlung planen", "In der App unter „Halle“; Rettungswegbreiten einhalten.", "Planung & Organisation", "Gottesdienstraum", null, 3],
+  [5, "Bestuhlung festlegen", "300, 400 oder 500 Stühle in 3 Blöcken – in der App unter „Halle“ umschaltbar; Rettungswegbreiten mit der Genehmigung abgleichen.", "Planung & Organisation", "Gottesdienstraum", null, 3],
   [6, "Rettungswege und Notausgänge", "Frei, gekennzeichnet und beleuchtet.", "Planung & Organisation", "Ganze Halle", null, 1],
   [6, "Feuerlöscher und Rauchmelder", "Bzw. Brandmeldeanlage nach Auflage.", "Planung & Organisation", "Ganze Halle", null, 2],
   [6, "Barrierefreiheit prüfen", "Eingang, WC, Zugang Bühne.", "Planung & Organisation", "Ganze Halle", null, 2],
@@ -277,7 +277,7 @@ ANSICHTEN.aufgaben = () => {
     <select id="f-gewerk" data-a="filterG" style="width:auto;min-width:200px"><option value="">Alle Tätigkeiten</option>${gewerke.map(g=>`<option ${f.gewerk===g?"selected":""}>${esc(g)}</option>`).join("")}</select>
     <select id="f-phase" data-a="filterP" style="width:auto;min-width:200px"><option value="">Alle Phasen</option>${PHASEN.map((p,i)=>`<option value="${i}" ${f.phase===String(i)?"selected":""}>${i} · ${esc(p)}</option>`).join("")}</select></div>
   ${S.aufgabe.length?`<div class="brett">${Object.keys(STATUS).map(spalte).join("")}</div>`:
-    `<div class="leer stapel" style="align-items:center"><p>Noch keine Aufgaben angelegt.</p>${istLeitung()?`<p class="klein">Aus dem aktuellen Plan und deiner Checkliste stehen ${PLAN_VORSCHLAEGE.length} Arbeiten in ${PHASEN.length} Phasen bereit – von Genehmigung und Statik über Rückbau, Ytong-Wände, Elektrik, Gastherme, Decke, Boden und Küche bis zu Bühne, LED-Wand und Abnahmen.</p><button class="btn flamme" data-a="vorschlaege">Vorschläge aus dem Plan übernehmen</button>`:""}</div>`}`;
+    `<div class="leer stapel" style="align-items:center"><p>Noch keine Aufgaben angelegt.</p>${istLeitung()?`<p class="klein">Aus dem aktuellen Plan und deiner Checkliste stehen ${PLAN_VORSCHLAEGE.length} Arbeiten in ${PHASEN.length} Phasen bereit – von Genehmigung und Statik über Rückbau, Ytong-Wände mit Ringanker, Elektrik, Gastherme, Decke, Boden und Küche bis zu Bühne, LED-Wand und Abnahmen.</p><button class="btn flamme" data-a="vorschlaege">Vorschläge aus dem Plan übernehmen</button>`:""}</div>`}`;
 };
 function aufgabeKarte(a){ const t=teamVon(a.team_id);
   return `<button class="akarte" style="--farbe:${gewerkFarbe(a)}" data-a="aufgabe" data-id="${a.id}">
@@ -417,21 +417,28 @@ function werkzeugDialog(){
 }
 
 /* ---------- Halle ---------- */
+const bestuhlungObj = () => S.planobjekt.find(o=>o.typ==="bestuhlung");
+const bestuhlungN = () => +(bestuhlungObj()?.label||0);
+const sitzText = () => { const st=stuhlPositionen(bestuhlungN()).length, ti=S.planobjekt.reduce((s,o)=>s+(OBJEKTE[o.typ]?.plaetze||0),0); return st&&ti?`${st} Stühle + ${ti} an Tischen`:`${st+ti} Sitzplätze`; };
+const sitzplaetze = () => S.planobjekt.reduce((s,o)=>s+(OBJEKTE[o.typ]?.plaetze||0),0)+stuhlPositionen(bestuhlungN()).length;
 ANSICHTEN.halle = () => {
-  const plaetze=S.planobjekt.reduce((s,o)=>s+(OBJEKTE[o.typ]?.plaetze||0),0);
+  const plaetze=sitzplaetze(), bn=bestuhlungN(), bi=bestuhlungInfo(bn);
   return `<div class="kopf"><div><p class="etikett">Konzstraße 9 · 47,40 × 19,90 m Innenmaß · Traufe 3,70 m · First 5,09 m</p><h1>Halle & 3D</h1><p class="unter">Grundriss nach dem aktuellen Plan, Maße vom Architekten. Plane die Einrichtung und geh virtuell durch die Halle.</p></div>
     <div class="reiter" role="group" aria-label="Ansicht"><button data-a="halleReiter" data-k="plan" aria-pressed="${halleReiter==="plan"}">Grundriss & Planen</button><button data-a="halleReiter" data-k="3d" aria-pressed="${halleReiter==="3d"}">3D begehen</button></div></div>
   ${halleReiter==="plan"?`
   <div class="raster" style="grid-template-columns:minmax(0,1fr)">
-    <section class="karte"><header><div class="zeile"><h2>Einrichtung planen</h2><span class="pille" id="plaetze">${plaetze} Sitzplätze</span></div>
-      <div class="zeile"><button class="btn klein" data-a="bestuhlung">Bestuhlung vorschlagen</button><button class="btn klein still" data-a="planLeerenFrage">Alles entfernen</button></div></header>
+    <section class="karte"><header><div class="zeile"><h2>Einrichtung planen</h2><span class="pille" id="plaetze">${sitzText()}</span></div>
+      <div class="zeile"><button class="btn klein" data-a="grundeinrichtung">Bühne & Esstische einrichten</button><button class="btn klein still" data-a="planLeerenFrage">Alles entfernen</button></div></header>
+      <div class="zeile" style="gap:12px;margin-bottom:12px"><span class="etikett" style="margin:0">Bestuhlung Gottesdienstraum</span>
+        <div class="reiter" role="group" aria-label="Bestuhlung">${[0,300,400,500].map(n=>`<button data-a="bestuhlungWahl" data-k="${n}" aria-pressed="${bn===n}">${n?n+" Stühle":"Keine"}</button>`).join("")}</div>
+        <span class="klein leise" id="bestuhlung-info">${bi?`3 Blöcke (${bi.bloecke.join(" | ")}), ${bi.reihen} Reihen, Reihenabstand ${String(bi.abstand).replace(".",",")} m, Gänge ${String(bi.gang).replace(".",",")} m`:""}</span></div>
       <div class="palette" style="margin-bottom:12px">${Object.entries(OBJEKTE).map(([k,o])=>`<button class="chip" data-a="objNeu" data-typ="${k}">${icon("plus")}${esc(o.n)}</button>`).join("")}</div>
       <div data-leerfrage></div>
-      <div class="halle-rahmen" id="plan-rahmen" style="overflow-x:auto"><div style="min-width:760px" id="plan-svg">${planSvg(S.planobjekt,{bearbeiten:true,auswahl:planAuswahl})}</div></div>
+      <div class="halle-rahmen" id="plan-rahmen" style="overflow-x:auto"><div style="min-width:760px" id="plan-svg">${planSvg(S.planobjekt,{bearbeiten:true,auswahl:planAuswahl,bestuhlung:bn})}</div></div>
       <div id="auswahl-leiste" style="margin-top:12px">${auswahlLeiste()}</div>
       <div class="zeile klein leise" style="margin-top:14px;gap:16px">
         <span class="zeile" style="gap:6px"><span style="width:22px;height:5px;background:var(--gold);display:inline-block;border-radius:2px"></span>Neue Wände (Ytong)</span>
-        <span class="zeile" style="gap:6px"><span style="width:22px;height:5px;background:linear-gradient(var(--gold) 0 30%,var(--tinte) 30% 55%,var(--gold) 55%);display:inline-block;border-radius:2px"></span>Mit Ringanker (Wand hinter der Bühne)</span>
+        <span class="zeile" style="gap:6px"><span style="width:22px;height:5px;background:linear-gradient(var(--gold) 0 30%,var(--tinte) 30% 55%,var(--gold) 55%);display:inline-block;border-radius:2px"></span>Mit Ringanker (beide langen Wände)</span>
         <span class="zeile" style="gap:6px"><span style="width:22px;height:0;border-top:4px dashed var(--glut);display:inline-block"></span>Wird abgerissen (rot im Plan)</span>
         <span class="zeile" style="gap:6px"><span style="width:14px;height:10px;background:radial-gradient(var(--text3) 1px,transparent 1.5px) 0 0/4px 4px;border:1px solid var(--text3);display:inline-block"></span>Technikbereich</span>
         <span class="zeile" style="gap:6px"><span style="width:22px;height:4px;background:var(--text2);display:inline-block;border-radius:2px"></span>Bestand</span>
@@ -439,7 +446,7 @@ ANSICHTEN.halle = () => {
         <span>1 Kästchen = 1 m · Objekte ziehen zum Verschieben</span></div></section>
   </div>`:`
   <section class="karte" style="padding:10px">
-    <div class="dreid" id="dreid"><div class="hud"><div class="zeile" style="gap:6px">${[["eingang","Eingang"],["raum","Gottesdienstraum"],["buehne","Auf der Bühne"],["gemein","Gemeinschaftsraum"],["oben","Von oben"]].map(([k,l])=>`<button class="btn klein" data-a="blick" data-k="${k}">${l}</button>`).join("")}</div>
+    <div class="dreid" id="dreid"><div class="hud"><div class="zeile" style="gap:6px">${[["eingang","Eingang"],["raum","Gottesdienstraum"],["buehne","Auf der Bühne"],["gemein","Gemeinschaftsraum"],["oben","Von oben"],["aussen","Von außen"]].map(([k,l])=>`<button class="btn klein" data-a="blick" data-k="${k}">${l}</button>`).join("")}</div>
       <div class="tafel">Ziehen = umsehen · W A S D oder Pfeile = gehen · Shift = schneller · Mausrad = vor/zurück</div></div><div class="joy" aria-hidden="true"><i></i></div></div>
     <div class="zeile weit klein leise" style="margin-top:10px;padding:0 4px"><label class="zeile" style="gap:6px"><input type="checkbox" id="neu-gelb" checked data-a="neuGelb"> Neue Wände gelb zeigen</label><span>Eingerichtete Objekte aus dem Grundriss erscheinen hier mit.</span></div>
   </section>`}`;
@@ -447,12 +454,12 @@ ANSICHTEN.halle = () => {
 function auswahlLeiste(){ const o=S.planobjekt.find(x=>x.id===planAuswahl); if(!o) return `<p class="klein leise">Tippe ein Objekt an, um es zu drehen oder zu entfernen.</p>`;
   return `<div class="zeile"><b>${esc(OBJEKTE[o.typ]?.n||o.typ)}</b><span class="mass leise">x ${o.x.toFixed(1).replace(".",",")} m · y ${o.y.toFixed(1).replace(".",",")} m · ${Math.round(o.rot||0)}°</span>
     <button class="btn klein" data-a="objDreh" data-g="15">${icon("drehen")}15°</button><button class="btn klein" data-a="objDreh" data-g="90">${icon("drehen")}90°</button><button class="btn klein gefahr" data-a="objWeg">${icon("papierkorb")}Entfernen</button></div>`; }
-function halleAktualisieren(){ const p=$("#plan-svg"); if(p&&!planZug){ p.innerHTML=planSvg(S.planobjekt,{bearbeiten:true,auswahl:planAuswahl}); const a=$("#auswahl-leiste"); if(a) a.innerHTML=auswahlLeiste();
-  const z=$("#plaetze"); if(z) z.textContent=S.planobjekt.reduce((s,o)=>s+(OBJEKTE[o.typ]?.plaetze||0),0)+" Sitzplätze"; }
-  if(dreiD) dreiD.objekte(S.planobjekt); }
+function halleAktualisieren(){ const p=$("#plan-svg"); if(p&&!planZug){ p.innerHTML=planSvg(S.planobjekt,{bearbeiten:true,auswahl:planAuswahl,bestuhlung:bestuhlungN()}); const a=$("#auswahl-leiste"); if(a) a.innerHTML=auswahlLeiste();
+  const z=$("#plaetze"); if(z) z.textContent=sitzText(); }
+  if(dreiD){ dreiD.objekte(S.planobjekt); if(dreiD._n!==bestuhlungN()){ dreiD._n=bestuhlungN(); dreiD.bestuhlung(dreiD._n); } } }
 let planZug=null;
 function halleStarten(){
-  if(halleReiter==="3d"){ const c=$("#dreid"); if(c){ dreiD=halle3d(c,S.planobjekt,{logo:LOGO}); } return; }
+  if(halleReiter==="3d"){ const c=$("#dreid"); if(c){ dreiD=halle3d(c,S.planobjekt,{logo:LOGO,stoff:STOFF,bestuhlung:bestuhlungN()}); dreiD._n=bestuhlungN(); } return; }
   const rahmen=$("#plan-svg"); if(!rahmen) return;
   const punkt=(svg,e)=>{ const pt=svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY; const m=pt.matrixTransform(svg.getScreenCTM().inverse()); return {x:(m.x-40)/20,y:(m.y-40)/20}; };
   rahmen.addEventListener("pointerdown",e=>{ const g=e.target.closest("[data-obj]"); const svg=rahmen.querySelector("svg"); if(!g){ if(planAuswahl){ planAuswahl=null; halleAktualisieren(); } return; }
@@ -590,7 +597,12 @@ const AKT = {
     await neu("planobjekt"); planAuswahl=o?.id||null; halleAktualisieren(); },
   objDreh:async t=>{ const o=S.planobjekt.find(x=>x.id===planAuswahl); if(!o) return; o.rot=((o.rot||0)+(+t.dataset.g))%360; halleAktualisieren(); await speichere(()=>B.aendern("planobjekt",o.id,{rot:o.rot})); },
   objWeg:async ()=>{ const id=planAuswahl; planAuswahl=null; await speichere(()=>B.loeschen("planobjekt",id),"Entfernt"); await neu("planobjekt"); halleAktualisieren(); },
-  bestuhlung:async ()=>{ const r=bestuhlungVorschlag(); for(const o of r) await B.neu("planobjekt",{...o,label:"Stuhlreihe (10)"}); await neu("planobjekt"); halleAktualisieren(); toast(r.length*10+" Plätze gestellt"); },
+  bestuhlungWahl:async t=>{ const n=+t.dataset.k, o=bestuhlungObj();
+    await speichere(()=>o?B.aendern("planobjekt",o.id,{label:String(n),geaendert:new Date().toISOString()}):B.neu("planobjekt",{typ:"bestuhlung",x:0,y:0,rot:0,label:String(n)}),n?n+" Stühle gestellt":"Bestuhlung entfernt");
+    await neu("planobjekt"); render(); },
+  grundeinrichtung:async ()=>{ const da=new Set(S.planobjekt.map(o=>o.typ)); const neue=grundeinrichtung().filter(o=>!da.has(o.typ));
+    if(!neue.length) return toast("Bühne und Esstische sind schon eingerichtet");
+    await speichere(()=>B.neuViele("planobjekt",neue)); await neu("planobjekt"); halleAktualisieren(); toast(neue.length+" Objekte gesetzt"); },
   planLeerenFrage:()=>{ $("[data-leerfrage]").innerHTML=`<div class="hinweis zeile weit" style="margin-bottom:12px"><span>Alle ${S.planobjekt.length} Objekte aus dem Plan entfernen? Das gilt für alle.</span><span class="zeile"><button class="btn klein gefahr" data-a="planLeeren">Ja, entfernen</button><button class="btn klein still" data-a="frageZu">Nein</button></span></div>`; },
   planLeeren:async ()=>{ for(const o of [...S.planobjekt]) await B.loeschen("planobjekt",o.id); planAuswahl=null; await neu("planobjekt"); render(); },
   blick:t=>dreiD?.ansicht(t.dataset.k),

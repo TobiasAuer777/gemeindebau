@@ -12,6 +12,7 @@ css = (SRC/"style.css").read_text()
 js = "\n".join((SRC/f).read_text() for f in ("data.js", "halle.js", "app.js"))
 logo = (SRC/"logo160.txt").read_text().strip()
 fav = (SRC/"logo64.txt").read_text().strip()
+stoff = (SRC/"stoff.txt").read_text().strip()
 
 KOPF = """<title>Gemeindebau Tabernacle</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -21,7 +22,7 @@ SKRIPTE = """<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/t
 
 def inhalt(konfig):
     return (f"{KOPF}\n<style>\n{css}\n</style>\n<div id=\"wurzel\"></div>\n{SKRIPTE}\n"
-            f"<script>\nconst LOGO={json.dumps(logo)};\nwindow.GB_KONFIG={json.dumps(konfig)};\n{js}\n</script>\n")
+            f"<script>\nconst LOGO={json.dumps(logo)};\nconst STOFF={json.dumps(stoff)};\nwindow.GB_KONFIG={json.dumps(konfig)};\n{js}\n</script>\n")
 
 # Vorschau (Artifact): immer Beispieldaten
 (OUT/"vorschau.html").write_text(inhalt({}))

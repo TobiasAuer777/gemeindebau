@@ -30,7 +30,7 @@ function demoDaten(){
     L(andre,"alles, vor allem Mauern und Fliesenlegen",null,7),L(daniel,"Elektrik",null,8),L(linda,"Verpflegung",null,9),
     L(jonas,"Verpflegung",null,10),L(parfait,"Pastor (übergeordnet, kein Bautrupp)",null,11)];
   const T=(name,gewerk,beschreibung,leiter,farbe,sort)=>({id:uid(),name,gewerk,beschreibung,leiter,farbe,sort});
-  const tMauer=T("Mauerwerk & Ytong","Mauern","Neue Wände (gelb im Plan) in Ytong; Ringanker an der Wand hinter der Bühne","Andre, Igor","#c2410c",1),
+  const tMauer=T("Mauerwerk & Ytong","Mauern","Neue Wände (gelb im Plan) in Ytong; Ringanker an beiden langen Wänden","Andre, Igor","#c2410c",1),
     tFliesen=T("Fliesen","Fliesen","WC-Block, Küche, Sanitär","Andre","#0e7490",2),
     tElektro=T("Elektrik","Elektrik","Leitungen, Verteilung, Licht, Bühne & LED-Wand","Daniel Lutz","#ca8a04",3),
     tRueck=T("Rückbau & Allgemein","Rückbau","Wände zurückbauen, Entsorgen, Aufräumen, Helfen","Leitungsgruppe","#475569",4),
@@ -39,9 +39,9 @@ function demoDaten(){
   const tm=(t,p)=>({team_id:t.id,profil_id:p.id});
   const team_mitglied=[tm(tMauer,andre),tm(tMauer,igor),tm(tFliesen,andre),tm(tElektro,daniel),tm(tElektro,tobi),tm(tRueck,andreas),tm(tRueck,roland),tm(tRueck,christoph),tm(tRueck,bernd),tm(tVerpf,linda),tm(tVerpf,jonas)];
   const A=(phase,titel,beschreibung,gewerk,bereich,status,team,zug,datum,prio)=>({id:uid(),phase,titel,beschreibung,gewerk,bereich,status,prio:prio||2,datum:datum||null,team_id:team?team.id:null,zugewiesen:(zug||[]).map(p=>p.id),vorschlag:true,erstellt_von:tobi.id,erstellt:new Date().toISOString()});
-  const a1=A(1,"Rote Wände im Gottesdienstraum abbrechen","Drei Abschnitte vor der Bühne (rot im Plan): oben rechts ca. 4,2 m, unten rechts Winkel ca. 4,6 m + 6,2 m. Vorher vom Statiker freigeben lassen.","Rückbau & Abbruch","Gottesdienstraum","in_arbeit",tRueck,[andreas,roland,christoph],sa,1),
-    a2=A(2,"Trennwand Gemeinschaftsraum | Gottesdienstraum","Ca. 19,9 m, Ytong, ohne Ringanker, mit 2 Türöffnungen und Stürzen.","Mauern (Ytong)","Gemeinschaftsraum","geplant",tMauer,[andre,igor],sa2),
-    a3=A(2,"Wand hinter der Bühne mit Ringanker","Ca. 19,9 m, durchgehend von Außenwand zu Außenwand, Ytong, Ringanker nach Statik. Trägt später die LED-Wand 10 × 3 m.","Mauern (Ytong)","Bühne","offen",tMauer,[],sa3,1),
+  const a1=A(1,"Rote Wände im Gottesdienstraum abbrechen","Drei Abschnitte vor der Bühne (rot im Plan): oben rechts ca. 4,2 m, unten rechts Winkel ca. 4,6 m + 6,2 m. Nicht tragend.","Rückbau & Abbruch","Gottesdienstraum","in_arbeit",tRueck,[andreas,roland,christoph],sa,1),
+    a2=A(2,"Trennwand Gemeinschaftsraum | Gottesdienstraum mit Ringanker","Ca. 19,9 m, Ytong, Ringanker nach Statik, 2 Türöffnungen mit Stürzen.","Mauern (Ytong)","Gemeinschaftsraum","geplant",tMauer,[andre,igor],sa2),
+    a3=A(2,"Wand hinter der Bühne mit Ringanker","Ca. 19,9 m von Außenwand zu Außenwand, Ytong, Ringanker nach Statik. Trägt später die LED-Wand 10 × 3 m.","Mauern (Ytong)","Bühne","offen",tMauer,[],sa3,1),
     a4=A(2,"Wände Küche und WC-Block","Küche (NGF 20,96 m²) und WC-Block (NGF 20,96 m²), gelb im Plan.","Mauern (Ytong)","Küche","offen",tMauer,[]),
     a5=A(3,"Elektroplan erstellen","Elektrik komplett neu: Stromkreise je Raum, Küche, Therme, Bühne, LED-Wand, Technikbereich.","Elektrik","Ganze Halle","geplant",tElektro,[daniel,tobi],null,1),
     a6=A(4,"Fliesen WC-Block","Boden und Wände.","Fliesen","WC-Block","offen",tFliesen,[andre]),
@@ -57,20 +57,20 @@ function demoDaten(){
     E(linda,plusTage(sa,-7),"Beispiel: Mittagessen für 14 Helfer, Getränke reichen noch für nächsten Samstag.",a7)];
   const M=(name,menge,einheit,gewerk,status,notiz,a,p,vorschlag)=>({id:uid(),name,menge,einheit,gewerk,status,notiz:notiz||null,aufgabe_id:a?a.id:null,vorschlag:!!vorschlag,angefragt_von:p.id,erstellt:new Date().toISOString()});
   const material=[M("Ytong-Plansteine",null,"Paletten","Mauern (Ytong)","bedarf","Menge nach Wandhöhe berechnen",a2,tobi,true),
-    M("Dünnbettmörtel",null,"Sack","Mauern (Ytong)","bedarf",null,a2,tobi,true),M("U-Schalen für Ringanker",null,"Stück","Mauern (Ytong)","bedarf",null,a3,tobi,true),
+    M("Dünnbettmörtel",null,"Sack","Mauern (Ytong)","bedarf",null,a2,tobi,true),M("U-Schalen für Ringanker",null,"Stück","Mauern (Ytong)","bedarf","für beide langen Wände",a2,tobi,true),
     M("Bewehrungsstahl Ringanker",null,"m","Mauern (Ytong)","bedarf",null,a3,tobi,true),M("Schuttsäcke",50,"Stück","Rückbau & Abbruch","angefragt","Beispiel-Anfrage",a1,roland)];
   const W=(p,name,kategorie,anzahl,verf,notiz)=>({id:uid(),name,kategorie,anzahl,verfuegbarkeit:verf,notiz:notiz||null,besitzer:p.id,erstellt:new Date().toISOString()});
   const werkzeug=[W(igor,"Mörtelrührer","Mauern",1,"Samstags dabei"),W(andre,"Fliesenschneider 1,2 m","Fliesen",1,"nach Absprache"),
     W(roland,"Abbruchhammer","Rückbau",1,"bleibt auf der Baustelle"),W(daniel,"Kabeltrommel 50 m","Elektrik",2,"Samstags dabei"),W(christoph,"Rollgerüst","Allgemein",1,"nach Absprache")];
-  const planobjekt=[];
+  const planobjekt=[...grundeinrichtung(),{typ:"bestuhlung",x:0,y:0,rot:0,label:"400"}].map(o=>({id:uid(),...o}));
   return {me:tobi.id,profil,leitung,team,team_mitglied,aufgabe,eintrag,verfuegbarkeit,material,werkzeug,planobjekt};
 }
 
 const DemoBackend = {
   modus:"demo", d:null,
-  async init(){ let roh=null; try{ roh=localStorage.getItem("gb-demo-v2"); }catch(e){}
+  async init(){ let roh=null; try{ roh=localStorage.getItem("gb-demo-v4"); }catch(e){}
     this.d = roh ? JSON.parse(roh) : demoDaten(); this.speichern(); return true; },
-  speichern(){ try{ const kopie={...this.d}; localStorage.setItem("gb-demo-v2",JSON.stringify(kopie)); }catch(e){} },
+  speichern(){ try{ const kopie={...this.d}; localStorage.setItem("gb-demo-v4",JSON.stringify(kopie)); }catch(e){} },
   zuruecksetzen(){ this.d=demoDaten(); this.speichern(); },
   async sitzung(){ return {user:{id:this.d.me}}; },
   async meinProfil(){ return this.d.profil.find(p=>p.id===this.d.me)||null; },

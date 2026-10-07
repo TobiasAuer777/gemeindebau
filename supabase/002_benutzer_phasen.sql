@@ -81,8 +81,8 @@ end $$;
 revoke execute on function public.benutzer_liste(), public.benutzer_sperren(uuid, boolean) from public, anon;
 grant execute on function public.benutzer_liste(), public.benutzer_sperren(uuid, boolean) to authenticated;
 
--- Planverständnis korrigiert: Ringanker nur an der durchgehenden Wand hinter der Bühne
-update public.team set beschreibung = 'Neue Wände (gelb im Plan) in Ytong; Ringanker an der Wand hinter der Bühne'
+-- Ringanker an beiden langen Wänden (Trennwand und Wand hinter der Bühne)
+update public.team set beschreibung = 'Neue Wände (gelb im Plan) in Ytong; Ringanker an beiden langen Wänden'
   where name = 'Mauerwerk & Ytong';
 
 select 'Erweiterung 2 eingespielt' as ergebnis;
