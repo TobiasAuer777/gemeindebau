@@ -472,7 +472,7 @@ function verkleinern(datei,max,q,alsBlob){
 const HALLE = { L:47.40, B:19.90, traufe:3.70, first:5.09, wand:0.24 };
 
 // Wände: [x1,y1,x2,y2, art]   art: bestand | neu (gelb im Plan) | neu-ra (gelb, mit Ringanker) | abriss (rot im Plan = wird entfernt)
-const WAENDE = [
+const WAENDE_EIGEN = [
   // linker Block (Bestand) – nach Tobis aktuellem Plan (08.10.)
   [2.4,0,2.4,2.55,"bestand"],[1.45,2.55,2.4,2.55,"bestand"],[2.4,3.2,2.4,4.0,"bestand"],            // Bad | Waschraum
   [0,4.0,2.4,4.0,"bestand"],[2.4,4.0,3.1,4.0,"bestand"],[3.7,4.0,4.48,4.0,"bestand"],               // Bad/Wasch unten (Tür zum Flur)
@@ -497,7 +497,7 @@ const WAENDE = [
   // Rot im Plan: wird abgerissen
   [40.2,0,40.2,4.25,"abriss"],[40.2,15.55,46.7,15.55,"abriss"],[40.2,15.55,40.2,19.9,"abriss"]
 ];
-const RAEUME = [
+const RAEUME_EIGEN = [
   {n:"Gottesdienstraum",x:21.2,y:0,w:25.5,h:19.9,m2:"528,97",haupt:true,ly:1.6},
   {n:"Gemeinschaftsraum",x:9.0,y:3.9,w:12.2,h:13.8,m2:"209,21",haupt:true},
   {n:"Küche",x:9.0,y:0,w:5.4,h:3.9,m2:"20,96"},{n:"WC-Block",x:15.7,y:0,w:5.5,h:3.9,m2:"20,96"},
@@ -511,8 +511,42 @@ const BUEHNE = {x:42.7,y:2.85,w:4.0,h:14.0,hoehe:0.6};   // 14 m breit, 4 m tief
 const LED = {y1:4.9,y2:14.8,unten:0.9,oben:3.9};     // 10 m × 3 m an der Wand hinter der Bühne
 const TECHNIK = {x:21.8,y:6.6,w:2.4,h:6.4};            // im Plan gepunktet: Technikbereich (Ton, Licht, Video)
 const istNeu = a => a==="neu"||a==="neu-ra";
-const TREPPEN = [{x:9.12,y:4.05,w:0.62,h:0.95},{x:9.12,y:9.92,w:0.62,h:1.0},{x:9.12,y:17.3,w:0.62,h:1.3}];  // je 6 Stufen
-const TUEREN_AUSSEN = [{x1:32.6,x2:40.0,y:19.9,n:"Haupteingang"},{x1:40.9,x2:41.9,y:0,n:"Notausgang"}];
+const TREPPEN_EIGEN = [{x:9.12,y:4.05,w:0.62,h:0.95},{x:9.12,y:9.92,w:0.62,h:1.0},{x:9.12,y:17.3,w:0.62,h:1.3}];  // je 6 Stufen
+const TUEREN_EIGEN = [{x1:32.6,x2:40.0,y:19.9,n:"Haupteingang"},{x1:40.9,x2:41.9,y:0,n:"Notausgang"}];
+
+/* ---------- Architektenplanung (Bauantrag, Erdgeschoss): Außenmaß 47,72 × 20,28–20,41 m ----------
+   Innenmaß wie oben: x = Außenmaß − 0,15 (Wand Konzstraße). Linker Block: Spalten 1,865 | 3,115 | 3,55 m (oben)
+   bzw. 3,82 | 4,825 m (unten); Reihen 3,905 | 5,72 | 1,40 | 2,30 | 5,97 m. Halle 31,00 m + 7,18 m. */
+const WAENDE_ARCH = [
+  [1.92,0,1.92,0.25,"bestand"],[1.92,0.95,1.92,1.55,"bestand"],[1.92,2.25,1.92,2.95,"bestand"],[1.92,3.65,1.92,3.905,"bestand"],  // WC | Vorraum
+  [0,1.2825,1.92,1.2825,"bestand"],[0,2.6225,1.92,2.6225,"bestand"],                                                    // 3 WC
+  [5.15,0,5.15,3.905,"bestand"],                                                                                         // Vorraum | Vorraum
+  [0,4.025,2.3,4.025,"bestand"],[3.2,4.025,8.76,4.025,"bestand"],                                                        // oben | Waschraum/Aufenthaltsraum
+  [5.15,4.145,5.15,5.8,"bestand"],[5.15,6.7,5.15,9.865,"bestand"],                                                       // Waschraum | Aufenthaltsraum
+  [0,9.985,8.76,9.985,"bestand"],
+  [2.0575,10.105,2.0575,11.505,"bestand"],[0,11.5625,3.82,11.5625,"bestand"],[0,13.9775,3.82,13.9775,"bestand"],        // WC | Vorraum, Abstellraum, Büro
+  [3.88,10.105,3.88,10.7,"bestand"],[3.88,11.5,3.88,12.1,"bestand"],[3.88,12.9,3.88,16.6,"bestand"],[3.88,17.5,3.88,19.9,"bestand"],
+  [8.88,0,8.88,1.5,"bestand"],[8.88,2.4,8.88,5.1,"bestand"],[8.88,6.0,8.88,17.9,"bestand"],[8.88,18.8,8.88,19.9,"bestand"],  // Blockwand zur Halle
+  [40.075,0,40.075,19.9,"bestand"]                                                                                         // Begegnungsstätte | Begegnungsstätte
+];
+const RAEUME_ARCH = [
+  {n:"Begegnungsstätte",x:9.0,y:0,w:31.0,h:19.9,m2:"618,55",haupt:true},
+  {n:"Begegnungsstätte",x:40.15,y:0,w:7.25,h:19.9,m2:"144,37",haupt:true},
+  {n:"WC",x:0,y:0,w:1.865,h:1.225,m2:"2,39",klein:true},{n:"WC",x:0,y:1.34,w:1.865,h:1.225,m2:"2,28",klein:true},{n:"WC",x:0,y:2.68,w:1.865,h:1.225,m2:"2,39",klein:true},
+  {n:"Vorraum",x:1.98,y:0,w:3.115,h:3.905,m2:"12,19"},{n:"Vorraum",x:5.21,y:0,w:3.55,h:3.905,m2:"13,87"},
+  {n:"Waschraum",x:0,y:4.145,w:5.095,h:5.72,m2:"29,14"},{n:"Aufenthaltsraum",x:5.21,y:4.145,w:3.55,h:5.72,m2:"20,31"},
+  {n:"WC",x:0,y:10.105,w:2.0,h:1.4,m2:"2,92",klein:true},{n:"Vorraum",x:2.115,y:10.105,w:1.705,h:1.4,m2:"2,67",klein:true},
+  {n:"Abstellraum",x:0,y:11.62,w:3.82,h:2.3,m2:"8,79"},{n:"Büro",x:0,y:14.035,w:3.82,h:5.865,m2:"22,81"},{n:"Büro",x:3.935,y:10.105,w:4.825,h:9.795,m2:"47,75"}
+];
+const TUEREN_ARCH = [{x1:10.37,x2:11.38,y:19.9,n:"Eingang"},{x1:30.47,x2:34.47,y:19.9,n:"Tor"},{x1:35.53,x2:39.53,y:19.9,n:"Notausgang"},{x1:42.35,x2:44.4,y:0,n:"Notausgang"}];
+
+/* Umschalter: „Eigene Planung“ (Umbau) oder „Architektenplanung“ (Bauantrag) */
+let PLANUNG="eigen", WAENDE, RAEUME, TREPPEN, TUEREN_AUSSEN;
+function planungSetzen(art){ PLANUNG=art==="architekt"?"architekt":"eigen"; const a=PLANUNG==="architekt";
+  WAENDE=a?WAENDE_ARCH:WAENDE_EIGEN; RAEUME=a?RAEUME_ARCH:RAEUME_EIGEN; TREPPEN=a?[]:TREPPEN_EIGEN; TUEREN_AUSSEN=a?TUEREN_ARCH:TUEREN_EIGEN;
+  try{ localStorage.setItem("gb-planung",PLANUNG); }catch(e){} }
+planungSetzen((()=>{ try{ return localStorage.getItem("gb-planung"); }catch(e){ return null; } })());
+const istArch = () => PLANUNG==="architekt";
 
 const OBJEKTE = {
   stuhlreihe:{n:"Stuhlreihe (10)",w:5.0,d:0.55,h:0.9,farbe:"#2b4fa0",plaetze:10},
@@ -545,11 +579,12 @@ function planSvg(objekte, opt={}){
   <rect x="0" y="0" width="${W}" height="${H}" fill="var(--flaeche)"/>
   <rect x="${R}" y="${R}" width="${HALLE.L*S}" height="${HALLE.B*S}" fill="url(#m1)"/>`;
   RAEUME.forEach(r=>{ s+=`<rect x="${p(r.x)}" y="${p(r.y)}" width="${(r.w*S).toFixed(1)}" height="${(r.h*S).toFixed(1)}" fill="${r.haupt?'var(--blau-weich)':'var(--flaeche2)'}" opacity="${r.haupt?.55:.8}"/>`; });
-  s+=`<rect x="${p(TECHNIK.x)}" y="${p(TECHNIK.y)}" width="${TECHNIK.w*S}" height="${TECHNIK.h*S}" fill="url(#gp)" stroke="var(--text3)" stroke-width="1"/>`;
+  const arch=istArch();
+  if(!arch){ s+=`<rect x="${p(TECHNIK.x)}" y="${p(TECHNIK.y)}" width="${TECHNIK.w*S}" height="${TECHNIK.h*S}" fill="url(#gp)" stroke="var(--text3)" stroke-width="1"/>`;
   { const tx=p(TECHNIK.x+TECHNIK.w/2), ty=p(TECHNIK.y+TECHNIK.h/2);
     s+=`<text x="${tx}" y="${ty}" text-anchor="middle" dominant-baseline="middle" font-family="var(--f-titel)" font-weight="700" font-size="12" letter-spacing="1" fill="var(--tinte)" paint-order="stroke" stroke="var(--flaeche)" stroke-width="3" transform="rotate(-90 ${tx} ${ty})">TECHNIK</text>`; }
   s+=`<rect x="${p(BUEHNE.x)}" y="${p(BUEHNE.y)}" width="${BUEHNE.w*S}" height="${BUEHNE.h*S}" fill="url(#sch)" stroke="var(--tinte)" stroke-width="1.5"/>`;
-  s+=`<line x1="${p(46.7-0.08)}" y1="${p(LED.y1)}" x2="${p(46.7-0.08)}" y2="${p(LED.y2)}" stroke="var(--flamme)" stroke-width="6" stroke-linecap="round"/>`;
+  s+=`<line x1="${p(46.7-0.08)}" y1="${p(LED.y1)}" x2="${p(46.7-0.08)}" y2="${p(LED.y2)}" stroke="var(--flamme)" stroke-width="6" stroke-linecap="round"/>`; }
   // Außenwand
   s+=`<rect x="${R-HALLE.wand*S/2}" y="${R-HALLE.wand*S/2}" width="${HALLE.L*S+HALLE.wand*S}" height="${HALLE.B*S+HALLE.wand*S}" fill="none" stroke="var(--tinte)" stroke-width="${HALLE.wand*S}"/>`;
   TUEREN_AUSSEN.forEach(t=>{ s+=`<line x1="${p(t.x1)}" y1="${p(t.y)}" x2="${p(t.x2)}" y2="${p(t.y)}" stroke="var(--flaeche)" stroke-width="${HALLE.wand*S+2}"/>`; });
@@ -559,23 +594,25 @@ function planSvg(objekte, opt={}){
     s+=`<line x1="${p(x1)}" y1="${p(y1)}" x2="${p(x2)}" y2="${p(y2)}" stroke="${c}" stroke-width="${istNeu(a)?6:4.5}" stroke-linecap="square"/>`;
     if(a==="neu-ra") s+=`<line x1="${p(x1)}" y1="${p(y1)}" x2="${p(x2)}" y2="${p(y2)}" stroke="var(--tinte)" stroke-width="1.6" stroke-dasharray="10 6"/>`; });
   // Beschriftung Rückbau + Ringanker
-  s+=`<text x="${p(40.2)-6}" y="${p(2.1)}" text-anchor="end" font-family="var(--f-text)" font-weight="700" font-size="9.5" fill="var(--glut)">✕ Rückbau</text>`;
+  if(!arch){ s+=`<text x="${p(40.2)-6}" y="${p(2.1)}" text-anchor="end" font-family="var(--f-text)" font-weight="700" font-size="9.5" fill="var(--glut)">✕ Rückbau</text>`;
   s+=`<text x="${p(40.2)-6}" y="${p(17.8)}" text-anchor="end" font-family="var(--f-text)" font-weight="700" font-size="9.5" fill="var(--glut)">✕ Rückbau</text>`;
-  [[46.7,13,2.6],[21.2,13,11.6]].forEach(([wx,dx,wy])=>{ const rx=p(wx)+dx, ry=p(wy); s+=`<text x="${rx}" y="${ry}" text-anchor="middle" font-family="var(--f-text)" font-weight="700" font-size="9" fill="var(--tinte)" paint-order="stroke" stroke="var(--flaeche)" stroke-width="3" transform="rotate(90 ${rx} ${ry})">RINGANKER</text>`; });
+  [[46.7,13,2.6],[21.2,13,11.6]].forEach(([wx,dx,wy])=>{ const rx=p(wx)+dx, ry=p(wy); s+=`<text x="${rx}" y="${ry}" text-anchor="middle" font-family="var(--f-text)" font-weight="700" font-size="9" fill="var(--tinte)" paint-order="stroke" stroke="var(--flaeche)" stroke-width="3" transform="rotate(90 ${rx} ${ry})">RINGANKER</text>`; }); }
   // Beschriftung
   RAEUME.forEach(r=>{ const cx=p(r.x+r.w/2), cy=p(r.ly!=null?r.y+r.ly:r.y+r.h/2); const fs=r.haupt?15:r.klein?8.5:10;
     s+=`<text x="${cx}" y="${cy}" text-anchor="middle" font-family="var(--f-titel)" font-weight="600" font-size="${fs}" fill="var(--tinte)">${r.n}</text>`;
-    if(r.m2) s+=`<text x="${cx}" y="${(+cy+fs+2).toFixed(1)}" text-anchor="middle" font-family="var(--f-mass)" font-size="9.5" fill="var(--text2)">NGF ${r.m2} m²</text>`; });
-  s+=`<text x="${p(BUEHNE.x+BUEHNE.w/2)}" y="${p(BUEHNE.y+BUEHNE.h/2)}" text-anchor="middle" font-family="var(--f-titel)" font-weight="700" font-size="13" fill="var(--tinte)" transform="rotate(-90 ${p(BUEHNE.x+BUEHNE.w/2)} ${p(BUEHNE.y+BUEHNE.h/2)})">BÜHNE · LED-Wand 10 × 3 m</text>`;
+    if(r.m2) s+=`<text x="${cx}" y="${(+cy+fs+2).toFixed(1)}" text-anchor="middle" font-family="var(--f-mass)" font-size="9.5" fill="var(--text2)">${arch?"":"NGF "}${r.m2} m²</text>`; });
+  if(!arch) s+=`<text x="${p(BUEHNE.x+BUEHNE.w/2)}" y="${p(BUEHNE.y+BUEHNE.h/2)}" text-anchor="middle" font-family="var(--f-titel)" font-weight="700" font-size="13" fill="var(--tinte)" transform="rotate(-90 ${p(BUEHNE.x+BUEHNE.w/2)} ${p(BUEHNE.y+BUEHNE.h/2)})">BÜHNE · LED-Wand 10 × 3 m</text>`;
   // Umgebung
   const ue=(x,y,t,rot)=>`<text x="${x}" y="${y}" text-anchor="middle" font-family="var(--f-text)" font-weight="600" font-size="11" letter-spacing="1.2" fill="var(--text3)" ${rot?`transform="rotate(${rot} ${x} ${y})"`:''}>${t}</text>`;
   s+=ue(W/2,R-16,"HOF KINDER-SPIEL")+ue(W/2,H-12,"HOF EINGANG · PFLASTER")+ue(16,H/2,"KONZSTRASSE · PARKPLÄTZE",-90)+ue(W-14,H/2,"INDUSTRIESTRASSE",90);
-  s+=`<text x="${p((TUEREN_AUSSEN[0].x1+TUEREN_AUSSEN[0].x2)/2)}" y="${p(HALLE.B)+18}" text-anchor="middle" font-size="10" font-weight="600" fill="var(--flamme)">▲ Haupteingang</text>`;
+  if(arch) TUEREN_AUSSEN.forEach(t=>{ const unten=t.y>0; s+=`<text x="${p((t.x1+t.x2)/2)}" y="${unten?p(HALLE.B)+18:p(0)-8}" text-anchor="middle" font-size="9.5" font-weight="600" fill="${t.n==="Notausgang"?"var(--ok)":"var(--flamme)"}">${unten?"▲ ":"▼ "}${t.n}</text>`; });
+  else s+=`<text x="${p((TUEREN_AUSSEN[0].x1+TUEREN_AUSSEN[0].x2)/2)}" y="${p(HALLE.B)+18}" text-anchor="middle" font-size="10" font-weight="600" fill="var(--flamme)">▲ Haupteingang</text>`;
   // Maßkette
   s+=`<g font-family="var(--f-mass)" font-size="10" fill="var(--text2)"><text x="${R+6}" y="${R-4}">0</text><text x="${p(HALLE.L)-30}" y="${R-4}">47,40 m</text></g>`;
   // Treppen
   TREPPEN.forEach(tr=>{ s+=`<rect x="${p(tr.x)}" y="${p(tr.y)}" width="${(tr.w*S).toFixed(1)}" height="${(tr.h*S).toFixed(1)}" fill="var(--flaeche)" stroke="var(--text2)" stroke-width="1"/>`;
     for(let i=1;i<6;i++) s+=`<line x1="${p(tr.x)}" y1="${p(tr.y+tr.h*i/6)}" x2="${p(tr.x+tr.w)}" y2="${p(tr.y+tr.h*i/6)}" stroke="var(--text2)" stroke-width=".8"/>`; });
+  if(arch){ s+=`</svg>`; return s; }   // Architektenplanung: nur der Plan, ohne Einrichtung
   // Seitenplätze an der Bühne (rote Bezüge)
   if(opt.seiten){ s+=`<g fill="${STUHL.rot}">`; seitenPositionen().forEach(c=>{ const sw=(STUHL.breite-0.06)*S, sd=(STUHL.tiefe-0.04)*S; s+=`<rect x="${(c.x*S+R-sw/2).toFixed(1)}" y="${(c.y*S+R-sd/2).toFixed(1)}" width="${sw.toFixed(1)}" height="${sd.toFixed(1)}" rx="1.5"/>`; }); s+=`</g>`;
     SEITEN.forEach(g=>{ s+=`<text x="${p(BUEHNE.x+BUEHNE.w/2)}" y="${p(g.text)}" text-anchor="middle" font-family="var(--f-text)" font-weight="700" font-size="9" fill="${STUHL.rot}">${g.n}</text>`; }); }
@@ -680,10 +717,12 @@ function halle3d(container, objekte, opt={}){
   const t=HALLE.wand;
   const laengs=(z)=>{ const mesh=box(HALLE.L+t*2,HALLE.traufe,t,wandMat,HALLE.L/2,HALLE.traufe/2,z); return mesh; };
   // Südwand mit Türöffnung Haupteingang
-  [[-t,32.6],[40.0,HALLE.L+t]].forEach(([a,b])=>box(b-a,HALLE.traufe,t,wandMat,(a+b)/2,HALLE.traufe/2,HALLE.B+t/2));
-  box(40.0-32.6,HALLE.traufe-2.5,t,wandMat,36.3,2.5+(HALLE.traufe-2.5)/2,HALLE.B+t/2);
-  box(40.0-32.6,2.5,0.05,new THREE.MeshLambertMaterial({color:"#a9c8e6",transparent:true,opacity:.45}),36.3,1.25,HALLE.B+t/2);
-  [33.5,35.35,37.2,39.05].forEach(x=>box(0.08,2.5,0.1,M("#3a4150"),x,1.25,HALLE.B+t/2));
+  { const oeff=TUEREN_AUSSEN.filter(o=>o.y>HALLE.B-0.01).sort((a,b)=>a.x1-b.x1); let von=-t;
+    const glas=new THREE.MeshLambertMaterial({color:"#a9c8e6",transparent:true,opacity:.45});
+    oeff.forEach(o=>{ if(o.x1>von) box(o.x1-von,HALLE.traufe,t,wandMat,(von+o.x1)/2,HALLE.traufe/2,HALLE.B+t/2);
+      const w=o.x2-o.x1, mx=(o.x1+o.x2)/2; box(w,HALLE.traufe-2.5,t,wandMat,mx,2.5+(HALLE.traufe-2.5)/2,HALLE.B+t/2);
+      box(w,2.5,0.05,glas,mx,1.25,HALLE.B+t/2); for(let x=o.x1+0.9;x<o.x2-0.3;x+=1.85) box(0.08,2.5,0.1,M("#3a4150"),x,1.25,HALLE.B+t/2); von=o.x2; });
+    box(HALLE.L+t-von,HALLE.traufe,t,wandMat,(von+HALLE.L+t)/2,HALLE.traufe/2,HALLE.B+t/2); }
   laengs(-t/2);
   // Fensterband Nordwand
   for(let x=10.5;x<44;x+=2.3){ const f=box(1.6,1.5,0.06,new THREE.MeshLambertMaterial({color:"#9ec3e6",emissive:"#4a6d8f",emissiveIntensity:.35}),x,1.9,0.01); }
@@ -706,8 +745,9 @@ function halle3d(container, objekte, opt={}){
     const mat=istNeu(a)?neuMat:bestandMat;
     const m=box(x1===x2?0.2:len, h, x1===x2?len:0.2, mat, mx, h/2, my); if(istNeu(a)) neueWaende.push(m);
     if(a==="neu-ra") box(0.24,0.25,len,M("#8a8f99"),mx,h-0.125,my); });
+  const arch=istArch();
   // Bühne + LED-Wand
-  box(BUEHNE.w,BUEHNE.hoehe,BUEHNE.h,M("#3b2f2a"),BUEHNE.x+BUEHNE.w/2,BUEHNE.hoehe/2,BUEHNE.y+BUEHNE.h/2);
+  if(!arch) box(BUEHNE.w,BUEHNE.hoehe,BUEHNE.h,M("#3b2f2a"),BUEHNE.x+BUEHNE.w/2,BUEHNE.hoehe/2,BUEHNE.y+BUEHNE.h/2);
   const ledCanvas=document.createElement("canvas"); ledCanvas.width=1600; ledCanvas.height=480;
   const g=ledCanvas.getContext("2d"); const grad=g.createLinearGradient(0,0,1600,480); grad.addColorStop(0,"#0b1a45"); grad.addColorStop(.55,"#1d3f94"); grad.addColorStop(1,"#e2641a");
   g.fillStyle=grad; g.fillRect(0,0,1600,480);
@@ -716,13 +756,13 @@ function halle3d(container, objekte, opt={}){
   const ledTex=new THREE.CanvasTexture(ledCanvas);
   if(opt.logo){ const li=new Image(); li.onload=()=>{ const h=320, w=li.width*h/li.height; g.drawImage(li,150,80,w,h); ledTex.needsUpdate=true; }; li.src=opt.logo; }
   const led=new THREE.Mesh(new THREE.PlaneGeometry(LED.y2-LED.y1,LED.oben-LED.unten),new THREE.MeshBasicMaterial({map:ledTex}));
-  led.rotation.y=-Math.PI/2; led.position.set(46.7-0.12,(LED.unten+LED.oben)/2,(LED.y1+LED.y2)/2); szene.add(led);
-  box(0.06,LED.oben-LED.unten+0.12,LED.y2-LED.y1+0.12,M("#111"),46.7-0.07,(LED.unten+LED.oben)/2,(LED.y1+LED.y2)/2);
+  led.rotation.y=-Math.PI/2; led.position.set(46.7-0.12,(LED.unten+LED.oben)/2,(LED.y1+LED.y2)/2); if(!arch) szene.add(led);
+  if(!arch){ box(0.06,LED.oben-LED.unten+0.12,LED.y2-LED.y1+0.12,M("#111"),46.7-0.07,(LED.unten+LED.oben)/2,(LED.y1+LED.y2)/2);
   // Technikbereich: Podest + Pult mit Blick zur Bühne
   box(TECHNIK.w,0.15,TECHNIK.h,M("#4b5568"),TECHNIK.x+TECHNIK.w/2,0.075,TECHNIK.y+TECHNIK.h/2);
   box(0.8,0.95,3.2,M("#1f2937"),TECHNIK.x+TECHNIK.w*0.62,0.15+0.475,TECHNIK.y+TECHNIK.h/2);
   box(0.05,0.35,0.6,new THREE.MeshBasicMaterial({color:"#3b82f6"}),TECHNIK.x+TECHNIK.w*0.62+0.1,1.3,TECHNIK.y+TECHNIK.h/2-0.7);
-  box(0.05,0.35,0.6,new THREE.MeshBasicMaterial({color:"#3b82f6"}),TECHNIK.x+TECHNIK.w*0.62+0.1,1.3,TECHNIK.y+TECHNIK.h/2+0.7);
+  box(0.05,0.35,0.6,new THREE.MeshBasicMaterial({color:"#3b82f6"}),TECHNIK.x+TECHNIK.w*0.62+0.1,1.3,TECHNIK.y+TECHNIK.h/2+0.7); }
   // Stuhlbezug: blauer Stoff mit gesticktem Logo (Foto vom Bezug)
   const stoffMat=M(STUHL.farbe);
   const logoTex=opt.stoff?new THREE.TextureLoader().load(opt.stoff):null;
@@ -749,8 +789,8 @@ function halle3d(container, objekte, opt={}){
   }
   const bestuhlungZeichnen=n=>stuehleSetzen(stuhlGruppe,stuhlPositionen(n),stoffMat,logoMat);
   const seitenZeichnen=an=>stuehleSetzen(seitenGruppe,an?seitenPositionen():[],rotMat,null);
-  seitenZeichnen(!!opt.seiten);
-  bestuhlungZeichnen(opt.bestuhlung||0);
+  seitenZeichnen(!arch&&!!opt.seiten);
+  bestuhlungZeichnen(arch?0:(opt.bestuhlung||0));
   // Planobjekte
   const objGruppe=new THREE.Group(); szene.add(objGruppe);
   function objekteZeichnen(liste){
@@ -778,11 +818,12 @@ function halle3d(container, objekte, opt={}){
       else { const m=new THREE.Mesh(new THREE.BoxGeometry(k.w,k.h,k.d),mat); m.position.y=k.h/2; grp.add(m); }
       objGruppe.add(grp); });
   }
-  objekteZeichnen(objekte);
+  objekteZeichnen(arch?[]:objekte);
   // Steuerung (Ich-Perspektive)
-  const blick={x:30,z:15.5,gier:-Math.PI*0.62,nick:-0.04,auge:1.65,oben:false};
+  const blick=arch?{x:12,z:9.95,gier:-Math.PI/2,nick:-0.02,auge:1.65,oben:false}:{x:30,z:15.5,gier:-Math.PI*0.62,nick:-0.04,auge:1.65,oben:false};
   const ansichten={eingang:{x:36.3,z:18.6,gier:Math.PI*1.0,nick:-0.03},buehne:{x:44.2,z:12.2,gier:Math.PI/2-0.25,nick:-0.12,auge:2.25},vorn:{x:37.5,z:9.85,gier:-Math.PI/2,nick:0.02},
-    raum:{x:26,z:9.85,gier:-Math.PI/2,nick:-0.02},gemein:{x:9.9,z:16.9,gier:-0.9,nick:-0.06},oben:{oben:true},aussen:{oben:true,aussen:true}};
+    raum:{x:26,z:9.85,gier:-Math.PI/2,nick:-0.02},gemein:{x:9.9,z:16.9,gier:-0.9,nick:-0.06},oben:{oben:true},aussen:{oben:true,aussen:true},
+    a_eingang:{x:10.9,z:18.8,gier:-Math.PI*0.25,nick:-0.03},a_halle:{x:12,z:9.95,gier:-Math.PI/2,nick:-0.02},a_tor:{x:32.5,z:18.6,gier:Math.PI*0.1,nick:-0.02},a_neben:{x:41.2,z:17.5,gier:-Math.PI*0.75,nick:-0.04}};
   function setze(n){ const a=ansichten[n]; if(!a) return; if(a.oben){ blick.oben=true; blick.aussen=!!a.aussen; } else { Object.assign(blick,{oben:false,aussen:false,auge:1.65},a); } }
   const taste={}; const ab=e=>{ if(["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName)) return; taste[e.key.toLowerCase()]=e.type==="keydown"; if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(e.key.toLowerCase())&&e.type==="keydown"&&container.matches(":hover")) e.preventDefault(); };
   window.addEventListener("keydown",ab); window.addEventListener("keyup",ab);
@@ -814,7 +855,7 @@ function halle3d(container, objekte, opt={}){
       const nx=blick.x+(fx*vor+rx*seit)*sch, nz=blick.z+(fz*vor+rz*seit)*sch;
       if(frei(nx,blick.z)) blick.x=nx; if(frei(blick.x,nz)) blick.z=nz; }
     // Auge auf Bühne höher
-    const aufBuehne=blick.x>BUEHNE.x&&blick.x<BUEHNE.x+BUEHNE.w&&blick.z>BUEHNE.y&&blick.z<BUEHNE.y+BUEHNE.h;
+    const aufBuehne=!arch&&blick.x>BUEHNE.x&&blick.x<BUEHNE.x+BUEHNE.w&&blick.z>BUEHNE.y&&blick.z<BUEHNE.y+BUEHNE.h;
     const auge=aufBuehne?BUEHNE.hoehe+1.65:1.65;
     if(blick.oben&&blick.aussen){ kam.position.set(-9,11,36); kam.lookAt(HALLE.L/2-6,2,HALLE.B/2); dach.forEach(d=>d.visible=true); }
     else if(blick.oben){ kam.position.set(HALLE.L/2,48,HALLE.B/2+18); kam.lookAt(HALLE.L/2,0,HALLE.B/2); dach.forEach(d=>d.visible=false); }
@@ -1359,9 +1400,22 @@ const sitzText = () => { const st=stuhlPositionen(bestuhlungN()).length, se=seit
   const teile=[st?`${st} Stühle`:"", se?`${se} an der Bühne`:"", ti?`${ti} an Tischen`:""].filter(Boolean); return teile.join(" + ")||"0 Sitzplätze"; };
 const sitzplaetze = () => S.planobjekt.reduce((s,o)=>s+(OBJEKTE[o.typ]?.plaetze||0),0)+stuhlPositionen(bestuhlungN()).length;
 ANSICHTEN.halle = () => {
-  const plaetze=sitzplaetze(), bn=bestuhlungN(), bi=bestuhlungInfo(bn);
-  return `<div class="kopf"><div><p class="etikett">Konzstraße 9 · 47,40 × 19,90 m Innenmaß · Traufe 3,70 m · First 5,09 m</p><h1>Halle & 3D</h1><p class="unter">Grundriss nach dem aktuellen Plan, Maße vom Architekten. Plane die Einrichtung und geh virtuell durch die Halle.</p></div>
-    <div class="reiter" role="group" aria-label="Ansicht"><button data-a="halleReiter" data-k="plan" aria-pressed="${halleReiter==="plan"}">Grundriss & Planen</button><button data-a="halleReiter" data-k="3d" aria-pressed="${halleReiter==="3d"}">3D begehen</button></div></div>
+  const plaetze=sitzplaetze(), bn=bestuhlungN(), bi=bestuhlungInfo(bn), arch=istArch();
+  const kopf=`<div class="kopf"><div><p class="etikett">Konzstraße 9 · 47,40 × 19,90 m Innenmaß · Traufe 3,70 m · First 5,09 m</p><h1>Halle & 3D</h1><p class="unter">${arch?"Erdgeschoss nach dem Plan des Architekten (Bauantrag) – so, wie die Halle genehmigt wird.":"Unsere eigene Planung für den Umbau, Maße vom Architekten. Plane die Einrichtung und geh virtuell durch die Halle."}</p></div>
+    <div class="stapel" style="gap:8px;align-items:flex-end"><div class="reiter" role="group" aria-label="Planung"><button data-a="planung" data-k="eigen" aria-pressed="${!arch}">Eigene Planung</button><button data-a="planung" data-k="architekt" aria-pressed="${arch}">Architektenplanung</button></div>
+    <div class="reiter" role="group" aria-label="Ansicht"><button data-a="halleReiter" data-k="plan" aria-pressed="${halleReiter==="plan"}">Grundriss${arch?"":" & Planen"}</button><button data-a="halleReiter" data-k="3d" aria-pressed="${halleReiter==="3d"}">3D begehen</button></div></div></div>`;
+  const summe=RAEUME_ARCH.reduce((s,r)=>s+parseFloat(r.m2.replace(",",".")),0);
+  if(arch&&halleReiter==="plan") return kopf+`<section class="karte"><header><div><h2>Architektenplanung · Erdgeschoss</h2><p class="klein leise" style="margin-top:4px">Außenmaß 47,72 × 20,28–20,41 m · Nutzung als Begegnungsstätte</p></div></header>
+      <div class="halle-rahmen" style="overflow-x:auto"><div style="min-width:760px">${planSvg([],{})}</div></div>
+      <div class="zeile klein leise" style="margin-top:14px;gap:16px">
+        <span class="zeile" style="gap:6px"><span style="width:22px;height:4px;background:var(--text2);display:inline-block;border-radius:2px"></span>Wände</span>
+        <span class="zeile" style="gap:6px"><span style="color:var(--flamme);font-weight:700">▲</span>Eingang / Tor</span>
+        <span class="zeile" style="gap:6px"><span style="color:var(--ok);font-weight:700">▲</span>Notausgang</span>
+        <span>1 Kästchen = 1 m · Maße aus dem Plan, kleine Abweichungen beim Übertragen möglich</span></div></section>
+    <section class="karte" style="margin-top:16px"><header><h2>Räume laut Plan</h2><span class="pille">${String(summe.toFixed(2)).replace(".",",")} m²</span></header>
+      <div class="tabelle-rahmen"><table><thead><tr><th>Raum</th><th style="text-align:right">Fläche</th></tr></thead><tbody>
+      ${[...RAEUME_ARCH].sort((x,y)=>parseFloat(y.m2.replace(",","."))-parseFloat(x.m2.replace(",","."))).map(r=>`<tr><td>${esc(r.n)}</td><td class="mass" style="text-align:right">${r.m2} m²</td></tr>`).join("")}</tbody></table></div></section>`;
+  return kopf+`
   ${halleReiter==="plan"?`
   <div class="raster" style="grid-template-columns:minmax(0,1fr)">
     <section class="karte"><header><div class="zeile"><h2>Einrichtung planen</h2><span class="pille" id="plaetze">${sitzText()}</span></div>
@@ -1384,9 +1438,9 @@ ANSICHTEN.halle = () => {
         <span>1 Kästchen = 1 m · Objekte ziehen zum Verschieben</span></div></section>
   </div>`:`
   <section class="karte" style="padding:10px">
-    <div class="dreid" id="dreid"><div class="hud"><div class="zeile" style="gap:6px">${[["eingang","Eingang"],["raum","Gottesdienstraum"],["vorn","Zur Bühne"],["buehne","Auf der Bühne"],["gemein","Gemeinschaftsraum"],["oben","Von oben"],["aussen","Von außen"]].map(([k,l])=>`<button class="btn klein" data-a="blick" data-k="${k}">${l}</button>`).join("")}</div>
+    <div class="dreid" id="dreid"><div class="hud"><div class="zeile" style="gap:6px">${(arch?[["a_eingang","Eingang"],["a_halle","Begegnungsstätte"],["a_tor","Am Tor"],["a_neben","Begegnungsstätte 2"],["oben","Von oben"],["aussen","Von außen"]]:[["eingang","Eingang"],["raum","Gottesdienstraum"],["vorn","Zur Bühne"],["buehne","Auf der Bühne"],["gemein","Gemeinschaftsraum"],["oben","Von oben"],["aussen","Von außen"]]).map(([k,l])=>`<button class="btn klein" data-a="blick" data-k="${k}">${l}</button>`).join("")}</div>
       <div class="tafel">Ziehen = umsehen · W A S D oder Pfeile = gehen · Shift = schneller · Mausrad = vor/zurück</div></div><div class="joy" aria-hidden="true"><i></i></div></div>
-    <div class="zeile weit klein leise" style="margin-top:10px;padding:0 4px"><label class="zeile" style="gap:6px"><input type="checkbox" id="neu-gelb" checked data-a="neuGelb"> Neue Wände gelb zeigen</label><span>Eingerichtete Objekte aus dem Grundriss erscheinen hier mit.</span></div>
+    <div class="zeile weit klein leise" style="margin-top:10px;padding:0 4px">${arch?`<span>Architektenplanung: nur die Räume laut Bauantrag, ohne Einrichtung.</span>`:`<label class="zeile" style="gap:6px"><input type="checkbox" id="neu-gelb" checked data-a="neuGelb"> Neue Wände gelb zeigen</label><span>Eingerichtete Objekte aus dem Grundriss erscheinen hier mit.</span>`}</div>
   </section>`}`;
 };
 function auswahlLeiste(){ const o=S.planobjekt.find(x=>x.id===planAuswahl); if(!o) return `<p class="klein leise">Tippe ein Objekt an, um es zu drehen oder zu entfernen.</p>`;
@@ -1596,6 +1650,7 @@ const AKT = {
   austreten:async t=>{ await speichere(()=>B.austreten(t.dataset.id,S.me.id),"Ausgetreten"); await neu("team_mitglied"); render(); },
   schwer:t=>t.setAttribute("aria-pressed",t.getAttribute("aria-pressed")!=="true"),
   halleReiter:t=>{ halleReiter=t.dataset.k; render(); },
+  planung:t=>{ planungSetzen(t.dataset.k); planAuswahl=null; render(); },
   objNeu:async t=>{ const k=OBJEKTE[t.dataset.typ]; const o=await speichere(()=>B.neu("planobjekt",{typ:t.dataset.typ,x:30,y:9.9,rot:t.dataset.typ==="stuhlreihe"?90:0,label:k.n}));
     await neu("planobjekt"); planAuswahl=o?.id||null; halleAktualisieren(); },
   objDreh:async t=>{ const o=S.planobjekt.find(x=>x.id===planAuswahl); if(!o) return; o.rot=((o.rot||0)+(+t.dataset.g))%360; halleAktualisieren(); await speichere(()=>B.aendern("planobjekt",o.id,{rot:o.rot})); },

@@ -531,9 +531,22 @@ const sitzText = () => { const st=stuhlPositionen(bestuhlungN()).length, se=seit
   const teile=[st?`${st} Stühle`:"", se?`${se} an der Bühne`:"", ti?`${ti} an Tischen`:""].filter(Boolean); return teile.join(" + ")||"0 Sitzplätze"; };
 const sitzplaetze = () => S.planobjekt.reduce((s,o)=>s+(OBJEKTE[o.typ]?.plaetze||0),0)+stuhlPositionen(bestuhlungN()).length;
 ANSICHTEN.halle = () => {
-  const plaetze=sitzplaetze(), bn=bestuhlungN(), bi=bestuhlungInfo(bn);
-  return `<div class="kopf"><div><p class="etikett">Konzstraße 9 · 47,40 × 19,90 m Innenmaß · Traufe 3,70 m · First 5,09 m</p><h1>Halle & 3D</h1><p class="unter">Grundriss nach dem aktuellen Plan, Maße vom Architekten. Plane die Einrichtung und geh virtuell durch die Halle.</p></div>
-    <div class="reiter" role="group" aria-label="Ansicht"><button data-a="halleReiter" data-k="plan" aria-pressed="${halleReiter==="plan"}">Grundriss & Planen</button><button data-a="halleReiter" data-k="3d" aria-pressed="${halleReiter==="3d"}">3D begehen</button></div></div>
+  const plaetze=sitzplaetze(), bn=bestuhlungN(), bi=bestuhlungInfo(bn), arch=istArch();
+  const kopf=`<div class="kopf"><div><p class="etikett">Konzstraße 9 · 47,40 × 19,90 m Innenmaß · Traufe 3,70 m · First 5,09 m</p><h1>Halle & 3D</h1><p class="unter">${arch?"Erdgeschoss nach dem Plan des Architekten (Bauantrag) – so, wie die Halle genehmigt wird.":"Unsere eigene Planung für den Umbau, Maße vom Architekten. Plane die Einrichtung und geh virtuell durch die Halle."}</p></div>
+    <div class="stapel" style="gap:8px;align-items:flex-end"><div class="reiter" role="group" aria-label="Planung"><button data-a="planung" data-k="eigen" aria-pressed="${!arch}">Eigene Planung</button><button data-a="planung" data-k="architekt" aria-pressed="${arch}">Architektenplanung</button></div>
+    <div class="reiter" role="group" aria-label="Ansicht"><button data-a="halleReiter" data-k="plan" aria-pressed="${halleReiter==="plan"}">Grundriss${arch?"":" & Planen"}</button><button data-a="halleReiter" data-k="3d" aria-pressed="${halleReiter==="3d"}">3D begehen</button></div></div></div>`;
+  const summe=RAEUME_ARCH.reduce((s,r)=>s+parseFloat(r.m2.replace(",",".")),0);
+  if(arch&&halleReiter==="plan") return kopf+`<section class="karte"><header><div><h2>Architektenplanung · Erdgeschoss</h2><p class="klein leise" style="margin-top:4px">Außenmaß 47,72 × 20,28–20,41 m · Nutzung als Begegnungsstätte</p></div></header>
+      <div class="halle-rahmen" style="overflow-x:auto"><div style="min-width:760px">${planSvg([],{})}</div></div>
+      <div class="zeile klein leise" style="margin-top:14px;gap:16px">
+        <span class="zeile" style="gap:6px"><span style="width:22px;height:4px;background:var(--text2);display:inline-block;border-radius:2px"></span>Wände</span>
+        <span class="zeile" style="gap:6px"><span style="color:var(--flamme);font-weight:700">▲</span>Eingang / Tor</span>
+        <span class="zeile" style="gap:6px"><span style="color:var(--ok);font-weight:700">▲</span>Notausgang</span>
+        <span>1 Kästchen = 1 m · Maße aus dem Plan, kleine Abweichungen beim Übertragen möglich</span></div></section>
+    <section class="karte" style="margin-top:16px"><header><h2>Räume laut Plan</h2><span class="pille">${String(summe.toFixed(2)).replace(".",",")} m²</span></header>
+      <div class="tabelle-rahmen"><table><thead><tr><th>Raum</th><th style="text-align:right">Fläche</th></tr></thead><tbody>
+      ${[...RAEUME_ARCH].sort((x,y)=>parseFloat(y.m2.replace(",","."))-parseFloat(x.m2.replace(",","."))).map(r=>`<tr><td>${esc(r.n)}</td><td class="mass" style="text-align:right">${r.m2} m²</td></tr>`).join("")}</tbody></table></div></section>`;
+  return kopf+`
   ${halleReiter==="plan"?`
   <div class="raster" style="grid-template-columns:minmax(0,1fr)">
     <section class="karte"><header><div class="zeile"><h2>Einrichtung planen</h2><span class="pille" id="plaetze">${sitzText()}</span></div>
@@ -556,9 +569,9 @@ ANSICHTEN.halle = () => {
         <span>1 Kästchen = 1 m · Objekte ziehen zum Verschieben</span></div></section>
   </div>`:`
   <section class="karte" style="padding:10px">
-    <div class="dreid" id="dreid"><div class="hud"><div class="zeile" style="gap:6px">${[["eingang","Eingang"],["raum","Gottesdienstraum"],["vorn","Zur Bühne"],["buehne","Auf der Bühne"],["gemein","Gemeinschaftsraum"],["oben","Von oben"],["aussen","Von außen"]].map(([k,l])=>`<button class="btn klein" data-a="blick" data-k="${k}">${l}</button>`).join("")}</div>
+    <div class="dreid" id="dreid"><div class="hud"><div class="zeile" style="gap:6px">${(arch?[["a_eingang","Eingang"],["a_halle","Begegnungsstätte"],["a_tor","Am Tor"],["a_neben","Begegnungsstätte 2"],["oben","Von oben"],["aussen","Von außen"]]:[["eingang","Eingang"],["raum","Gottesdienstraum"],["vorn","Zur Bühne"],["buehne","Auf der Bühne"],["gemein","Gemeinschaftsraum"],["oben","Von oben"],["aussen","Von außen"]]).map(([k,l])=>`<button class="btn klein" data-a="blick" data-k="${k}">${l}</button>`).join("")}</div>
       <div class="tafel">Ziehen = umsehen · W A S D oder Pfeile = gehen · Shift = schneller · Mausrad = vor/zurück</div></div><div class="joy" aria-hidden="true"><i></i></div></div>
-    <div class="zeile weit klein leise" style="margin-top:10px;padding:0 4px"><label class="zeile" style="gap:6px"><input type="checkbox" id="neu-gelb" checked data-a="neuGelb"> Neue Wände gelb zeigen</label><span>Eingerichtete Objekte aus dem Grundriss erscheinen hier mit.</span></div>
+    <div class="zeile weit klein leise" style="margin-top:10px;padding:0 4px">${arch?`<span>Architektenplanung: nur die Räume laut Bauantrag, ohne Einrichtung.</span>`:`<label class="zeile" style="gap:6px"><input type="checkbox" id="neu-gelb" checked data-a="neuGelb"> Neue Wände gelb zeigen</label><span>Eingerichtete Objekte aus dem Grundriss erscheinen hier mit.</span>`}</div>
   </section>`}`;
 };
 function auswahlLeiste(){ const o=S.planobjekt.find(x=>x.id===planAuswahl); if(!o) return `<p class="klein leise">Tippe ein Objekt an, um es zu drehen oder zu entfernen.</p>`;
@@ -768,6 +781,7 @@ const AKT = {
   austreten:async t=>{ await speichere(()=>B.austreten(t.dataset.id,S.me.id),"Ausgetreten"); await neu("team_mitglied"); render(); },
   schwer:t=>t.setAttribute("aria-pressed",t.getAttribute("aria-pressed")!=="true"),
   halleReiter:t=>{ halleReiter=t.dataset.k; render(); },
+  planung:t=>{ planungSetzen(t.dataset.k); planAuswahl=null; render(); },
   objNeu:async t=>{ const k=OBJEKTE[t.dataset.typ]; const o=await speichere(()=>B.neu("planobjekt",{typ:t.dataset.typ,x:30,y:9.9,rot:t.dataset.typ==="stuhlreihe"?90:0,label:k.n}));
     await neu("planobjekt"); planAuswahl=o?.id||null; halleAktualisieren(); },
   objDreh:async t=>{ const o=S.planobjekt.find(x=>x.id===planAuswahl); if(!o) return; o.rot=((o.rot||0)+(+t.dataset.g))%360; halleAktualisieren(); await speichere(()=>B.aendern("planobjekt",o.id,{rot:o.rot})); },
