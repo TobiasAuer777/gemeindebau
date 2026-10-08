@@ -272,3 +272,5 @@ a.btn{text-decoration:none}
 /* Material: Bauhaus */
 .bauhaus-karte{margin-bottom:14px;border-left:3px solid #e2001a}
 .bauhaus-feld{padding:12px;border-radius:12px;background:var(--flaeche2)}
+.start-plan{display:block;width:100%;padding:0;border:1px solid var(--linie);border-radius:12px;overflow:hidden;background:var(--flaeche);cursor:pointer}
+.start-plan svg{display:block;width:100%;height:auto;pointer-events:none}

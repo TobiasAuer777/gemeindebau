@@ -280,6 +280,8 @@ a.btn{text-decoration:none}
 /* Material: Bauhaus */
 .bauhaus-karte{margin-bottom:14px;border-left:3px solid #e2001a}
 .bauhaus-feld{padding:12px;border-radius:12px;background:var(--flaeche2)}
+.start-plan{display:block;width:100%;padding:0;border:1px solid var(--linie);border-radius:12px;overflow:hidden;background:var(--flaeche);cursor:pointer}
+.start-plan svg{display:block;width:100%;height:auto;pointer-events:none}
 
 </style>
 </head><body><div id="wurzel"></div>
@@ -1012,6 +1014,9 @@ ANSICHTEN.start = () => {
     <section class="karte"><header><h2>Aufgaben ohne Zuweisung</h2><span class="pille">${ohne.length}</span></header>
       ${ohne.length?`<div class="liste">${ohne.slice(0,6).map(a=>`<button class="zeile weit" style="border-left:0;border-right:0;border-bottom:0;background:none;cursor:pointer;text-align:left;width:100%" data-a="aufgabe" data-id="${a.id}"><span><b>${esc(a.titel)}</b><span class="klein leise" style="display:block">${esc(a.gewerk||"")}${a.datum?" · "+dKurz(a.datum):""}</span></span>${icon("rechts")}</button>`).join("")}</div>`:`<div class="leer">Alle Aufgaben sind verteilt.</div>`}</section>`:""}
   </div>
+  <section class="karte" style="margin-top:16px"><header><div><p class="etikett">${istArch()?"Architektenplanung":"Eigene Planung"}</p><h2>Halle & 3D</h2></div>
+      <div class="zeile"><button class="btn klein" data-a="geh" data-ziel="halle" data-hreiter="plan">Grundriss</button><button class="btn klein primaer" data-a="geh" data-ziel="halle" data-hreiter="3d">3D begehen</button></div></header>
+    <button class="start-plan" data-a="geh" data-ziel="halle" data-hreiter="plan" aria-label="Grundriss öffnen">${planSvg(istArch()?[]:S.planobjekt,{bestuhlung:bestuhlungN(),seiten:seitenAn()})}</button></section>
   <section class="karte" style="margin-top:16px"><header><h2>Neu im Bautagebuch</h2><button class="btn still klein" data-a="geh" data-ziel="tagebuch">Alle Einträge ${icon("rechts")}</button></header>
     ${letzte.length?`<div class="raster r3">${letzte.map(eintragKarte).join("")}</div>`:`<div class="leer">Noch keine Einträge. Halte den ersten Fortschritt mit Foto fest.</div>`}</section>`;
 };
@@ -1419,7 +1424,7 @@ ANSICHTEN.halle = () => {
   ${halleReiter==="plan"?`
   <div class="raster" style="grid-template-columns:minmax(0,1fr)">
     <section class="karte"><header><div class="zeile"><h2>Einrichtung planen</h2><span class="pille" id="plaetze">${sitzText()}</span></div>
-      <div class="zeile"><button class="btn klein" data-a="grundeinrichtung">Bühne & Esstische einrichten</button><button class="btn klein still" data-a="planLeerenFrage">Alles entfernen</button></div></header>
+      ${istLeitung()?`<div class="zeile"><button class="btn klein" data-a="grundeinrichtung">Bühne & Esstische einrichten</button><button class="btn klein still" data-a="planLeerenFrage">Alles entfernen</button></div>`:""}</header>
       <div class="zeile" style="gap:12px;margin-bottom:12px"><span class="etikett" style="margin:0">Bestuhlung Gottesdienstraum</span>
         <div class="reiter" role="group" aria-label="Bestuhlung">${[0,300,400,500].map(n=>`<button data-a="bestuhlungWahl" data-k="${n}" aria-pressed="${bn===n}">${n?n+" Stühle":"Keine"}</button>`).join("")}</div>
         <button class="chip" data-a="seitenWahl" aria-pressed="${seitenAn()}"><span style="width:10px;height:10px;border-radius:2px;background:${STUHL.rot};display:inline-block"></span>Seitenplätze an der Bühne</button>
@@ -1611,7 +1616,7 @@ function zeigeTor(art,fehler="",info=""){
 
 /* ================= Aktionen ================= */
 const AKT = {
-  geh:t=>{ ansicht=t.dataset.ziel; if(t.dataset.tag) tpDatum=t.dataset.tag; schliesse(); render(); window.scrollTo(0,0); },
+  geh:t=>{ ansicht=t.dataset.ziel; if(t.dataset.tag) tpDatum=t.dataset.tag; if(t.dataset.hreiter) halleReiter=t.dataset.hreiter; schliesse(); render(); window.scrollTo(0,0); },
   mehr:()=>oeffne("Mehr", `<nav class="nav">${[["halle","Halle & 3D"],["tagebuch","Bautagebuch"],["teams","Teams & Leitung"],["material","Material"],["werkzeug","Werkzeug"],["profil","Mein Profil"],...(istAdmin()?[["benutzer","Benutzer verwalten"]]:[])].map(([k,l])=>`<button data-a="geh" data-ziel="${k}">${icon(k)}<span>${l}</span></button>`).join("")}</nav>`),
   zu:()=>schliesse(),
   demoReset:()=>{ DemoBackend.zuruecksetzen(); ladeAlles().then(()=>{ S.me=S.profil.find(p=>p.id===DemoBackend.d.me); render(); toast("Beispieldaten zurückgesetzt"); }); },
@@ -1665,7 +1670,7 @@ const AKT = {
     if(!neue.length) return toast("Bühne und Esstische sind schon eingerichtet");
     await speichere(()=>B.neuViele("planobjekt",neue)); await neu("planobjekt"); halleAktualisieren(); toast(neue.length+" Objekte gesetzt"); },
   planLeerenFrage:()=>{ $("[data-leerfrage]").innerHTML=`<div class="hinweis zeile weit" style="margin-bottom:12px"><span>Alle ${S.planobjekt.length} Objekte aus dem Plan entfernen? Das gilt für alle.</span><span class="zeile"><button class="btn klein gefahr" data-a="planLeeren">Ja, entfernen</button><button class="btn klein still" data-a="frageZu">Nein</button></span></div>`; },
-  planLeeren:async ()=>{ for(const o of [...S.planobjekt]) await B.loeschen("planobjekt",o.id); planAuswahl=null; await neu("planobjekt"); render(); },
+  planLeeren:async ()=>{ if(!istLeitung()) return; for(const o of [...S.planobjekt]) await B.loeschen("planobjekt",o.id); planAuswahl=null; await neu("planobjekt"); render(); },
   blick:t=>dreiD?.ansicht(t.dataset.k),
   tor:t=>zeigeTor(t.dataset.k),
   tpTag:t=>{ const d=+t.dataset.d; tpDatum=d===0?heuteIso():plusTage(tpDatum||heuteIso(),d); render(); },
