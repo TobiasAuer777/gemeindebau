@@ -680,8 +680,9 @@ const zugangsText = w => `Hallo ${w.name.split(" ")[0]}, hier ist dein Zugang zu
 // Bekannte Personen (Leitungsgruppe) ohne Zugang: Startpasswörter je Person einmal erzeugen; angelegte Zugangsdaten nur im Speicher dieser Sitzung
 const bkPw={}; const neueZugaenge=[];
 const bkRolle = l => /pastor/i.test(l.schwerpunkt||"") ? "mitglied" : "bauleitung";
-function bekannteOhneZugang(){ const namen=new Set(S.profil.map(p=>p.name.split(" ")[0].toLowerCase()));
-  return [...S.leitung].filter(l=>!l.profil_id&&!namen.has(l.name.split(" ")[0].toLowerCase())).sort((x,y)=>(x.sort??99)-(y.sort??99)); }
+// Vorname passt, auch verkürzt (Tobi ↔ Tobias)
+const vornameGleich = (a,b) => { a=a.split(" ")[0].toLowerCase(); b=b.split(" ")[0].toLowerCase(); return a===b||(a.length>=3&&b.length>=3&&(a.startsWith(b)||b.startsWith(a))); };
+function bekannteOhneZugang(){ return [...S.leitung].filter(l=>!l.profil_id&&!S.profil.some(p=>vornameGleich(p.name,l.name))).sort((x,y)=>(x.sort??99)-(y.sort??99)); }
 function bekannteKarte(){
   const offen=bekannteOhneZugang();
   const zeile=l=>{ const pw=bkPw[l.id]||(bkPw[l.id]=startpasswort());
@@ -690,7 +691,8 @@ function bekannteKarte(){
       <input type="email" name="email" id="bk-mail-${l.id}" required placeholder="E-Mail" aria-label="E-Mail von ${esc(l.name)}" autocomplete="off">
       <select name="rolle" id="bk-rolle-${l.id}" aria-label="Rolle von ${esc(l.name)}">${["mitglied","bauleitung","admin"].map(r=>`<option value="${r}" ${bkRolle(l)===r?"selected":""}>${rolleText(r)}</option>`).join("")}</select>
       <input type="text" name="pw" id="bk-pw-${l.id}" required minlength="8" value="${esc(pw)}" aria-label="Startpasswort von ${esc(l.name)}" class="mass" autocomplete="off">
-      <button class="btn primaer klein" type="submit">Anlegen</button></form>`; };
+      <button class="btn primaer klein" type="submit">Anlegen</button>
+      <div class="bk-schon"><button type="button" class="link klein" data-a="bkSchon" data-id="${l.id}">Hat schon einen Zugang?</button></div></form>`; };
   const liste=neueZugaenge.map((w,i)=>`<div class="bk-fertig"><div><b>${esc(w.name)}</b> <span class="pille">${esc(rolleText(w.rolle))}</span>
       <div class="klein">${esc(w.email)} · Startpasswort <span class="mass"><b>${esc(w.pw)}</b></span></div></div>
       <div class="zeile"><a class="btn klein" href="https://wa.me/?text=${encodeURIComponent(zugangsText(w))}" target="_blank" rel="noopener">WhatsApp</a></div></div>`).join("");
@@ -843,6 +845,11 @@ const AKT = {
     <label class="feld">Hinweis (optional)<input type="text" name="hinweis" id="l-hinweis" placeholder="z. B. lange Anreise – eher am Wochenende" autocomplete="off"></label>
     <p class="klein leise">Danach erscheint die Person unter Benutzer → „Bekannte Personen“, dort legst du ihren Zugang an.</p>
     <button class="btn primaer" type="submit">${icon("plus")}Hinzufügen</button></form>`),
+  bkSchon:t=>{ const l=S.leitung.find(x=>x.id===t.dataset.id); if(!l) return;
+    const frei=S.profil.filter(p=>!S.leitung.some(x=>x.profil_id===p.id)).sort((a,b)=>a.name.localeCompare(b.name));
+    oeffne(l.name+" zuordnen",`<form class="stapel" data-form="bkZuordnen" data-id="${l.id}"><p class="klein">Wähl das Konto, mit dem ${esc(l.name.split(" ")[0])} schon registriert ist. Dann gehört es zur Leitungsgruppe und taucht hier nicht mehr auf.</p>
+      <label class="feld">Konto<select name="profil" id="bk-profil" required>${frei.map(p=>`<option value="${p.id}">${esc(p.name)} · ${esc(rolleText(p.rolle))}</option>`).join("")}</select></label>
+      ${frei.length?`<button class="btn primaer" type="submit">${icon("check")}Zuordnen</button>`:`<p class="leise klein">Alle Konten sind schon jemandem aus der Leitungsgruppe zugeordnet.</p>`}</form>`); },
   bkKopieren:async ()=>{ const txt=neueZugaenge.map(w=>`${w.name} (${rolleText(w.rolle)})\nE-Mail: ${w.email}\nStartpasswort: ${w.pw}`).join("\n\n")+`\n\nSeite: ${APP_URL}`;
     try{ await navigator.clipboard.writeText(txt); toast("Zugangsdaten kopiert"); }catch(e){ toast("Kopieren ging nicht"); } },
   bkDrucken:()=>{ document.body.classList.add("druck-zugaenge"); const vorher=document.documentElement.dataset.theme; themaSetzen("light");
@@ -908,6 +915,7 @@ const FORM = {
     const notiz=f.notiz.value.trim()||(auf?.gewerk==="Mauern (Ytong)"?TP_MAUERN:null);
     await speichere(()=>B.neu("tagesplan_punkt",{datum:tpDatum,abschnitt,titel,wer:f.wer.value.trim()||null,notiz,aufgabe_id:auf?.id||null,sort:Math.max(-1,...pk.map(x=>x.sort))+1,erledigt:false}),"Hinzugefügt");
     await neu("tagesplan_punkt"); schliesse(); render(); },
+  bkZuordnen:async f=>{ await speichere(()=>B.aendern("leitung",f.dataset.id,{profil_id:f.profil.value}),"Zugeordnet"); await neu("leitung"); schliesse(); render(); },
   bekannt:async f=>{ const l=S.leitung.find(x=>x.id===f.dataset.id); if(!l) return;
     const w={name:l.name,email:f.email.value.trim().toLowerCase(),rolle:f.rolle.value,pw:f.pw.value.trim()};
     const knopf=f.querySelector("[type=submit]"); knopf.disabled=true; knopf.textContent="Legt an …";
