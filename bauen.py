@@ -16,7 +16,7 @@ stoff = (SRC/"stoff.txt").read_text().strip()
 
 KOPF = """<title>Gemeindebau Tabernacle</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&family=JetBrains+Mono:wght@500&display=swap">"""
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap">"""
 SKRIPTE = """<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>"""
 
@@ -29,7 +29,7 @@ def inhalt(konfig):
 # Echte Seite
 voll = f"""<!doctype html>
 <html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#14254f"><link rel="icon" href="{fav}"><link rel="apple-touch-icon" href="{logo}">
+<meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#0e1116" media="(prefers-color-scheme: dark)"><link rel="icon" href="{fav}"><link rel="apple-touch-icon" href="{logo}">
 <meta name="robots" content="noindex">
 {inhalt({"url": url, "anonKey": key})}</html>"""
 voll = voll.replace("<div id=\"wurzel\"></div>", "</head><body><div id=\"wurzel\"></div>", 1).replace("</script>\n</html>", "</script>\n</body></html>")

@@ -242,8 +242,8 @@ function halle3d(container, objekte, opt={}){
   const ledCanvas=document.createElement("canvas"); ledCanvas.width=1600; ledCanvas.height=480;
   const g=ledCanvas.getContext("2d"); const grad=g.createLinearGradient(0,0,1600,480); grad.addColorStop(0,"#0b1a45"); grad.addColorStop(.55,"#1d3f94"); grad.addColorStop(1,"#e2641a");
   g.fillStyle=grad; g.fillRect(0,0,1600,480);
-  g.fillStyle="#ffffff"; g.textAlign="center"; g.font="700 104px 'Barlow Condensed', 'Arial Narrow', sans-serif"; g.fillText("TABERNACLE CHURCH",860,262);
-  g.globalAlpha=.85; g.font="500 36px Barlow, Arial, sans-serif"; g.fillText("Konzstraße 9 · Mannheim",860,326); g.globalAlpha=1;
+  g.fillStyle="#ffffff"; g.textAlign="center"; g.font="600 96px Fraunces, Georgia, serif"; g.fillText("TABERNACLE CHURCH",860,262);
+  g.globalAlpha=.85; g.font="500 34px Inter, Arial, sans-serif"; g.fillText("Konzstraße 9 · Mannheim",860,326); g.globalAlpha=1;
   const ledTex=new THREE.CanvasTexture(ledCanvas);
   if(opt.logo){ const li=new Image(); li.onload=()=>{ const h=320, w=li.width*h/li.height; g.drawImage(li,150,80,w,h); ledTex.needsUpdate=true; }; li.src=opt.logo; }
   const led=new THREE.Mesh(new THREE.PlaneGeometry(LED.y2-LED.y1,LED.oben-LED.unten),new THREE.MeshBasicMaterial({map:ledTex}));

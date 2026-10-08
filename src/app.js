@@ -19,7 +19,9 @@ const IC = {
   mehr:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
   plus:'<path d="M12 5v14M5 12h14"/>', foto:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
   zu:'<path d="M6 6l12 12M18 6 6 18"/>', links:'<path d="m15 5-7 7 7 7"/>', rechts:'<path d="m9 5 7 7-7 7"/>', check:'<path d="m5 12 4 4 10-10"/>',
-  drehen:'<path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4h-4"/>', papierkorb:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'
+  drehen:'<path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4h-4"/>',
+  sonne:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  mond:'<path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/>', papierkorb:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'
 };
 const icon = (n,cls="") => `<svg class="${cls}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]||""}</svg>`;
 const NAV = [["start","Start"],["kalender","Kalender"],["aufgaben","Aufgaben"],["tagebuch","Bautagebuch"],["halle","Halle & 3D"],"-",["teams","Teams & Leitung"],["material","Material"],["werkzeug","Werkzeug"]];
@@ -52,6 +54,13 @@ function nachladen(t){ clearTimeout(nachladenTimer[t]); nachladenTimer[t]=setTim
 async function speichere(fn,meldung){ try{ const r=await fn(); if(meldung) toast(meldung); return r; }catch(e){ console.error(e); toast("Nicht gespeichert: "+(e.message||e)); throw e; } }
 
 /* ---------- Rahmen ---------- */
+/* Hell / dunkel: folgt dem Gerät, bis man selbst umschaltet (gilt dann auf diesem Gerät) */
+function themaLesen(){ try{ return localStorage.getItem("gb-thema"); }catch(e){ return null; } }
+function themaSetzen(t){ if(t) document.documentElement.dataset.theme=t; else delete document.documentElement.dataset.theme; }
+function istDunkel(){ const t=document.documentElement.dataset.theme; return t ? t==="dark" : matchMedia("(prefers-color-scheme: dark)").matches; }
+themaSetzen(themaLesen());
+const themaKnopf = () => `<button class="btn thema-knopf" data-a="thema" aria-label="${istDunkel()?"Hellen Modus einschalten":"Dunklen Modus einschalten"}" title="${istDunkel()?"Hell":"Dunkel"}">${icon(istDunkel()?"sonne":"mond")}</button>`;
+
 function rahmen(){
   const navBtn = ([k,l]) => `<button data-a="geh" data-ziel="${k}" ${ansicht===k?'aria-current="page"':''}>${icon(k)}<span>${l}</span></button>`;
   const ich = S.me;
@@ -62,8 +71,9 @@ function rahmen(){
     <button class="ich" data-a="geh" data-ziel="profil">${ava(ich.id,34)}<span><b>${esc(ich.name)}</b><small>${rolleText(ich.rolle)}</small></span></button>
   </aside>
   <main class="haupt" id="haupt">
+    <div class="oberleiste">${themaKnopf()}</div>
     <div class="handykopf"><div class="marke"><img src="${LOGO}" alt="Logo"><div><b>Gemeindebau</b><span>Tabernacle Church</span></div></div>
-      <button class="btn still" data-a="geh" data-ziel="profil" aria-label="Profil">${ava(ich.id,32)}</button></div>
+      <div class="zeile" style="flex-wrap:nowrap;gap:6px">${themaKnopf()}<button class="btn still" data-a="geh" data-ziel="profil" aria-label="Profil">${ava(ich.id,32)}</button></div></div>
     ${B.modus==="demo"?`<div class="demo-band"><b>Vorschau mit Beispieldaten.</b> Alles, was du hier einträgst, bleibt nur in diesem Browser. Die echte Seite für die Gemeinde läuft mit eigener Anmeldung. <button class="btn klein" data-a="demoReset">Beispieldaten zurücksetzen</button></div>`:""}
     <div id="ansicht">${ANSICHTEN[ansicht]()}</div>
   </main>
@@ -566,7 +576,7 @@ function zugangFertig(w,ergebnis){
 let torCode=new URLSearchParams(location.search).get("einladung")||"";
 function zeigeTor(art,fehler="",info=""){
   const reg=art==="registrieren", beit=art==="beitreten", verg=art==="vergessen", erstPw=art==="erstesPasswort", neuPw=art==="neuesPasswort"||erstPw;
-  document.getElementById("wurzel").innerHTML=`<div class="tor"><div class="karte">
+  document.getElementById("wurzel").innerHTML=`<div class="tor">${themaKnopf()}<div class="karte">
     <div class="marke"><img src="${LOGO}" alt="Logo Tabernacle Church"><div><b>Gemeindebau</b><span>Tabernacle Church · Konzstraße 9</span></div></div>
     ${verg?`<form class="stapel" data-form="vergessen"><p>Gib deine E-Mail ein. Du bekommst einen Link, mit dem du ein neues Passwort festlegst.</p>
       <label class="feld">E-Mail<input type="email" name="email" id="t-e" required autocomplete="email"></label>
@@ -649,6 +659,8 @@ const AKT = {
   planLeeren:async ()=>{ for(const o of [...S.planobjekt]) await B.loeschen("planobjekt",o.id); planAuswahl=null; await neu("planobjekt"); render(); },
   blick:t=>dreiD?.ansicht(t.dataset.k),
   tor:t=>zeigeTor(t.dataset.k),
+  thema:()=>{ const neu=istDunkel()?"light":"dark"; themaSetzen(neu); try{ localStorage.setItem("gb-thema",neu); }catch(e){}
+    $$(".thema-knopf").forEach(k=>k.outerHTML=themaKnopf()); if(ansicht==="halle"&&!document.querySelector(".tor")) render(); },
   abmelden:async ()=>{ await B.abmelden(); location.reload(); },
   zugangNeu:()=>zugangDialog(),
   pwWuerfeln:t=>{ const i=t.closest("form").querySelector("#z-pw"); i.value=startpasswort(); i.focus(); },
