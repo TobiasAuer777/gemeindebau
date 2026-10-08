@@ -82,7 +82,7 @@ function rahmen(){
 </div>`;
 }
 const rolleText = r => ({admin:"Admin · Bauleitung",bauleitung:"Bauleitung",mitglied:"Gemeindemitglied"})[r]||r;
-function render(){ if(dreiD){ dreiD.stop(); dreiD=null; }
+function render(){ if(dreiD){ dreiD.stop(); dreiD=null; } lageSetzen(buehneLage());
   document.getElementById("wurzel").innerHTML = rahmen(); nachRender(); }
 function nachRender(){
   if(ansicht==="halle") halleStarten();
@@ -277,6 +277,7 @@ const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich,
   [1, "Decke sprühen vorbereiten", "Nur wenn die Deckenplatten asbestfrei sind (siehe „Deckenuntersicht klären“) – am Asbest wird nicht gearbeitet. Am besten jetzt, solange die Halle leer ist: Fenster, Tore und Boden abdecken bzw. abkleben, Gerüste von Igor und Tobi aufbauen.", "Malern", "Ganze Halle", null, 2],
   [1, "Decke mit dem Farbsprüher streichen", "Airless-Sprühgerät; Atemschutz gegen Sprühnebel, Schutzbrille, gut lüften. Vor neuen Wänden, Kabeltrassen und Lampen – dann muss kaum etwas abgeklebt werden.", "Malern", "Ganze Halle", null, 2],
   [2, "Neue Wände anreißen", "Mit dem aktuellen Plan abgleichen: Türbreiten, Fluchtwege.", "Mauern (Ytong)", "Ganze Halle", "Mauern", 1],
+  [2, "Wände bis unter die Decke", "Alle neuen Wände gehen bis unter das Dach; die Oberkante folgt der Dachneigung (3,70 m an der Traufe bis 5,09 m am First). Oben an die Stahlkonstruktion anschließen bzw. mit elastischer Fuge – nichts in die asbesthaltigen Dachplatten befestigen. Ab Arbeitshöhe von den Gerüsten aus; Steine für die Schräge zuschneiden.", "Mauern (Ytong)", "Ganze Halle", "Mauern", 1],
   [2, "Mauer-Teams einteilen", "Mindestens 2 Teams mauern gleichzeitig. Zuerst die erste Steinlage genau in Waage setzen. Dann versetzt: Sobald Team 1 ein paar Steine der Reihe gesetzt hat, beginnt Team 2 die nächste Reihe dahinter. Versatz der Stoßfugen mindestens 0,4 × Steinhöhe. Ab Arbeitshöhe von den Gerüsten aus. Steht im Tagesplan bei jeder Mauer-Aufgabe.", "Mauern (Ytong)", "Ganze Halle", "Mauern", 1],
   [2, "Dosen und Leerrohre in neuen Wänden festlegen", "Elektro-Planung abschließen, bevor gemauert wird.", "Elektrik", "Ganze Halle", "Elektrik", 1],
   [2, "Wand hinter der Bühne mit Ringanker", "Ca. 19,9 m von Außenwand zu Außenwand, Ytong, Ringanker aus U-Schalen, Bewehrung und Beton nach Statik.", "Mauern (Ytong)", "Bühne", "Mauern", 1],
@@ -530,6 +531,8 @@ const bestuhlungObj = () => S.planobjekt.find(o=>o.typ==="bestuhlung");
 const bestuhlungN = () => +(bestuhlungObj()?.label||0);
 const seitenObj = () => S.planobjekt.find(o=>o.typ==="seiten");
 const seitenAn = () => seitenObj()?.label==="1";
+const lageObj = () => S.planobjekt.find(o=>o.typ==="lage");
+const buehneLage = () => lageObj()?.label==="quer" ? "quer" : "stirn";
 const sitzText = () => { const st=stuhlPositionen(bestuhlungN()).length, se=seitenAn()?seitenPositionen().length:0, ti=S.planobjekt.reduce((s,o)=>s+(OBJEKTE[o.typ]?.plaetze||0),0);
   const teile=[st?`${st} Stühle`:"", se?`${se} an der Bühne`:"", ti?`${ti} an Tischen`:""].filter(Boolean); return teile.join(" + ")||"0 Sitzplätze"; };
 const sitzplaetze = () => S.planobjekt.reduce((s,o)=>s+(OBJEKTE[o.typ]?.plaetze||0),0)+stuhlPositionen(bestuhlungN()).length;
@@ -540,7 +543,9 @@ ANSICHTEN.halle = () => {
     <div class="reiter" role="group" aria-label="Ansicht"><button data-a="halleReiter" data-k="plan" aria-pressed="${halleReiter==="plan"}">Grundriss${arch?"":" & Planen"}</button><button data-a="halleReiter" data-k="3d" aria-pressed="${halleReiter==="3d"}">3D begehen</button></div></div></div>`;
   const summe=RAEUME_ARCH.reduce((s,r)=>s+parseFloat(r.m2.replace(",",".")),0);
   if(arch&&halleReiter==="plan") return kopf+`<section class="karte"><header><div class="zeile"><h2>Architektenplanung · Erdgeschoss</h2><span class="pille" id="plaetze">${sitzText()}</span></div></header>
-      <p class="klein leise" style="margin:-4px 0 12px">Außenmaß 47,72 × 20,28–20,41 m. Die Einrichtung aus der eigenen Planung ist übertragen: Bühne mit LED-Wand vor der Trennwand, Technik dahinter, Esstische in der zweiten Begegnungsstätte. Verschieben geht in der eigenen Planung.</p>
+      <div class="zeile" style="gap:12px;margin-bottom:10px"><span class="etikett" style="margin:0">Bühne</span>
+        <div class="reiter" role="group" aria-label="Lage der Bühne"><button data-a="lageWahl" data-k="stirn" aria-pressed="${buehneLage()==="stirn"}">Stirnseite (Trennwand)</button><button data-a="lageWahl" data-k="quer" aria-pressed="${buehneLage()==="quer"}">Längsseite · Hof Kinder-Spiel</button></div></div>
+      <p class="klein leise" style="margin:0 0 12px">Außenmaß 47,72 × 20,28–20,41 m. ${buehneLage()==="quer"?"Bühne mittig an der Längswand zum Hof Kinder-Spiel, die Gemeinde blickt nach Norden; Technik hinten vor der Eingangsseite. Die Traufe ist dort nur 3,70 m hoch – die LED-Wand sitzt darum direkt auf Bühnenhöhe.":"Bühne mit LED-Wand vor der Trennwand, Technik hinter den Reihen."} Esstische in der zweiten Begegnungsstätte. Verschieben geht in der eigenen Planung.</p>
       <div class="zeile" style="gap:12px;margin-bottom:12px"><span class="etikett" style="margin:0">Bestuhlung</span>
         <div class="reiter" role="group" aria-label="Bestuhlung">${[0,300,400,500].map(n=>`<button data-a="bestuhlungWahl" data-k="${n}" aria-pressed="${bn===n}">${n?n+" Stühle":"Keine"}</button>`).join("")}</div>
         <button class="chip" data-a="seitenWahl" aria-pressed="${seitenAn()}"><span style="width:10px;height:10px;border-radius:2px;background:${STUHL.rot};display:inline-block"></span>Seitenplätze an der Bühne</button>
@@ -798,6 +803,9 @@ const AKT = {
   schwer:t=>t.setAttribute("aria-pressed",t.getAttribute("aria-pressed")!=="true"),
   halleReiter:t=>{ halleReiter=t.dataset.k; render(); },
   planung:t=>{ planungSetzen(t.dataset.k); planAuswahl=null; render(); },
+  lageWahl:async t=>{ const k=t.dataset.k, o=lageObj(); if(k===buehneLage()) return;
+    await speichere(()=>o?B.aendern("planobjekt",o.id,{label:k,geaendert:new Date().toISOString()}):B.neu("planobjekt",{typ:"lage",x:0,y:0,rot:0,label:k}),k==="quer"?"Bühne an der Längsseite":"Bühne an der Stirnseite");
+    await neu("planobjekt"); render(); },
   objNeu:async t=>{ const k=OBJEKTE[t.dataset.typ]; const o=await speichere(()=>B.neu("planobjekt",{typ:t.dataset.typ,x:30,y:9.9,rot:t.dataset.typ==="stuhlreihe"?90:0,label:k.n}));
     await neu("planobjekt"); planAuswahl=o?.id||null; halleAktualisieren(); },
   objDreh:async t=>{ const o=S.planobjekt.find(x=>x.id===planAuswahl); if(!o) return; o.rot=((o.rot||0)+(+t.dataset.g))%360; halleAktualisieren(); await speichere(()=>B.aendern("planobjekt",o.id,{rot:o.rot})); },
