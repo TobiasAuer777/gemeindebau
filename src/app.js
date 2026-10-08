@@ -145,7 +145,7 @@ ANSICHTEN.start = () => {
   </div>
   <section class="karte" style="margin-top:16px"><header><div><p class="etikett">${istArch()?"Architektenplanung":"Eigene Planung"}</p><h2>Halle & 3D</h2></div>
       <div class="zeile"><button class="btn klein" data-a="geh" data-ziel="halle" data-hreiter="plan">Grundriss</button><button class="btn klein primaer" data-a="geh" data-ziel="halle" data-hreiter="3d">3D begehen</button></div></header>
-    <button class="start-plan" data-a="geh" data-ziel="halle" data-hreiter="plan" aria-label="Grundriss öffnen">${planSvg(istArch()?[]:S.planobjekt,{bestuhlung:bestuhlungN(),seiten:seitenAn()})}</button></section>
+    <button class="start-plan" data-a="geh" data-ziel="halle" data-hreiter="plan" aria-label="Grundriss öffnen">${planSvg(S.planobjekt,{bestuhlung:bestuhlungN(),seiten:seitenAn()})}</button></section>
   <section class="karte" style="margin-top:16px"><header><h2>Neu im Bautagebuch</h2><button class="btn still klein" data-a="geh" data-ziel="tagebuch">Alle Einträge ${icon("rechts")}</button></header>
     ${letzte.length?`<div class="raster r3">${letzte.map(eintragKarte).join("")}</div>`:`<div class="leer">Noch keine Einträge. Halte den ersten Fortschritt mit Foto fest.</div>`}</section>`;
 };
@@ -539,10 +539,17 @@ ANSICHTEN.halle = () => {
     <div class="stapel" style="gap:8px;align-items:flex-end"><div class="reiter" role="group" aria-label="Planung"><button data-a="planung" data-k="eigen" aria-pressed="${!arch}">Eigene Planung</button><button data-a="planung" data-k="architekt" aria-pressed="${arch}">Architektenplanung</button></div>
     <div class="reiter" role="group" aria-label="Ansicht"><button data-a="halleReiter" data-k="plan" aria-pressed="${halleReiter==="plan"}">Grundriss${arch?"":" & Planen"}</button><button data-a="halleReiter" data-k="3d" aria-pressed="${halleReiter==="3d"}">3D begehen</button></div></div></div>`;
   const summe=RAEUME_ARCH.reduce((s,r)=>s+parseFloat(r.m2.replace(",",".")),0);
-  if(arch&&halleReiter==="plan") return kopf+`<section class="karte"><header><div><h2>Architektenplanung · Erdgeschoss</h2><p class="klein leise" style="margin-top:4px">Außenmaß 47,72 × 20,28–20,41 m · Nutzung als Begegnungsstätte</p></div></header>
-      <div class="halle-rahmen" style="overflow-x:auto"><div style="min-width:760px">${planSvg([],{})}</div></div>
+  if(arch&&halleReiter==="plan") return kopf+`<section class="karte"><header><div class="zeile"><h2>Architektenplanung · Erdgeschoss</h2><span class="pille" id="plaetze">${sitzText()}</span></div></header>
+      <p class="klein leise" style="margin:-4px 0 12px">Außenmaß 47,72 × 20,28–20,41 m. Die Einrichtung aus der eigenen Planung ist übertragen: Bühne mit LED-Wand vor der Trennwand, Technik dahinter, Esstische in der zweiten Begegnungsstätte. Verschieben geht in der eigenen Planung.</p>
+      <div class="zeile" style="gap:12px;margin-bottom:12px"><span class="etikett" style="margin:0">Bestuhlung</span>
+        <div class="reiter" role="group" aria-label="Bestuhlung">${[0,300,400,500].map(n=>`<button data-a="bestuhlungWahl" data-k="${n}" aria-pressed="${bn===n}">${n?n+" Stühle":"Keine"}</button>`).join("")}</div>
+        <button class="chip" data-a="seitenWahl" aria-pressed="${seitenAn()}"><span style="width:10px;height:10px;border-radius:2px;background:${STUHL.rot};display:inline-block"></span>Seitenplätze an der Bühne</button>
+        <span class="klein leise">${bi?`3 Blöcke (${bi.bloecke.join(" | ")}), ${bi.reihen} Reihen, Reihenabstand ${String(bi.abstand).replace(".",",")} m, Gänge ${String(bi.gang).replace(".",",")} m`:""}</span></div>
+      <div class="halle-rahmen" style="overflow-x:auto"><div style="min-width:760px">${planSvg(S.planobjekt,{bestuhlung:bn,seiten:seitenAn()})}</div></div>
       <div class="zeile klein leise" style="margin-top:14px;gap:16px">
         <span class="zeile" style="gap:6px"><span style="width:22px;height:4px;background:var(--text2);display:inline-block;border-radius:2px"></span>Wände</span>
+        <span class="zeile" style="gap:6px"><span style="width:22px;height:5px;background:var(--flamme);display:inline-block;border-radius:2px"></span>LED-Wand 10 × 3 m</span>
+        <span class="zeile" style="gap:6px"><span style="width:14px;height:10px;background:radial-gradient(var(--text3) 1px,transparent 1.5px) 0 0/4px 4px;border:1px solid var(--text3);display:inline-block"></span>Technikbereich</span>
         <span class="zeile" style="gap:6px"><span style="color:var(--flamme);font-weight:700">▲</span>Eingang / Tor</span>
         <span class="zeile" style="gap:6px"><span style="color:var(--ok);font-weight:700">▲</span>Notausgang</span>
         <span>1 Kästchen = 1 m · Maße aus dem Plan, kleine Abweichungen beim Übertragen möglich</span></div></section>
@@ -572,9 +579,9 @@ ANSICHTEN.halle = () => {
         <span>1 Kästchen = 1 m · Objekte ziehen zum Verschieben</span></div></section>
   </div>`:`
   <section class="karte" style="padding:10px">
-    <div class="dreid" id="dreid"><div class="hud"><div class="zeile" style="gap:6px">${(arch?[["a_eingang","Eingang"],["a_halle","Begegnungsstätte"],["a_tor","Am Tor"],["a_neben","Begegnungsstätte 2"],["oben","Von oben"],["aussen","Von außen"]]:[["eingang","Eingang"],["raum","Gottesdienstraum"],["vorn","Zur Bühne"],["buehne","Auf der Bühne"],["gemein","Gemeinschaftsraum"],["oben","Von oben"],["aussen","Von außen"]]).map(([k,l])=>`<button class="btn klein" data-a="blick" data-k="${k}">${l}</button>`).join("")}</div>
+    <div class="dreid" id="dreid"><div class="hud"><div class="zeile" style="gap:6px">${(arch?[["a_eingang","Eingang"],["a_halle","Begegnungsstätte"],["a_vorn","Zur Bühne"],["a_buehne","Auf der Bühne"],["a_neben","Begegnungsstätte 2"],["oben","Von oben"],["aussen","Von außen"]]:[["eingang","Eingang"],["raum","Gottesdienstraum"],["vorn","Zur Bühne"],["buehne","Auf der Bühne"],["gemein","Gemeinschaftsraum"],["oben","Von oben"],["aussen","Von außen"]]).map(([k,l])=>`<button class="btn klein" data-a="blick" data-k="${k}">${l}</button>`).join("")}</div>
       <div class="tafel">Ziehen = umsehen · W A S D oder Pfeile = gehen · Shift = schneller · Mausrad = vor/zurück</div></div><div class="joy" aria-hidden="true"><i></i></div></div>
-    <div class="zeile weit klein leise" style="margin-top:10px;padding:0 4px">${arch?`<span>Architektenplanung: nur die Räume laut Bauantrag, ohne Einrichtung.</span>`:`<label class="zeile" style="gap:6px"><input type="checkbox" id="neu-gelb" checked data-a="neuGelb"> Neue Wände gelb zeigen</label><span>Eingerichtete Objekte aus dem Grundriss erscheinen hier mit.</span>`}</div>
+    <div class="zeile weit klein leise" style="margin-top:10px;padding:0 4px">${arch?`<span>Architektenplanung mit übertragener Einrichtung und Bestuhlung.</span>`:`<label class="zeile" style="gap:6px"><input type="checkbox" id="neu-gelb" checked data-a="neuGelb"> Neue Wände gelb zeigen</label><span>Eingerichtete Objekte aus dem Grundriss erscheinen hier mit.</span>`}</div>
   </section>`}`;
 };
 function auswahlLeiste(){ const o=S.planobjekt.find(x=>x.id===planAuswahl); if(!o) return `<p class="klein leise">Tippe ein Objekt an, um es zu drehen oder zu entfernen.</p>`;

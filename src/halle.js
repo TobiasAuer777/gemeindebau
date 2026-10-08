@@ -38,9 +38,15 @@ const RAEUME_EIGEN = [
   {n:"Jugendraum",x:4.48,y:7.5,w:4.48,h:8.9},{n:"Pastor-Büro",x:0,y:14.44,w:4.0,h:5.46},{n:"Warteraum",x:4.0,y:16.4,w:4.96,h:3.5},
   {n:"Flur & Eingang",x:9.0,y:17.7,w:12.2,h:2.2,klein:true}
 ];
-const BUEHNE = {x:42.7,y:2.85,w:4.0,h:14.0,hoehe:0.6};   // 14 m breit, 4 m tief (Tobi, 08.10.)
-const LED = {y1:4.9,y2:14.8,unten:0.9,oben:3.9};     // 10 m × 3 m an der Wand hinter der Bühne
-const TECHNIK = {x:21.8,y:6.6,w:2.4,h:6.4};            // im Plan gepunktet: Technikbereich (Ton, Licht, Video)
+const BUEHNE_EIGEN = {x:42.7,y:2.85,w:4.0,h:14.0,hoehe:0.6};   // 14 m breit, 4 m tief (Tobi, 08.10.)
+const LED_EIGEN = {y1:4.9,y2:14.8,unten:0.9,oben:3.9,wand:46.7};   // 10 m × 3 m an der Wand hinter der Bühne
+const TECHNIK_EIGEN = {x:21.8,y:6.6,w:2.4,h:6.4};            // im Plan gepunktet: Technikbereich (Ton, Licht, Video)
+// Architektenplanung: Bühne am Ende des großen Saals vor der Trennwand (x = 40,0), Technik und Bestuhlung rücken mit
+const BUEHNE_ARCH = {...BUEHNE_EIGEN, x:36.0};
+const LED_ARCH = {...LED_EIGEN, wand:40.0};
+const ARCH_DX = BUEHNE_ARCH.x-BUEHNE_EIGEN.x;
+const TECHNIK_ARCH = {...TECHNIK_EIGEN, x:TECHNIK_EIGEN.x+ARCH_DX};
+let BUEHNE=BUEHNE_EIGEN, LED=LED_EIGEN, TECHNIK=TECHNIK_EIGEN;
 const istNeu = a => a==="neu"||a==="neu-ra";
 const TREPPEN_EIGEN = [{x:9.12,y:4.05,w:0.62,h:0.95},{x:9.12,y:9.92,w:0.62,h:1.0},{x:9.12,y:17.3,w:0.62,h:1.3}];  // je 6 Stufen
 const TUEREN_EIGEN = [{x1:32.6,x2:40.0,y:19.9,n:"Haupteingang"},{x1:40.9,x2:41.9,y:0,n:"Notausgang"}];
@@ -75,9 +81,22 @@ const TUEREN_ARCH = [{x1:10.37,x2:11.38,y:19.9,n:"Eingang"},{x1:30.47,x2:34.47,y
 let PLANUNG="eigen", WAENDE, RAEUME, TREPPEN, TUEREN_AUSSEN;
 function planungSetzen(art){ PLANUNG=art==="architekt"?"architekt":"eigen"; const a=PLANUNG==="architekt";
   WAENDE=a?WAENDE_ARCH:WAENDE_EIGEN; RAEUME=a?RAEUME_ARCH:RAEUME_EIGEN; TREPPEN=a?[]:TREPPEN_EIGEN; TUEREN_AUSSEN=a?TUEREN_ARCH:TUEREN_EIGEN;
+  BUEHNE=a?BUEHNE_ARCH:BUEHNE_EIGEN; LED=a?LED_ARCH:LED_EIGEN; TECHNIK=a?TECHNIK_ARCH:TECHNIK_EIGEN;
   try{ localStorage.setItem("gb-planung",PLANUNG); }catch(e){} }
 planungSetzen((()=>{ try{ return localStorage.getItem("gb-planung"); }catch(e){ return null; } })());
 const istArch = () => PLANUNG==="architekt";
+/* Einrichtung aus der eigenen Planung auf die Architektenplanung übertragen (nur Anzeige):
+   Bühne/Saal rücken um ARCH_DX nach links, Esstische und Buffet in die zweite Begegnungsstätte */
+function objekteFuerPlanung(liste){
+  if(!istArch()) return liste||[];
+  const slots=[]; for(const x of [41.4,43.8,46.2]) for(let y=1.9;y<=18.2;y+=2.35) slots.push([x,+y.toFixed(2)]);
+  let n=0;
+  return (liste||[]).map(o=>{
+    if(o.x>=21.2) return {...o,x:Math.max(9.4,+(o.x+ARCH_DX).toFixed(2))};
+    if(o.typ==="esstisch"){ const s=slots[n++]; return s?{...o,x:s[0],y:s[1],rot:90}:null; }
+    if(o.typ==="buffet") return {...o,x:43.8,y:19.05,rot:0};
+    return {...o,x:+(40.6+(o.x-9.0)*0.55).toFixed(2)};
+  }).filter(Boolean); }
 
 const OBJEKTE = {
   stuhlreihe:{n:"Stuhlreihe (10)",w:5.0,d:0.55,h:0.9,farbe:"#2b4fa0",plaetze:10},
@@ -111,11 +130,11 @@ function planSvg(objekte, opt={}){
   <rect x="${R}" y="${R}" width="${HALLE.L*S}" height="${HALLE.B*S}" fill="url(#m1)"/>`;
   RAEUME.forEach(r=>{ s+=`<rect x="${p(r.x)}" y="${p(r.y)}" width="${(r.w*S).toFixed(1)}" height="${(r.h*S).toFixed(1)}" fill="${r.haupt?'var(--blau-weich)':'var(--flaeche2)'}" opacity="${r.haupt?.55:.8}"/>`; });
   const arch=istArch();
-  if(!arch){ s+=`<rect x="${p(TECHNIK.x)}" y="${p(TECHNIK.y)}" width="${TECHNIK.w*S}" height="${TECHNIK.h*S}" fill="url(#gp)" stroke="var(--text3)" stroke-width="1"/>`;
+  { s+=`<rect x="${p(TECHNIK.x)}" y="${p(TECHNIK.y)}" width="${TECHNIK.w*S}" height="${TECHNIK.h*S}" fill="url(#gp)" stroke="var(--text3)" stroke-width="1"/>`;
   { const tx=p(TECHNIK.x+TECHNIK.w/2), ty=p(TECHNIK.y+TECHNIK.h/2);
     s+=`<text x="${tx}" y="${ty}" text-anchor="middle" dominant-baseline="middle" font-family="var(--f-titel)" font-weight="700" font-size="12" letter-spacing="1" fill="var(--tinte)" paint-order="stroke" stroke="var(--flaeche)" stroke-width="3" transform="rotate(-90 ${tx} ${ty})">TECHNIK</text>`; }
   s+=`<rect x="${p(BUEHNE.x)}" y="${p(BUEHNE.y)}" width="${BUEHNE.w*S}" height="${BUEHNE.h*S}" fill="url(#sch)" stroke="var(--tinte)" stroke-width="1.5"/>`;
-  s+=`<line x1="${p(46.7-0.08)}" y1="${p(LED.y1)}" x2="${p(46.7-0.08)}" y2="${p(LED.y2)}" stroke="var(--flamme)" stroke-width="6" stroke-linecap="round"/>`; }
+  s+=`<line x1="${p(LED.wand-0.08)}" y1="${p(LED.y1)}" x2="${p(LED.wand-0.08)}" y2="${p(LED.y2)}" stroke="var(--flamme)" stroke-width="6" stroke-linecap="round"/>`; }
   // Außenwand
   s+=`<rect x="${R-HALLE.wand*S/2}" y="${R-HALLE.wand*S/2}" width="${HALLE.L*S+HALLE.wand*S}" height="${HALLE.B*S+HALLE.wand*S}" fill="none" stroke="var(--tinte)" stroke-width="${HALLE.wand*S}"/>`;
   TUEREN_AUSSEN.forEach(t=>{ s+=`<line x1="${p(t.x1)}" y1="${p(t.y)}" x2="${p(t.x2)}" y2="${p(t.y)}" stroke="var(--flaeche)" stroke-width="${HALLE.wand*S+2}"/>`; });
@@ -132,7 +151,9 @@ function planSvg(objekte, opt={}){
   RAEUME.forEach(r=>{ const cx=p(r.x+r.w/2), cy=p(r.ly!=null?r.y+r.ly:r.y+r.h/2); const fs=r.haupt?15:r.klein?8.5:10;
     s+=`<text x="${cx}" y="${cy}" text-anchor="middle" font-family="var(--f-titel)" font-weight="600" font-size="${fs}" fill="var(--tinte)">${r.n}</text>`;
     if(r.m2) s+=`<text x="${cx}" y="${(+cy+fs+2).toFixed(1)}" text-anchor="middle" font-family="var(--f-mass)" font-size="9.5" fill="var(--text2)">${arch?"":"NGF "}${r.m2} m²</text>`; });
-  if(!arch) s+=`<text x="${p(BUEHNE.x+BUEHNE.w/2)}" y="${p(BUEHNE.y+BUEHNE.h/2)}" text-anchor="middle" font-family="var(--f-titel)" font-weight="700" font-size="13" fill="var(--tinte)" transform="rotate(-90 ${p(BUEHNE.x+BUEHNE.w/2)} ${p(BUEHNE.y+BUEHNE.h/2)})">BÜHNE · LED-Wand 10 × 3 m</text>`;
+  buehnenTreppen().forEach(tr=>{ s+=`<rect x="${p(tr.x)}" y="${p(tr.y)}" width="${(tr.w*S).toFixed(1)}" height="${(tr.h*S).toFixed(1)}" fill="var(--flaeche)" stroke="var(--tinte)" stroke-width="1.2"/>`;
+    for(let i=1;i<TREPPE_STUFEN;i++) s+=`<line x1="${p(tr.x+i*TREPPE_AUFTRITT)}" y1="${p(tr.y)}" x2="${p(tr.x+i*TREPPE_AUFTRITT)}" y2="${p(tr.y+tr.h)}" stroke="var(--tinte)" stroke-width=".8"/>`; });
+  s+=`<text x="${p(BUEHNE.x+BUEHNE.w/2)}" y="${p(BUEHNE.y+BUEHNE.h/2)}" text-anchor="middle" font-family="var(--f-titel)" font-weight="700" font-size="13" fill="var(--tinte)" transform="rotate(-90 ${p(BUEHNE.x+BUEHNE.w/2)} ${p(BUEHNE.y+BUEHNE.h/2)})">BÜHNE · LED-Wand 10 × 3 m</text>`;
   // Umgebung
   const ue=(x,y,t,rot)=>`<text x="${x}" y="${y}" text-anchor="middle" font-family="var(--f-text)" font-weight="600" font-size="11" letter-spacing="1.2" fill="var(--text3)" ${rot?`transform="rotate(${rot} ${x} ${y})"`:''}>${t}</text>`;
   s+=ue(W/2,R-16,"HOF KINDER-SPIEL")+ue(W/2,H-12,"HOF EINGANG · PFLASTER")+ue(16,H/2,"KONZSTRASSE · PARKPLÄTZE",-90)+ue(W-14,H/2,"INDUSTRIESTRASSE",90);
@@ -143,15 +164,14 @@ function planSvg(objekte, opt={}){
   // Treppen
   TREPPEN.forEach(tr=>{ s+=`<rect x="${p(tr.x)}" y="${p(tr.y)}" width="${(tr.w*S).toFixed(1)}" height="${(tr.h*S).toFixed(1)}" fill="var(--flaeche)" stroke="var(--text2)" stroke-width="1"/>`;
     for(let i=1;i<6;i++) s+=`<line x1="${p(tr.x)}" y1="${p(tr.y+tr.h*i/6)}" x2="${p(tr.x+tr.w)}" y2="${p(tr.y+tr.h*i/6)}" stroke="var(--text2)" stroke-width=".8"/>`; });
-  if(arch){ s+=`</svg>`; return s; }   // Architektenplanung: nur der Plan, ohne Einrichtung
   // Seitenplätze an der Bühne (rote Bezüge)
   if(opt.seiten){ s+=`<g fill="${STUHL.rot}">`; seitenPositionen().forEach(c=>{ const sw=(STUHL.breite-0.06)*S, sd=(STUHL.tiefe-0.04)*S; s+=`<rect x="${(c.x*S+R-sw/2).toFixed(1)}" y="${(c.y*S+R-sd/2).toFixed(1)}" width="${sw.toFixed(1)}" height="${sd.toFixed(1)}" rx="1.5"/>`; }); s+=`</g>`;
-    SEITEN.forEach(g=>{ s+=`<text x="${p(BUEHNE.x+BUEHNE.w/2)}" y="${p(g.text)}" text-anchor="middle" font-family="var(--f-text)" font-weight="700" font-size="9" fill="${STUHL.rot}">${g.n}</text>`; }); }
+    SEITEN.forEach(g=>{ s+=`<text x="${p(BUEHNE.x+BUEHNE.w/2)}" y="${p(typeof g.text==="function"?g.text():g.text)}" text-anchor="middle" font-family="var(--f-text)" font-weight="700" font-size="9" fill="${STUHL.rot}">${g.n}</text>`; }); }
   // Bestuhlung (umschaltbar)
   if(opt.bestuhlung){ const sw=(STUHL.breite-0.06)*S, sd=(STUHL.tiefe-0.04)*S; s+=`<g fill="${STUHL.farbe}">`;
     stuhlPositionen(opt.bestuhlung).forEach(c=>{ s+=`<rect x="${(c.x*S+R-sd/2).toFixed(1)}" y="${(c.y*S+R-sw/2).toFixed(1)}" width="${sd.toFixed(1)}" height="${sw.toFixed(1)}" rx="1.5"/>`; }); s+=`</g>`; }
   // Planobjekte
-  (objekte||[]).forEach(o=>{ const k=OBJEKTE[o.typ]; if(!k) return; const cx=p(o.x), cy=p(o.y), w=k.w*S, d=k.d*S;
+  objekteFuerPlanung(objekte).forEach(o=>{ const k=OBJEKTE[o.typ]; if(!k) return; const cx=p(o.x), cy=p(o.y), w=k.w*S, d=k.d*S;
     const aktiv = sel===o.id;
     s+=`<g data-obj="${o.id}" transform="translate(${cx} ${cy}) rotate(${o.rot||0})" style="cursor:${opt.bearbeiten?'grab':'default'}">`;
     if(k.rund) s+=`<circle r="${w/2}" fill="${k.farbe}" fill-opacity=".85" stroke="${aktiv?'var(--flamme)':'#fff'}" stroke-width="${aktiv?3:1}"/>`;
@@ -171,8 +191,12 @@ function planSvg(objekte, opt={}){
 const STUHL = {breite:0.5, tiefe:0.48, farbe:"#33508f", rot:"#a3262a"};
 /* Seitenplätze neben der Bühne: je 2 Reihen à 7, Blick zur Bühnenmitte; Lobpreisteam bei den Pianos, Pastoren gegenüber */
 const SEITEN = [
-  {n:"Lobpreisteam", reihen:[BUEHNE_Y0()-0.55, BUEHNE_Y0()-1.5], blick:1,  text:0.35},
-  {n:"Pastoren",     reihen:[BUEHNE_Y1()+0.55, BUEHNE_Y1()+1.5], blick:-1, text:19.75}];
+  {n:"Lobpreisteam", reihen:[1.5, 0.6], blick:1,  text:()=>BUEHNE_Y0()-0.45},                 // an der Außenwand (Tobi, 08.10.)
+  {n:"Pastoren",     reihen:[HALLE.B-1.5, HALLE.B-0.6], blick:-1, text:()=>BUEHNE_Y1()+0.75}];
+/* Treppen an den beiden vorderen Ecken der Bühne: 4 Stufen à 15 cm, Auftritt 30 cm, 1,5 m breit */
+const TREPPE_STUFEN=4, TREPPE_AUFTRITT=0.3, TREPPE_BREITE=1.5;
+function buehnenTreppen(){ const l=TREPPE_STUFEN*TREPPE_AUFTRITT;
+  return [{x:BUEHNE.x-l,y:BUEHNE.y+0.3,w:l,h:TREPPE_BREITE},{x:BUEHNE.x-l,y:BUEHNE.y+BUEHNE.h-0.3-TREPPE_BREITE,w:l,h:TREPPE_BREITE}]; }
 function BUEHNE_Y0(){ return BUEHNE.y; } function BUEHNE_Y1(){ return BUEHNE.y+BUEHNE.h; }
 function seitenPositionen(){ const out=[]; SEITEN.forEach(g=>g.reihen.forEach(y=>{ for(let i=0;i<7;i++) out.push({x:BUEHNE.x+0.4+i*STUHL.breite, y, theta:g.blick>0?-Math.PI/2:Math.PI/2, rot:true}); })); return out; }
 const BESTUHLUNG = {
@@ -198,6 +222,7 @@ function stuhlPositionen(n){
 }
 /* Grundeinrichtung: Rednerpult vorne Mitte, Instrumente hinten im Halbkreis, Esstische im Gemeinschaftsraum */
 function grundeinrichtung(){
+  const BUEHNE=BUEHNE_EIGEN;   // gespeichert wird immer in der eigenen Planung
   const mitte=BUEHNE.y+BUEHNE.h/2, o=[];
   o.push({typ:"pult",x:+(BUEHNE.x+0.45).toFixed(2),y:mitte,rot:0,label:"Rednerpult"});
   // hinten im Halbkreis: Pianos nebeneinander (um 90° gedreht, Spieler blickt zur Kanzel), Schlagzeug Mitte, Bass rechts
@@ -278,7 +303,9 @@ function halle3d(container, objekte, opt={}){
     if(a==="neu-ra") box(0.24,0.25,len,M("#8a8f99"),mx,h-0.125,my); });
   const arch=istArch();
   // Bühne + LED-Wand
-  if(!arch) box(BUEHNE.w,BUEHNE.hoehe,BUEHNE.h,M("#3b2f2a"),BUEHNE.x+BUEHNE.w/2,BUEHNE.hoehe/2,BUEHNE.y+BUEHNE.h/2);
+  box(BUEHNE.w,BUEHNE.hoehe,BUEHNE.h,M("#3b2f2a"),BUEHNE.x+BUEHNE.w/2,BUEHNE.hoehe/2,BUEHNE.y+BUEHNE.h/2);
+  buehnenTreppen().forEach(tr=>{ for(let i=0;i<TREPPE_STUFEN;i++){ const hh=BUEHNE.hoehe*(i+1)/TREPPE_STUFEN;
+    box(TREPPE_AUFTRITT,hh,tr.h,M(i%2?"#46382f":"#4d3e34"),tr.x+i*TREPPE_AUFTRITT+TREPPE_AUFTRITT/2,hh/2,tr.y+tr.h/2); } });
   const ledCanvas=document.createElement("canvas"); ledCanvas.width=1600; ledCanvas.height=480;
   const g=ledCanvas.getContext("2d"); const grad=g.createLinearGradient(0,0,1600,480); grad.addColorStop(0,"#0b1a45"); grad.addColorStop(.55,"#1d3f94"); grad.addColorStop(1,"#e2641a");
   g.fillStyle=grad; g.fillRect(0,0,1600,480);
@@ -287,8 +314,8 @@ function halle3d(container, objekte, opt={}){
   const ledTex=new THREE.CanvasTexture(ledCanvas);
   if(opt.logo){ const li=new Image(); li.onload=()=>{ const h=320, w=li.width*h/li.height; g.drawImage(li,150,80,w,h); ledTex.needsUpdate=true; }; li.src=opt.logo; }
   const led=new THREE.Mesh(new THREE.PlaneGeometry(LED.y2-LED.y1,LED.oben-LED.unten),new THREE.MeshBasicMaterial({map:ledTex}));
-  led.rotation.y=-Math.PI/2; led.position.set(46.7-0.12,(LED.unten+LED.oben)/2,(LED.y1+LED.y2)/2); if(!arch) szene.add(led);
-  if(!arch){ box(0.06,LED.oben-LED.unten+0.12,LED.y2-LED.y1+0.12,M("#111"),46.7-0.07,(LED.unten+LED.oben)/2,(LED.y1+LED.y2)/2);
+  led.rotation.y=-Math.PI/2; led.position.set(LED.wand-0.12,(LED.unten+LED.oben)/2,(LED.y1+LED.y2)/2); szene.add(led);
+  { box(0.06,LED.oben-LED.unten+0.12,LED.y2-LED.y1+0.12,M("#111"),LED.wand-0.07,(LED.unten+LED.oben)/2,(LED.y1+LED.y2)/2);
   // Technikbereich: Podest + Pult mit Blick zur Bühne
   box(TECHNIK.w,0.15,TECHNIK.h,M("#4b5568"),TECHNIK.x+TECHNIK.w/2,0.075,TECHNIK.y+TECHNIK.h/2);
   box(0.8,0.95,3.2,M("#1f2937"),TECHNIK.x+TECHNIK.w*0.62,0.15+0.475,TECHNIK.y+TECHNIK.h/2);
@@ -320,13 +347,13 @@ function halle3d(container, objekte, opt={}){
   }
   const bestuhlungZeichnen=n=>stuehleSetzen(stuhlGruppe,stuhlPositionen(n),stoffMat,logoMat);
   const seitenZeichnen=an=>stuehleSetzen(seitenGruppe,an?seitenPositionen():[],rotMat,null);
-  seitenZeichnen(!arch&&!!opt.seiten);
-  bestuhlungZeichnen(arch?0:(opt.bestuhlung||0));
+  seitenZeichnen(!!opt.seiten);
+  bestuhlungZeichnen(opt.bestuhlung||0);
   // Planobjekte
   const objGruppe=new THREE.Group(); szene.add(objGruppe);
   function objekteZeichnen(liste){
     while(objGruppe.children.length) objGruppe.remove(objGruppe.children[0]);
-    (liste||[]).forEach(o=>{ const k=OBJEKTE[o.typ]; if(!k) return; const grp=new THREE.Group();
+    objekteFuerPlanung(liste).forEach(o=>{ const k=OBJEKTE[o.typ]; if(!k) return; const grp=new THREE.Group();
       const aufB=o.x>BUEHNE.x&&o.x<BUEHNE.x+BUEHNE.w&&o.y>BUEHNE.y&&o.y<BUEHNE.y+BUEHNE.h;
       grp.position.set(o.x,aufB?BUEHNE.hoehe:0,o.y); grp.rotation.y=-(o.rot||0)*Math.PI/180;
       const mat=(o.typ==="stuhl"||o.typ==="stuhlreihe")?stoffMat:M(k.farbe); const add=(geo,m,x,y,z,rx,ry,rz)=>{ const me=new THREE.Mesh(geo,m); me.position.set(x,y,z); if(rx) me.rotation.x=rx; if(ry) me.rotation.y=ry; if(rz) me.rotation.z=rz; grp.add(me); return me; };
@@ -349,12 +376,12 @@ function halle3d(container, objekte, opt={}){
       else { const m=new THREE.Mesh(new THREE.BoxGeometry(k.w,k.h,k.d),mat); m.position.y=k.h/2; grp.add(m); }
       objGruppe.add(grp); });
   }
-  objekteZeichnen(arch?[]:objekte);
+  objekteZeichnen(objekte);
   // Steuerung (Ich-Perspektive)
   const blick=arch?{x:12,z:9.95,gier:-Math.PI/2,nick:-0.02,auge:1.65,oben:false}:{x:30,z:15.5,gier:-Math.PI*0.62,nick:-0.04,auge:1.65,oben:false};
   const ansichten={eingang:{x:36.3,z:18.6,gier:Math.PI*1.0,nick:-0.03},buehne:{x:44.2,z:12.2,gier:Math.PI/2-0.25,nick:-0.12,auge:2.25},vorn:{x:37.5,z:9.85,gier:-Math.PI/2,nick:0.02},
     raum:{x:26,z:9.85,gier:-Math.PI/2,nick:-0.02},gemein:{x:9.9,z:16.9,gier:-0.9,nick:-0.06},oben:{oben:true},aussen:{oben:true,aussen:true},
-    a_eingang:{x:10.9,z:18.8,gier:-Math.PI*0.25,nick:-0.03},a_halle:{x:12,z:9.95,gier:-Math.PI/2,nick:-0.02},a_tor:{x:32.5,z:18.6,gier:Math.PI*0.1,nick:-0.02},a_neben:{x:41.2,z:17.5,gier:-Math.PI*0.75,nick:-0.04}};
+    a_eingang:{x:10.9,z:18.8,gier:-Math.PI*0.25,nick:-0.03},a_halle:{x:12,z:9.95,gier:-Math.PI/2,nick:-0.02},a_tor:{x:32.5,z:18.6,gier:Math.PI*0.1,nick:-0.02},a_vorn:{x:30.8,z:9.85,gier:-Math.PI/2,nick:0.02},a_buehne:{x:37.5,z:12.2,gier:Math.PI/2-0.25,nick:-0.12,auge:2.25},a_neben:{x:41.2,z:17.5,gier:-Math.PI*0.75,nick:-0.04}};
   function setze(n){ const a=ansichten[n]; if(!a) return; if(a.oben){ blick.oben=true; blick.aussen=!!a.aussen; } else { Object.assign(blick,{oben:false,aussen:false,auge:1.65},a); } }
   const taste={}; const ab=e=>{ if(["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName)) return; taste[e.key.toLowerCase()]=e.type==="keydown"; if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(e.key.toLowerCase())&&e.type==="keydown"&&container.matches(":hover")) e.preventDefault(); };
   window.addEventListener("keydown",ab); window.addEventListener("keyup",ab);
@@ -386,7 +413,7 @@ function halle3d(container, objekte, opt={}){
       const nx=blick.x+(fx*vor+rx*seit)*sch, nz=blick.z+(fz*vor+rz*seit)*sch;
       if(frei(nx,blick.z)) blick.x=nx; if(frei(blick.x,nz)) blick.z=nz; }
     // Auge auf Bühne höher
-    const aufBuehne=!arch&&blick.x>BUEHNE.x&&blick.x<BUEHNE.x+BUEHNE.w&&blick.z>BUEHNE.y&&blick.z<BUEHNE.y+BUEHNE.h;
+    const aufBuehne=blick.x>BUEHNE.x&&blick.x<BUEHNE.x+BUEHNE.w&&blick.z>BUEHNE.y&&blick.z<BUEHNE.y+BUEHNE.h;
     const auge=aufBuehne?BUEHNE.hoehe+1.65:1.65;
     if(blick.oben&&blick.aussen){ kam.position.set(-9,11,36); kam.lookAt(HALLE.L/2-6,2,HALLE.B/2); dach.forEach(d=>d.visible=true); }
     else if(blick.oben){ kam.position.set(HALLE.L/2,48,HALLE.B/2+18); kam.lookAt(HALLE.L/2,0,HALLE.B/2); dach.forEach(d=>d.visible=false); }
