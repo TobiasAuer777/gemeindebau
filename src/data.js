@@ -91,7 +91,6 @@ function demoDaten(){
   const planobjekt=[...grundeinrichtung(),{typ:"bestuhlung",x:0,y:0,rot:0,label:"400"},{typ:"seiten",x:0,y:0,rot:0,label:"1"}].map(o=>({id:uid(),...o}));
   const namen=Object.fromEntries(profil.map(p=>[p.id,p.name.split(" ")[0]]));
   const tagesplan_punkt=tagesplanEntwurf(sa,aufgabe,id=>namen[id]).map(x=>({id:uid(),...x}));
-  tagesplan_punkt.filter(x=>x.abschnitt==="start").slice(0,2).forEach(x=>{ x.erledigt=true; x.erledigt_von=andreas.id; x.erledigt_um=new Date(sa+"T08:10:00").toISOString(); });
   return {me:tobi.id,profil,leitung,team,team_mitglied,aufgabe,eintrag,verfuegbarkeit,material,werkzeug,planobjekt,tagesplan_punkt};
 }
 
@@ -99,18 +98,21 @@ const DemoBackend = {
   modus:"demo", d:null,
   async init(){ let roh=null; try{ roh=localStorage.getItem("gb-demo-v9"); }catch(e){}
     this.d = roh ? JSON.parse(roh) : demoDaten(); this.speichern(); return true; },
-  speichern(){ try{ const kopie={...this.d}; localStorage.setItem("gb-demo-v9",JSON.stringify(kopie)); }catch(e){} },
+  speichern(){ try{ localStorage.setItem("gb-demo-v9",JSON.stringify(this.d)); }
+    catch(e){ if(typeof toast==="function") toast("Der Speicher der Vorschau ist voll – vor allem durch Fotos. Neue Einträge bleiben nur bis zum Neuladen."); } },
   zuruecksetzen(){ this.d=demoDaten(); this.speichern(); },
   async sitzung(){ return {user:{id:this.d.me}}; },
   async meinProfil(){ return this.d.profil.find(p=>p.id===this.d.me)||null; },
   async alle(t){ return JSON.parse(JSON.stringify(this.d[t]||[])); },
-  async neu(t,o){ const z={id:uid(),...o}; if(t==="team_mitglied") delete z.id; (this.d[t]||(this.d[t]=[])).push(z); this.speichern(); return z; },
-  async neuViele(t,liste){ for(const o of liste) (this.d[t]||(this.d[t]=[])).push({id:uid(),...o}); this.speichern(); },
+  // wie die Datenbank: id und Zeitstempel automatisch
+  _zeile(t,o){ const z={id:uid(),...(t==="planobjekt"?{geaendert:new Date().toISOString()}:{erstellt:new Date().toISOString()}),...o}; if(t==="team_mitglied"){ delete z.id; delete z.erstellt; } return z; },
+  async neu(t,o){ const z=this._zeile(t,o); (this.d[t]||(this.d[t]=[])).push(z); this.speichern(); return JSON.parse(JSON.stringify(z)); },
+  async neuViele(t,liste){ for(const o of liste) (this.d[t]||(this.d[t]=[])).push(this._zeile(t,o)); this.speichern(); },
   async aendern(t,id,p){ const z=this.d[t].find(r=>r.id===id); Object.assign(z,p); this.speichern(); return z; },
   async loeschen(t,id){ this.d[t]=this.d[t].filter(r=>r.id!==id); this.speichern(); },
   async austreten(teamId,profilId){ this.d.team_mitglied=this.d.team_mitglied.filter(r=>!(r.team_id===teamId&&r.profil_id===profilId)); this.speichern(); },
   async fotoHoch(datei){ return await verkleinern(datei,900,.8); },   // als data-URL (nur Vorschau)
-  async fotoUrls(pfade){ const o={}; pfade.forEach(p=>o[p]=p); return o; },
+  async fotoUrls(){ return {}; },   // Vorschau-Fotos sind data-URLs und werden direkt gesetzt
   abonnieren(){}, async abmelden(){}, async codeSetzen(){ return true; },
   email(){ return "tobi@beispiel.de"; },
   async benutzerListe(){ const t0=Date.now(); return this.d.profil.map((p,i)=>({id:p.id,email:p._email||p.name.toLowerCase().split(" ")[0]+"@beispiel.de",zuletzt:p._email||i%4===3?null:new Date(t0-i*7200e3).toISOString(),registriert:p.erstellt})); },
@@ -118,7 +120,7 @@ const DemoBackend = {
   async passwortAendern(){}, async passwortVergessen(){}, async pwGewechselt(){},
   async zugangAnlegen({name,email,rolle}){ if(this.d.profil.some(p=>p._email===email)) throw new Error("Diese E-Mail hat schon einen Zugang.");
     const p={id:uid(),name,rolle,schwerpunkte:[],hinweis:null,telefon:null,gesperrt:false,pw_wechseln:true,_email:email,erstellt:new Date().toISOString()}; this.d.profil.push(p);
-    const l=this.d.leitung.find(x=>!x.profil_id&&x.name.split(" ")[0].toLowerCase()===name.split(" ")[0].toLowerCase()); if(l) l.profil_id=p.id;
+    const l=this.d.leitung.find(x=>!x.profil_id&&x.name.trim().toLowerCase()===name.trim().toLowerCase()); if(l) l.profil_id=p.id;
     this.speichern(); return {bestaetigen:false}; }
 };
 
@@ -134,7 +136,7 @@ const LiveBackend = {
   async benutzerListe(){ const {data,error}=await this.sb.rpc("benutzer_liste"); if(error) throw new Error(error.message); return data; },
   async sperren(id,an){ const {error}=await this.sb.rpc("benutzer_sperren",{p_id:id,p_sperren:an}); if(error) throw new Error(error.message); },
   async passwortAendern(pw){ const {error}=await this.sb.auth.updateUser({password:pw}); if(error) throw new Error(error.message==="New password should be different from the old password."?"Das neue Passwort muss sich vom alten unterscheiden.":error.message); this.wiederherstellung=false; },
-  async pwGewechselt(){ await this.sb.rpc("passwort_gewechselt"); },
+  async pwGewechselt(){ const {error}=await this.sb.rpc("passwort_gewechselt"); if(error) console.warn("passwort_gewechselt",error.message); },
   // Zugang anlegen: Konto über einen zweiten Client ohne gespeicherte Sitzung registrieren (die Admin-Sitzung bleibt), danach Profil mit Rolle per RPC
   async zugangAnlegen({name,email,pw,rolle}){
     const zweit=window.supabase.createClient(GB_KONFIG.url,GB_KONFIG.anonKey,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storageKey:"gb-zugang-anlegen"}});
@@ -149,11 +151,16 @@ const LiveBackend = {
   async anmelden(email,pw){ const {data,error}=await this.sb.auth.signInWithPassword({email,password:pw}); if(error) throw error; return data; },
   async registrieren(email,pw){ const {data,error}=await this.sb.auth.signUp({email,password:pw}); if(error) throw error;
     if(!data.session) throw new Error("Bitte bestätige zuerst die E-Mail, dann anmelden."); return data; },
-  async beitreten(code,name){ const {data,error}=await this.sb.rpc("beitreten",{p_code:code,p_name:name}); if(error) throw new Error(error.message); return data; },
+  async beitreten(code,name){ const {data,error}=await this.sb.rpc("beitreten",{p_code:code,p_name:name}); if(error) throw new Error(error.message);
+    if(data==="falsch") throw new Error("Gemeinde-Code stimmt nicht");   // ab Erweiterung 4: Fehlversuche werden gezählt
+    if(data==="zu_viele") throw new Error("Zu viele falsche Gemeinde-Codes. Bitte in einer Stunde noch einmal versuchen oder die Bauleitung fragen.");
+    return data; },
   async abmelden(){ await this.sb.auth.signOut(); },
   async meinProfil(){ const s=await this.sitzung(); if(!s) return null;
     const {data}=await this.sb.from("profil").select("*").eq("id",s.user.id).maybeSingle(); return data; },
-  async alle(t){ const {data,error}=await this.sb.from(t).select("*"); if(error) throw error; return data; },
+  // seitenweise laden: Supabase liefert höchstens 1000 Zeilen pro Abfrage (Tagesplan-Punkte, Eintragungen wachsen schnell)
+  async alle(t){ const alle=[]; for(let von=0;;von+=1000){ const {data,error}=await this.sb.from(t).select("*").range(von,von+999); if(error) throw error;
+      alle.push(...data); if(data.length<1000) return alle; } },
   async neu(t,o){ const {data,error}=await this.sb.from(t).insert(o).select().maybeSingle(); if(error) throw error; return data; },
   async neuViele(t,liste){ const {error}=await this.sb.from(t).insert(liste); if(error) throw error; },
   async aendern(t,id,p){ const {data,error}=await this.sb.from(t).update(p).eq("id",id).select().maybeSingle(); if(error) throw error; return data; },
@@ -164,8 +171,11 @@ const LiveBackend = {
     const {error}=await this.sb.storage.from("fotos").upload(pfad,blob,{contentType:"image/jpeg"}); if(error) throw error; return pfad; },
   async fotoUrls(pfade){ const o={}; if(!pfade.length) return o;
     const {data}=await this.sb.storage.from("fotos").createSignedUrls(pfade,3600); (data||[]).forEach(x=>{ if(x.signedUrl) o[x.path]=x.signedUrl; }); return o; },
-  abonnieren(cb){ if(this.kanal) return; this.kanal=this.sb.channel("alles");
-    TABELLEN.forEach(t=>this.kanal.on("postgres_changes",{event:"*",schema:"public",table:t},()=>cb(t))); this.kanal.subscribe(); },
+  async fotosWeg(pfade){ const p=(pfade||[]).filter(x=>/^[0-9a-f-]{36}\/[\w.-]+$/i.test(x)); if(p.length) try{ await this.sb.storage.from("fotos").remove(p); }catch(e){} },
+  // Live-Abgleich; war die Verbindung weg (Standby, Funkloch), danach alles neu laden – verpasste Änderungen kommen sonst nie an
+  abonnieren(cb){ if(this.kanal) return; this.kanal=this.sb.channel("alles"); let warWeg=false;
+    TABELLEN.forEach(t=>this.kanal.on("postgres_changes",{event:"*",schema:"public",table:t},()=>cb(t)));
+    this.kanal.subscribe(status=>{ if(status==="SUBSCRIBED"){ if(warWeg){ warWeg=false; cb("*"); } } else if(["CHANNEL_ERROR","TIMED_OUT","CLOSED"].includes(status)) warWeg=true; }); },
   async codeSetzen(code){ const {error}=await this.sb.rpc("code_setzen",{p_code:code}); if(error) throw error; return true; }
 };
 

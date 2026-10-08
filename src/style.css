@@ -62,7 +62,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .nav button[aria-current="page"] svg{color:var(--gold)}
 .nav .trenn{height:1px;background:var(--linie);margin:8px 6px}
 .ich{margin-top:auto;display:flex;gap:10px;align-items:center;padding:10px;border-radius:var(--r);background:var(--flaeche2);cursor:pointer;border:0;text-align:left}
-.ich small{display:block;color:var(--text3);font-size:12px}
+.ich small{display:block;color:var(--text2);font-size:12px}
 .haupt{min-width:0;padding:18px clamp(16px,3.2vw,44px) 56px}
 .oberleiste{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-bottom:8px;min-height:38px}
 .btn.thema-knopf{width:38px;height:38px;padding:0;border-radius:999px;border:1px solid var(--linie);background:var(--flaeche);color:var(--text2);box-shadow:var(--schatten)}
@@ -98,7 +98,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .r2{grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))}
 .r3{grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr))}
 .karte{background:var(--flaeche);border:1px solid var(--linie);border-radius:var(--r);padding:20px;box-shadow:var(--schatten);min-width:0}
-.karte>header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+.karte>header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .stapel{display:flex;flex-direction:column;gap:10px}
 .zeile{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .zeile.weit{justify-content:space-between}
@@ -145,7 +145,7 @@ tr:last-child td{border-bottom:0}
 
 /* Formulare */
 label.feld{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:600;color:var(--text2)}
-input[type=text],input[type=email],input[type=password],input[type=date],input[type=time],input[type=number],select,textarea{
+input[type=text],input[type=email],input[type=password],input[type=url],input[type=tel],input[type=search],input[type=date],input[type=time],input[type=number],select,textarea{
   width:100%;padding:9px 11px;border:1px solid var(--linie);border-radius:var(--r-klein);background:var(--flaeche);font-size:15px;font-weight:400;color:var(--text)}
 textarea{min-height:84px;resize:vertical}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blau);box-shadow:0 0 0 3px var(--blau-weich)}
@@ -189,7 +189,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blau);bo
 .leiste14 .lbl{font:600 10.5px var(--f-mass);color:var(--text3)}
 
 /* Aufgaben-Brett */
-.brett{display:grid;grid-template-columns:repeat(4,minmax(240px,1fr));gap:14px;overflow-x:auto;padding-bottom:6px}
+.brett{display:grid;grid-template-columns:repeat(4,minmax(200px,1fr));gap:14px;overflow-x:auto;padding-bottom:6px}
 .spalte{background:color-mix(in srgb,var(--flaeche2) 80%,transparent);border-radius:var(--r);padding:10px;display:flex;flex-direction:column;gap:9px;min-width:0}
 .spalte>h3{display:flex;justify-content:space-between;align-items:center;font-size:15px;padding:2px 4px}
 .akarte{background:var(--flaeche);border:1px solid var(--linie);border-left:4px solid var(--farbe,var(--linie));border-radius:var(--r-klein);padding:10px 11px;cursor:pointer;display:flex;flex-direction:column;gap:7px;text-align:left}
@@ -275,3 +275,56 @@ a.btn{text-decoration:none}
 .start-plan{display:block;width:100%;padding:0;border:1px solid var(--linie);border-radius:12px;overflow:hidden;background:var(--flaeche);cursor:pointer}
 .start-plan svg{display:block;width:100%;height:auto;pointer-events:none}
 .bk-schon{grid-column:1/-1;margin-top:-4px}
+
+/* ---------- Prüfung 08.10.: Feinschliff ---------- */
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.kopf .etikett{line-height:1.5}
+/* Kalender: Monat und Pfeile bleiben in einer Zeile, Personenzahl als kleines Symbol */
+.kal-kopf{flex-wrap:nowrap}.kal-kopf h2{min-width:170px;text-align:center;white-space:nowrap}
+.tag .nr .anz{display:inline-flex;align-items:center;gap:2px;font-variant-numeric:tabular-nums}
+.tag .nr .anz svg{width:12px;height:12px}
+@media (max-width:600px){.kal-kopf h2{min-width:0;font-size:17px}.tag .nr{flex-direction:column;align-items:flex-start;gap:4px}.tag .pille{display:none}.tag .nr .anz{font-size:10.5px}}
+/* Tabellen werden am Handy zu Karten */
+@media (max-width:700px){
+  .karten-tabelle,.karten-tabelle tbody,.karten-tabelle tr,.karten-tabelle td{display:block;width:100%}
+  .karten-tabelle thead{display:none}
+  .karten-tabelle tr{position:relative;padding:12px 0;border-top:1px solid var(--linie)}
+  .karten-tabelle tr:first-child{border-top:0}
+  .karten-tabelle td{border:0!important;padding:3px 0!important}
+  .karten-tabelle td[data-titel]{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .karten-tabelle td[data-titel]::before{content:attr(data-titel);flex:0 0 74px;font:600 10.5px/1.2 var(--f-text);text-transform:uppercase;letter-spacing:.08em;color:var(--text3)}
+  .karten-tabelle td.aktion{position:absolute;right:0;top:8px;width:auto}
+  .karten-tabelle td:first-child{padding-right:44px!important}
+}
+/* Fotos: antippen zum Vergrößern, „+3“ für weitere */
+.foto-knopf{padding:0;border:0;background:none;cursor:zoom-in;border-radius:7px;display:block}
+.foto-mehr{display:flex;align-items:center;justify-content:center;aspect-ratio:1;border-radius:7px;border:0;background:var(--flaeche2);color:var(--text2);font:600 18px var(--f-titel);cursor:pointer}
+.schleier.breit .schublade{width:min(980px,100%)}
+.foto-gross{display:flex;flex-direction:column;gap:14px}
+.foto-gross figure{margin:0;display:flex;flex-direction:column;gap:4px}
+.foto-gross img{width:100%;height:auto;border-radius:10px;background:var(--flaeche2)}
+.foto-weg{position:relative;cursor:pointer;display:block}
+.foto-weg input{position:absolute;opacity:0;pointer-events:none}
+.foto-weg span{position:absolute;right:4px;top:4px;width:26px;height:26px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center}
+.foto-weg span svg{width:15px;height:15px}
+.foto-weg input:checked+img{opacity:.3;outline:3px solid var(--krit);outline-offset:-3px}
+.foto-weg input:checked~span{background:var(--krit)}
+.foto-weg input:focus-visible+img{outline:3px solid var(--flamme);outline-offset:2px}
+/* Löschen mit Rückfrage */
+.btn.frage{background:var(--krit)!important;color:#fff!important;border-color:transparent!important}
+/* Bekannte Personen: schon registriert */
+.bk-zeile.bk-treffer{grid-template-columns:minmax(150px,1.1fr) minmax(200px,2fr) auto}
+.bk-treffer p{margin:0}
+@media (max-width:980px){.bk-zeile.bk-treffer{grid-template-columns:1fr}}
+.vorschlag-liste{display:flex;flex-direction:column;gap:2px}
+.vorschlag-zeile{padding:8px 0;border-top:1px solid var(--linie);gap:10px;cursor:pointer}
+.vorschlag-zeile:first-child{border-top:0}
+/* 3D am Handy: Knöpfe in einer wischbaren Zeile, Steuerkreis frei von der unteren Leiste */
+@media (max-width:860px){
+  .dreid{height:min(62vh,560px)}
+  .dreid .hud{left:8px;right:8px;top:8px}
+  .dreid .hud>.zeile{flex-wrap:nowrap;overflow-x:auto;max-width:100%;scrollbar-width:none;padding-bottom:2px}
+  .dreid .hud>.zeile .btn{flex:none}
+  .dreid .hud .tafel{font-size:11.5px;padding:5px 8px}
+  .joy{width:100px;height:100px;left:14px;bottom:14px}
+}

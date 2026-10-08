@@ -32,9 +32,9 @@ const RAEUME_EIGEN = [
   {n:"Gottesdienstraum",x:21.2,y:0,w:25.5,h:19.9,m2:"528,97",haupt:true,ly:1.6},
   {n:"Gemeinschaftsraum",x:9.0,y:3.9,w:12.2,h:13.8,m2:"209,21",haupt:true},
   {n:"Küche",x:9.0,y:0,w:5.4,h:3.9,m2:"20,96"},{n:"WC-Block",x:15.7,y:0,w:5.5,h:3.9,m2:"20,96"},
-  {n:"Bad (3 × DA)",x:0,y:0,w:2.4,h:4.0,klein:true},{n:"Waschraum",x:2.4,y:0,w:2.08,h:4.0,klein:true},{n:"Stillraum",x:4.48,y:0,w:4.48,h:5.34},
+  {n:"Bad (3 × DA)",kurz:"Bad",x:0,y:0,w:2.4,h:4.0,klein:true},{n:"Waschraum",x:2.4,y:0,w:2.08,h:4.0,klein:true},{n:"Stillraum",x:4.48,y:0,w:4.48,h:5.34},
   {n:"Flur",x:3.04,y:4.0,w:1.44,h:2.87,klein:true},{n:"Kinderraum",x:0,y:4.0,w:3.04,h:6.0},{n:"Gang",x:4.48,y:5.34,w:4.48,h:2.16,klein:true},
-  {n:"WC Unisex",x:0,y:10.0,w:4.0,h:1.77,klein:true},{n:"Pastor Bad/WC",x:0,y:11.77,w:2.15,h:2.67,klein:true},{n:"Küche Jugend",x:2.15,y:11.77,w:1.85,h:2.67,klein:true},
+  {n:"WC Unisex",x:0,y:10.0,w:4.0,h:1.77,klein:true},{n:"Pastor Bad/WC",kurz:"Bad/WC",x:0,y:11.77,w:2.15,h:2.67,klein:true},{n:"Küche Jugend",kurz:"Küche",x:2.15,y:11.77,w:1.85,h:2.67,klein:true},
   {n:"Jugendraum",x:4.48,y:7.5,w:4.48,h:8.9},{n:"Pastor-Büro",x:0,y:14.44,w:4.0,h:5.46},{n:"Warteraum",x:4.0,y:16.4,w:4.96,h:3.5},
   {n:"Flur & Eingang",x:9.0,y:17.7,w:12.2,h:2.2,klein:true}
 ];
@@ -164,10 +164,6 @@ function planSvg(objekte, opt={}){
   if(!arch){ s+=`<text x="${p(40.2)-6}" y="${p(2.1)}" text-anchor="end" font-family="var(--f-text)" font-weight="700" font-size="9.5" fill="var(--glut)">✕ Rückbau</text>`;
   s+=`<text x="${p(40.2)-6}" y="${p(17.8)}" text-anchor="end" font-family="var(--f-text)" font-weight="700" font-size="9.5" fill="var(--glut)">✕ Rückbau</text>`;
   [[46.7,13,2.6],[21.2,13,11.6]].forEach(([wx,dx,wy])=>{ const rx=p(wx)+dx, ry=p(wy); s+=`<text x="${rx}" y="${ry}" text-anchor="middle" font-family="var(--f-text)" font-weight="700" font-size="9" fill="var(--tinte)" paint-order="stroke" stroke="var(--flaeche)" stroke-width="3" transform="rotate(90 ${rx} ${ry})">RINGANKER</text>`; }); }
-  // Beschriftung
-  RAEUME.forEach(r=>{ const cx=p(r.x+r.w/2), cy=p(r.ly!=null?r.y+r.ly:r.y+r.h/2); const fs=r.haupt?15:r.klein?8.5:10;
-    s+=`<text x="${cx}" y="${cy}" text-anchor="middle" font-family="var(--f-titel)" font-weight="600" font-size="${fs}" fill="var(--tinte)">${r.n}</text>`;
-    if(r.m2) s+=`<text x="${cx}" y="${(+cy+fs+2).toFixed(1)}" text-anchor="middle" font-family="var(--f-mass)" font-size="9.5" fill="var(--text2)">${arch?"":"NGF "}${r.m2} m²</text>`; });
   buehnenTreppen().forEach(tr=>{ s+=`<rect x="${p(tr.x)}" y="${p(tr.y)}" width="${(tr.w*S).toFixed(1)}" height="${(tr.h*S).toFixed(1)}" fill="var(--flaeche)" stroke="var(--tinte)" stroke-width="1.2"/>`;
     for(let i=1;i<TREPPE_STUFEN;i++){ if(tr.richtung==="x") s+=`<line x1="${p(tr.x+i*TREPPE_AUFTRITT)}" y1="${p(tr.y)}" x2="${p(tr.x+i*TREPPE_AUFTRITT)}" y2="${p(tr.y+tr.h)}" stroke="var(--tinte)" stroke-width=".8"/>`;
       else s+=`<line x1="${p(tr.x)}" y1="${p(tr.y+i*TREPPE_AUFTRITT)}" x2="${p(tr.x+tr.w)}" y2="${p(tr.y+i*TREPPE_AUFTRITT)}" stroke="var(--tinte)" stroke-width=".8"/>`; } });
@@ -206,6 +202,14 @@ function planSvg(objekte, opt={}){
       for(let i=0;i<10;i++) s+=`<rect x="${-w/2+i*0.5*S+1}" y="${-d/2+1}" width="${0.5*S-2}" height="${d-2}" rx="2" fill="${k.farbe}"/>`; }
     else s+=`<rect x="${-w/2}" y="${-d/2}" width="${w}" height="${d}" rx="2" fill="${k.farbe}" fill-opacity=".85" stroke="${aktiv?'var(--flamme)':'#fff'}" stroke-width="${aktiv?3:1}"/>`;
     s+=`</g>`; });
+  // Raumnamen zuletzt und mit Rand, damit Stühle und Tische sie nicht verdecken; zu lange Namen werden kleiner bzw. gekürzt
+  s+=`<g pointer-events="none" paint-order="stroke" stroke="var(--flaeche)" stroke-width="3" stroke-linejoin="round">`;
+  RAEUME.forEach(r=>{ const cx=p(r.x+r.w/2), cy=p(r.ly!=null?r.y+r.ly:r.y+r.h/2); const platz=r.w*S-6;
+    let n=r.n, fs=r.haupt?15:r.klein?8.5:10; const breite=(t,f)=>t.length*f*0.56;
+    if(breite(n,fs)>platz&&r.kurz) n=r.kurz; if(breite(n,fs)>platz) fs=Math.max(6.5,platz/(n.length*0.56));
+    s+=`<text x="${cx}" y="${cy}" text-anchor="middle" font-family="var(--f-titel)" font-weight="600" font-size="${fs.toFixed(1)}" fill="var(--tinte)">${n}</text>`;
+    if(r.m2) s+=`<text x="${cx}" y="${(+cy+fs+2).toFixed(1)}" text-anchor="middle" font-family="var(--f-mass)" font-size="${Math.min(9.5,fs).toFixed(1)}" fill="var(--text2)">${arch?"":"NGF "}${r.m2} m²</text>`; });
+  s+=`</g>`;
   s+=`</svg>`;
   return s;
 }
@@ -272,16 +276,6 @@ function grundeinrichtung(){
   o.push({typ:"buffet",x:12.6,y:4.75,rot:0,label:"Buffet"});
   return o;
 }
-/* (alt) Bestuhlung als verschiebbare Reihen */
-function bestuhlungVorschlag(){
-  const reihen=[], abstand=0.95, mitte=(BUEHNE.y+BUEHNE.y+BUEHNE.h)/2;
-  for(let x=BUEHNE.x-3.8; x>TECHNIK.x+TECHNIK.w+1.6; x-=abstand){
-    reihen.push({typ:"stuhlreihe",x:+x.toFixed(2),y:+(mitte-0.75-2.5).toFixed(2),rot:90});
-    reihen.push({typ:"stuhlreihe",x:+x.toFixed(2),y:+(mitte+0.75+2.5).toFixed(2),rot:90});
-  }
-  return reihen;
-}
-
 /* ---------- 3D (Three.js) ---------- */
 function halle3d(container, objekte, opt={}){
   const THREE = window.THREE; if(!THREE){ container.innerHTML='<div class="leer">3D konnte nicht geladen werden.</div>'; return {stop(){}}; }
@@ -470,6 +464,8 @@ function halle3d(container, objekte, opt={}){
     renderer.render(szene,kam); requestAnimationFrame(bild); }
   function groesse(){ const w=container.clientWidth, h=container.clientHeight; renderer.setSize(w,h,false); kam.aspect=w/h; kam.updateProjectionMatrix(); }
   const ro=new ResizeObserver(groesse); ro.observe(container); groesse(); requestAnimationFrame(bild);
-  return { stop(){ laeuft=false; ro.disconnect(); window.removeEventListener("keydown",ab); window.removeEventListener("keyup",ab); renderer.dispose(); },
+  return { stop(){ laeuft=false; ro.disconnect(); window.removeEventListener("keydown",ab); window.removeEventListener("keyup",ab); // Speicher der Grafikkarte freigeben – sonst sammeln sich beim Hin- und Herschalten WebGL-Kontexte an
+    szene.traverse(o=>{ o.geometry?.dispose?.(); [].concat(o.material||[]).forEach(m=>{ m.map?.dispose?.(); m.dispose?.(); }); });
+    renderer.dispose(); renderer.forceContextLoss?.(); renderer.domElement.remove(); },
     ansicht:setze, objekte:objekteZeichnen, bestuhlung:bestuhlungZeichnen, seiten:seitenZeichnen, neueHervorheben(an){ neueWaende.forEach(m=>m.material=an?neuMat:bestandMat); } };
 }

@@ -22,6 +22,8 @@ const IC = {
   drehen:'<path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4h-4"/>',
   tag:'<rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="m8 8.5 1.6 1.6L12.5 7M8 14.5l1.6 1.6 2.9-3.1M14.5 9h2M14.5 15h2"/>',
   sonne:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  stift:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+  notfall:'<path d="M12 3 2.5 20h19z"/><path d="M12 10v4.5M12 17.2v.3"/>',
   mond:'<path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/>', papierkorb:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'
 };
 const icon = (n,cls="") => `<svg class="${cls}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]||""}</svg>`;
@@ -31,7 +33,7 @@ const NAV = [["start","Start"],["tag","Tagesplan"],["kalender","Kalender"],["auf
 const person = id => S.profil.find(p=>p.id===id);
 const nameVon = id => person(id)?.name || "Unbekannt";
 const vorname = id => nameVon(id).split(" ")[0];
-const FARBEN = ["#2b4fa0","#e2641a","#0e7490","#7c3aed","#be185d","#15803d","#a8321c","#ca8a04","#334155","#0369a1"];
+const FARBEN = ["#2b4fa0","#c2410c","#0e7490","#7c3aed","#be185d","#15803d","#a8321c","#8a6206","#334155","#0369a1"];   // alle mit weißer Schrift gut lesbar
 const farbe = id => { let h=0; for(const c of String(id)) h=(h*31+c.charCodeAt(0))>>>0; return FARBEN[h%FARBEN.length]; };
 const init = id => nameVon(id).split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase();
 const ava = (id,gr) => `<span class="avatar" style="background:${farbe(id)}${gr?`;width:${gr}px;height:${gr}px;font-size:${Math.round(gr*.38)}px`:''}" title="${esc(nameVon(id))}">${esc(init(id))}</span>`;
@@ -43,16 +45,43 @@ const zeit = (v,b) => v||b ? `${(v||"").slice(0,5)}${b?"–"+b.slice(0,5):""} Uh
 const istLeitung = () => ["admin","bauleitung"].includes(S.me?.rolle);
 const istAdmin = () => S.me?.rolle==="admin";
 const teamVon = id => S.team.find(t=>t.id===id);
-const gewerkFarbe = a => teamVon(a.team_id)?.farbe || "var(--linie)";
+// Nur echte Farbcodes und http(s)-Links ins HTML (Schutz vor eingeschleustem Code)
+const farbeOk = (c,ersatz="var(--linie)") => /^#[0-9a-f]{3,8}$/i.test(String(c||"")) ? c : ersatz;
+const linkOk = u => /^https?:\/\/[^\s"'<>]+$/i.test(String(u||"").trim()) ? String(u).trim() : null;
+const teamText = c => `color-mix(in srgb, ${farbeOk(c,"var(--text2)")} 72%, var(--text))`;   // lesbar in hell und dunkel
+const gewerkFarbe = a => farbeOk(teamVon(a.team_id)?.farbe);
+const mz = (n,eins,mehr) => `${n} ${n===1?eins:mehr}`;
 const zahlDe = n => (n==null||n==="") ? "" : String(n).replace(".",",");
 
 /* ---------- Laden ---------- */
-async function ladeAlles(){ await Promise.all(TABELLEN.map(async t=>{ try{ S[t]=await B.alle(t); }catch(e){ console.warn(t,e); S[t]=[]; } }));
-  const ich=S.profil.find(p=>p.id===S.me?.id); if(ich) S.me=ich; }
-let nachladenTimer={};
-function nachladen(t){ clearTimeout(nachladenTimer[t]); nachladenTimer[t]=setTimeout(async()=>{ try{ S[t]=await B.alle(t); if(t==="profil"){ const ich=S.profil.find(p=>p.id===S.me.id); if(ich) S.me=ich; } }catch(e){}
-  if(ansicht==="halle"){ if(t==="planobjekt") halleAktualisieren(); } else if(!document.querySelector(".schleier")) render(); },250); }
-async function speichere(fn,meldung){ try{ const r=await fn(); if(meldung) toast(meldung); return r; }catch(e){ console.error(e); toast("Nicht gespeichert: "+(e.message||e)); throw e; } }
+let geladenUm=0;
+async function ladeAlles(){ await Promise.all(TABELLEN.map(async t=>{ try{ S[t]=await B.alle(t); }catch(e){ console.warn(t,e); S[t]=S[t]||[]; } }));
+  geladenUm=Date.now(); const ich=S.profil.find(p=>p.id===S.me?.id); if(ich) S.me=ich; }
+/* Live-Abgleich: Änderungen anderer neu zeichnen – aber nie, während jemand gerade etwas eintippt */
+let nachladenTimer={}, renderOffen=false;
+const hallenSchluessel = () => `${bestuhlungN()}|${seitenAn()}|${buehneLage()}`;
+function darfRendern(){ if(document.querySelector(".schleier")||planZug) return false;
+  const a=document.activeElement, w=document.getElementById("ansicht");
+  if(w&&a&&w.contains(a)&&a.matches("input:not([type=checkbox]):not([type=radio]),textarea,select")) return false;
+  if(w&&w.querySelector("form[data-geaendert]")) return false;
+  return true; }
+function spaeterRendern(){ if(darfRendern()){ renderOffen=false; render(); } else renderOffen=true; }
+function nachladen(t){ clearTimeout(nachladenTimer[t]); nachladenTimer[t]=setTimeout(async()=>{
+    const vorher=ansicht==="halle"&&t==="planobjekt"?hallenSchluessel():null;
+    try{ if(t==="*") await ladeAlles(); else { S[t]=await B.alle(t); if(t==="profil"){ const ich=S.profil.find(p=>p.id===S.me.id); if(ich) S.me=ich; } } }catch(e){ return; }
+    if(ansicht==="halle"){
+      if(t==="planobjekt"||t==="*"){ if(vorher!==hallenSchluessel()||(istArch()&&halleReiter==="plan")) spaeterRendern(); else halleAktualisieren(); }
+      return; }
+    spaeterRendern(); },250); }
+// Nach dem Tippen (Feld verlassen) oder Schließen eines Dialogs nachholen, was in der Zwischenzeit kam
+document.addEventListener("focusout",()=>setTimeout(()=>{ if(renderOffen&&darfRendern()){ renderOffen=false; render(); } },400));
+// Handy aus dem Standby, Netz wieder da: alles frisch laden (verpasste Live-Änderungen, abgelaufene Foto-Links, neuer Tag)
+let letzterTag=null;
+async function auffrischen(){ if(!B||!S.me||document.hidden) return; const tag=heuteIso();
+  if(letzterTag&&tag!==letzterTag){ tpDatum=null; } letzterTag=tag;
+  if(Date.now()-geladenUm<60e3) return; S.urls={}; nachladen("*"); }
+document.addEventListener("visibilitychange",auffrischen); window.addEventListener("online",auffrischen);
+async function speichere(fn,meldung){ try{ const r=await fn(); if(meldung) toast(meldung); return r; }catch(e){ console.error(e); toast("Nicht gespeichert: "+fehlerDeutsch(e.message||e)); throw e; } }
 
 /* ---------- Rahmen ---------- */
 /* Hell / dunkel: folgt dem Gerät, bis man selbst umschaltet (gilt dann auf diesem Gerät) */
@@ -88,18 +117,30 @@ function nachRender(){
   if(ansicht==="halle") halleStarten();
   fotosAufloesen(document);
 }
-async function fotosAufloesen(root){ const imgs=$$("img[data-foto]",root); const fehlend=[...new Set(imgs.map(i=>i.dataset.foto).filter(p=>!S.urls[p]))];
+let urlsUm=Date.now();   // signierte Foto-Links gelten 1 Stunde – nach 50 Minuten neu holen
+async function fotosAufloesen(root){ if(Date.now()-urlsUm>50*60e3){ S.urls={}; urlsUm=Date.now(); }
+  const imgs=$$("img[data-foto]",root); const fehlend=[...new Set(imgs.map(i=>i.dataset.foto).filter(p=>!S.urls[p]&&!demoBild(p)))];
   if(fehlend.length){ try{ Object.assign(S.urls, await B.fotoUrls(fehlend)); }catch(e){} }
-  imgs.forEach(i=>{ const u=S.urls[i.dataset.foto]; if(u) i.src=u; }); }
-const fotoImg = p => `<img data-foto="${esc(p)}" alt="Baustellenfoto" loading="lazy" ${p.startsWith("data:")?`src="${p}"`:""}>`;
+  imgs.forEach(i=>{ const p=i.dataset.foto, u=demoBild(p)?p:S.urls[p]; if(u&&i.src!==u) i.src=u; }); }
+// Vorschau speichert Fotos als data-URL; nur saubere JPEG/PNG/WebP-Daten werden als Bild gesetzt (per Eigenschaft, nie als HTML)
+const demoBild = p => B?.modus==="demo" && /^data:image\/(jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(String(p||""));
+const fotoImg = (p,i,eid) => `<button type="button" class="foto-knopf" data-a="fotoGross" data-eid="${esc(eid)}" data-i="${i}" aria-label="Foto ${i+1} vergrößern"><img data-foto="${esc(p)}" alt="Baustellenfoto" loading="lazy"></button>`;
+const fotoReihe = e => e.fotos.length?`<div class="foto-reihe">${e.fotos.slice(0,3).map((p,i)=>fotoImg(p,i,e.id)).join("")}${e.fotos.length>3?`<button type="button" class="foto-mehr" data-a="fotoGross" data-eid="${esc(e.id)}" data-i="3" aria-label="Alle ${e.fotos.length} Fotos ansehen">+${e.fotos.length-3}</button>`:""}</div>`:"";
+function fotoDialog(eid,start){ const e=S.eintrag.find(x=>x.id===eid); if(!e) return;
+  const s=oeffne(`Fotos · ${dKurz(e.datum)}`,`<div class="foto-gross">${e.fotos.map((p,i)=>`<figure id="fg-${i}"><img data-foto="${esc(p)}" alt="Baustellenfoto ${i+1} von ${e.fotos.length}"><figcaption class="klein leise">${i+1} / ${e.fotos.length}</figcaption></figure>`).join("")}</div>${e.text?`<p>${esc(e.text)}</p>`:""}`,esc(nameVon(e.autor)));
+  s.classList.add("breit"); setTimeout(()=>s.querySelector(`#fg-${start}`)?.scrollIntoView({block:"start"}),80); }
 
 /* ---------- Dialog & Meldungen ---------- */
 function oeffne(titel,html,unter=""){ schliesse(); const s=document.createElement("div"); s.className="schleier";
   s.innerHTML=`<div class="schublade" role="dialog" aria-modal="true" aria-label="${esc(titel)}"><header><div><h2>${esc(titel)}</h2>${unter?`<p class="leise klein" style="margin-top:4px">${unter}</p>`:""}</div><button class="btn still" data-a="zu" aria-label="Schließen">${icon("zu")}</button></header>${html}</div>`;
-  s.addEventListener("click",e=>{ if(e.target===s) schliesse(); }); document.body.appendChild(s); fotosAufloesen(s); setTimeout(()=>s.querySelector("input,textarea,select")?.focus({preventScroll:true}),50); return s; }
-function schliesse(){ $$(".schleier").forEach(x=>x.remove()); }
+  s.addEventListener("click",e=>{ if(e.target===s) schliesse(); }); document.body.appendChild(s); fotosAufloesen(s);
+  // am Handy nicht automatisch die Tastatur aufklappen
+  if(!matchMedia("(pointer: coarse)").matches) setTimeout(()=>s.querySelector("input:not([type=hidden]):not([type=file]),select")?.focus({preventScroll:true}),50);
+  return s; }
+function schliesse(){ const offen=$$(".schleier"); offen.forEach(x=>x.remove());
+  if(offen.length&&renderOffen) setTimeout(()=>{ if(renderOffen&&darfRendern()){ renderOffen=false; render(); } },0); }
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") schliesse(); });
-function toast(t){ $$(".toast").forEach(x=>x.remove()); const d=document.createElement("div"); d.className="toast"; d.setAttribute("role","status"); d.textContent=t; document.body.appendChild(d); setTimeout(()=>d.remove(),2600); }
+function toast(t){ $$(".toast").forEach(x=>x.remove()); const d=document.createElement("div"); d.className="toast"; d.setAttribute("role","status"); d.textContent=t; document.body.appendChild(d); setTimeout(()=>d.remove(),Math.max(2600,String(t).length*65)); }
 
 /* ================= Ansichten ================= */
 const ANSICHTEN = {};
@@ -119,7 +160,7 @@ ANSICHTEN.start = () => {
   const tpD=tpStandard(), tpP=S.tagesplan_punkt.filter(x=>x.datum===tpD), tpF=tpP.filter(x=>x.erledigt).length, tpOffen=tpP.filter(x=>!x.erledigt);
   return `<div class="kopf"><div><p class="etikett">Umnutzung Werkhalle → Begegnungsstätte</p><h1>Hallo ${esc(S.me.name.split(" ")[0])}!</h1>
     <p class="unter">${istLeitung()?"Deine Bauleitungs-Übersicht.":"Schön, dass du mit anpackst."} Samstage sind die großen Bautage.</p></div>
-    <div class="zeile"><button class="btn primaer" data-a="verfOeffnen" data-datum="${sa}">${icon("kalender")}Ich bin da …</button><button class="btn" data-a="eintragNeu">${icon("foto")}Foto & Notiz</button><button class="btn" data-a="materialNeu">${icon("material")}Material anfragen</button></div></div>
+    <div class="zeile"><button class="btn primaer" data-a="verfOeffnen" data-datum="${sa}">${icon("kalender")}Ich bin dabei …</button><button class="btn" data-a="eintragNeu">${icon("foto")}Foto & Notiz</button><button class="btn" data-a="materialNeu">${icon("material")}Material anfragen</button></div></div>
   <div class="raster r2">
     <section class="karte"><header><div><p class="etikett">Tagesplan</p><h2>${dLang(tpD)}</h2></div>${tpP.length?`<span class="zahl">${tpF}<small>von ${tpP.length}</small></span>`:""}</header>
       ${tpP.length?`<div class="tp-balken" role="img" aria-label="${tpF} von ${tpP.length} erledigt"><i style="width:${Math.round(tpF/tpP.length*100)}%"></i></div>
@@ -133,7 +174,8 @@ ANSICHTEN.start = () => {
     <section class="karte"><header><h2>Meine Aufgaben</h2><span class="pille">${meine.length}</span></header>
       ${meine.length?`<div class="liste">${meine.slice(0,5).map(a=>`<button class="akarte" style="--farbe:${gewerkFarbe(a)};border-top:0;border-right:0;border-bottom:0;border-radius:0;padding:10px 0 10px 12px;background:none" data-a="aufgabe" data-id="${a.id}"><b>${esc(a.titel)}</b><span class="zeile klein leise"><span class="pille ${a.status}">${STATUS[a.status]}</span>${a.datum?`<span class="mass">${dKurz(a.datum)}</span>`:""}${a.bereich?`<span>${esc(a.bereich)}</span>`:""}</span></button>`).join("")}</div>`:`<div class="leer">Dir ist gerade nichts zugewiesen. Trag dich im Kalender ein, dann plant dich die Bauleitung ein.</div>`}</section>
     <section class="karte"><header><h2>Wer ist da? Nächste 14 Tage</h2><button class="btn still klein" data-a="geh" data-ziel="kalender">Kalender ${icon("rechts")}</button></header>
-      <div class="leiste14">${tage.map((d,i)=>{ const sa_=new Date(d+"T12:00").getDay()===6; return `<button class="s ${sa_?"sa":""}" style="border:0;background:none;padding:0;cursor:pointer" data-a="tagOeffnen" data-datum="${d}" title="${dKurz(d)}: ${anz[i]} Personen"><span class="lbl">${anz[i]||""}</span><span style="height:64px;display:flex;align-items:flex-end;width:100%"><span class="bal" style="height:${Math.max(3,anz[i]/maxA*64)}px"></span></span><span class="lbl">${WT[new Date(d+"T12:00").getDay()]}</span></button>`; }).join("")}</div></section>
+      <div class="leiste14">${tage.map((d,i)=>{ const sa_=new Date(d+"T12:00").getDay()===6; return `<button class="s ${sa_?"sa":""}" style="border:0;background:none;padding:0;cursor:pointer" data-a="tagOeffnen" data-datum="${d}" title="${dKurz(d)}: ${anz[i]} Personen"><span class="lbl">${anz[i]||""}</span><span style="height:64px;display:flex;align-items:flex-end;width:100%"><span class="bal" style="height:${Math.max(3,anz[i]/maxA*64)}px"></span></span><span class="lbl">${WT[new Date(d+"T12:00").getDay()]}</span></button>`; }).join("")}</div>
+      ${anz.some(Boolean)?"":`<p class="klein leise" style="margin-top:8px">In den nächsten 14 Tagen hat sich noch niemand eingetragen.</p>`}</section>
     <section class="karte"><header><h2>Baufortschritt</h2><span class="zahl">${proz}<small>%</small></span></header>
       <div style="height:10px;border-radius:99px;background:var(--flaeche2);overflow:hidden"><div style="height:100%;width:${proz}%;background:linear-gradient(90deg,var(--blau),var(--flamme))"></div></div>
       <div class="zeile klein leise" style="margin-top:10px">${Object.keys(STATUS).map(s=>`<span class="pille ${s}">${STATUS[s]} · ${S.aufgabe.filter(a=>a.status===s).length}</span>`).join("")}</div>
@@ -151,15 +193,23 @@ ANSICHTEN.start = () => {
 };
 function taetigkeitsZaehlung(liste){ const z={}; liste.forEach(v=>{ if(v.alles_gleich){ z["Alles gleich gern"]=(z["Alles gleich gern"]||0)+1; } else if(v.taetigkeiten[0]) z[v.taetigkeiten[0]]=(z[v.taetigkeiten[0]]||0)+1; });
   return Object.entries(z).sort((a,b)=>b[1]-a[1]); }
-function eintragKarte(e){ const a=S.aufgabe.find(x=>x.id===e.aufgabe_id);
-  return `<article class="stapel" style="gap:8px">${e.fotos.length?`<div class="foto-reihe">${e.fotos.slice(0,3).map(fotoImg).join("")}</div>`:""}
-    <div class="zeile">${ava(e.autor,26)}<div class="klein"><b>${esc(nameVon(e.autor))}</b> <span class="leise">· ${dKurz(e.datum)}</span>${a?`<div class="leise">${esc(a.titel)}</div>`:""}</div></div>
-    <p>${esc(e.text||"")}</p></article>`; }
+function eintragKarte(e){ const a=S.aufgabe.find(x=>x.id===e.aufgabe_id); const darf=e.autor===S.me.id||istLeitung();
+  return `<article class="stapel eintrag" style="gap:8px">${fotoReihe(e)}
+    <div class="zeile" style="flex-wrap:nowrap">${ava(e.autor,26)}<div class="klein" style="flex:1;min-width:0"><b>${esc(nameVon(e.autor))}</b> <span class="leise">· ${dKurz(e.datum)}</span>${a?`<div class="leise">${esc(a.titel)}</div>`:""}</div>
+      ${darf?`<button class="btn still klein" data-a="eBearbeiten" data-id="${esc(e.id)}" aria-label="Eintrag bearbeiten" title="Bearbeiten">${icon("stift")}</button>`:""}</div>
+    ${e.text?`<p>${esc(e.text)}</p>`:""}</article>`; }
+function eintragBearbeiten(id){ const e=S.eintrag.find(x=>x.id===id); if(!e) return;
+  oeffne("Eintrag bearbeiten",`<form class="stapel" data-form="eAendern" data-id="${esc(e.id)}">
+    <label class="feld">Datum<input type="date" name="datum" id="eb-datum" value="${esc(e.datum)}"></label>
+    <label class="feld">Text<textarea name="text" id="eb-text">${esc(e.text||"")}</textarea></label>
+    ${e.fotos.length?`<div class="stapel" style="gap:6px"><span class="etikett">Fotos – antippen zum Entfernen</span><div class="foto-reihe foto-wahl">${e.fotos.map((p,i)=>`<label class="foto-weg"><input type="checkbox" name="weg" value="${i}"><img data-foto="${esc(p)}" alt="Foto ${i+1}"><span>${icon("papierkorb")}</span></label>`).join("")}</div></div>`:""}
+    <div class="zeile"><button class="btn primaer" type="submit">${icon("check")}Speichern</button><button class="btn gefahr" type="button" data-a="eLoeschen" data-id="${esc(e.id)}">${icon("papierkorb")}Eintrag löschen</button></div></form>`); }
 
 /* ---------- Tagesplan ---------- */
 let tpDatum=null;
 function tpStandard(){ const h=heuteIso(); const tage=[...new Set(S.tagesplan_punkt.map(x=>x.datum))].sort();
   if(tage.includes(h)) return h; return tage.find(d=>d>h) || (new Date().getDay()===6?h:naechsterSamstag()); }
+const tpName = id => person(id) ? vorname(id) : "";   // unbekannte Konten nicht als „Unbekannt“ in den Plan schreiben
 const uhr = s => s ? new Date(s).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) : "";
 function tpPunkt(x){ const auf=x.aufgabe_id&&S.aufgabe.find(y=>y.id===x.aufgabe_id);
   return `<div class="tp-punkt${x.erledigt?" fertig":""}">
@@ -193,7 +243,7 @@ function tpDialog(abschnitt){
     <label class="feld">Abschnitt<select name="abschnitt" id="tp-abschnitt">${TP_ABSCHNITTE.map(([k,t])=>`<option value="${k}" ${k===abschnitt?"selected":""}>${t}</option>`).join("")}</select></label>
     <label class="feld">Aus den Aufgaben (optional)<select name="aufgabe_id" id="tp-aufgabe"><option value="">– keine –</option>${offen.map(x=>`<option value="${x.id}">${esc(x.titel)}</option>`).join("")}</select></label>
     <label class="feld">Was ist zu tun?<input type="text" name="titel" id="tp-titel" placeholder="z. B. Wand Küche: Reihen 3 bis 6" autocomplete="off"></label>
-    <label class="feld">Wer bzw. Team<input type="text" name="wer" id="tp-wer" list="tp-wer-liste" placeholder="z. B. Team A: Igor, Andre" autocomplete="off"></label>
+    <label class="feld">Wer / welches Team<input type="text" name="wer" id="tp-wer" list="tp-wer-liste" placeholder="z. B. Team A: Igor, Andre" autocomplete="off"></label>
     <datalist id="tp-wer-liste">${["Team A","Team B","Alle",...da].map(n=>`<option value="${esc(n)}">`).join("")}</datalist>
     <label class="feld">Hinweis (optional)<textarea name="notiz" id="tp-notiz" rows="2" style="min-height:60px"></textarea></label>
     <p class="klein leise">Wählst du eine Aufgabe, wird ihr Titel übernommen, wenn das Feld „Was ist zu tun?“ leer bleibt.</p>
@@ -207,12 +257,12 @@ ANSICHTEN.kalender = () => {
   for(let i=0;i<42;i++){ const d=new Date(start); d.setDate(start.getDate()+i); const s=iso(d); const da=S.verfuegbarkeit.filter(v=>v.datum===s);
     const ich=da.some(v=>v.profil_id===S.me.id), gew=mehrfach&&mehrfach.has(s); const plan=S.aufgabe.filter(a=>a.datum===s).length;
     zellen.push(`<button class="tag ${d.getMonth()!==m?"fremd":""} ${d.getDay()===6?"sa":""} ${s===heute?"heute":""} ${ich?"ich-da":""}" style="${gew?"outline:3px solid var(--flamme);outline-offset:-3px":""}" data-a="${mehrfach?"mehrTag":"tagOeffnen"}" data-datum="${s}" aria-label="${dLang(s)}, ${da.length} Personen">
-      <span class="nr">${d.getDate()}<span class="anz">${da.length?da.length+" "+(da.length===1?"Pers.":"Pers."):""}</span></span>
+      <span class="nr">${d.getDate()}${da.length?`<span class="anz" title="${mz(da.length,"Person","Personen")}">${icon("profil")}${da.length}</span>`:""}</span>
       <span class="namen">${da.map(v=>esc(vorname(v.profil_id))).join(", ")}</span>${plan?`<span class="pille" style="font-size:10.5px;padding:1px 6px">${plan} Aufg.</span>`:""}</button>`); }
   const monatName=kalMonat.toLocaleDateString("de-DE",{month:"long",year:"numeric"});
   return `<div class="kopf"><div><p class="etikett">Wer ist wann da?</p><h1>Kalender</h1><p class="unter">Tippe auf einen Tag, um zu sehen, wer kommt, und dich selbst einzutragen. <span class="pille" style="background:var(--gold-weich);color:var(--warn)">Samstag = großer Bautag</span></p></div>
     <div class="zeile">${mehrfach?`<span class="klein leise">${mehrfach.size} Tage gewählt</span><button class="btn primaer" data-a="mehrEintragen" ${mehrfach.size?"":"disabled"}>Für diese Tage eintragen</button><button class="btn still" data-a="mehrAus">Abbrechen</button>`:`<button class="btn" data-a="mehrAn">${icon("kalender")}Mehrere Tage auf einmal</button>`}</div></div>
-  <section class="karte"><header><div class="zeile"><button class="btn still" data-a="monat" data-d="-1" aria-label="Voriger Monat">${icon("links")}</button><h2 style="min-width:170px;text-align:center">${monatName}</h2><button class="btn still" data-a="monat" data-d="1" aria-label="Nächster Monat">${icon("rechts")}</button></div>
+  <section class="karte"><header><div class="zeile kal-kopf"><button class="btn still" data-a="monat" data-d="-1" aria-label="Voriger Monat">${icon("links")}</button><h2>${monatName}</h2><button class="btn still" data-a="monat" data-d="1" aria-label="Nächster Monat">${icon("rechts")}</button></div>
     <button class="btn klein" data-a="monat" data-d="0">Heute</button></header>
     <div class="kal">${["Mo","Di","Mi","Do","Fr","Sa","So"].map(w=>`<div class="wt">${w}</div>`).join("")}${zellen.join("")}</div>
     <p class="klein leise" style="margin-top:12px">Orange Unterkante = du bist eingetragen.</p></section>`;
@@ -221,7 +271,7 @@ function tagDialog(datum){
   const da=S.verfuegbarkeit.filter(v=>v.datum===datum).sort((a,b)=>(a.von||"")<(b.von||"")?-1:1);
   const plan=S.aufgabe.filter(a=>a.datum===datum); const nachT=taetigkeitsZaehlung(da); const ich=da.find(v=>v.profil_id===S.me.id);
   oeffne(dLang(datum), `
-    <div class="zeile">${ich?`<button class="btn" data-a="verfOeffnen" data-datum="${datum}">Meinen Eintrag ändern</button>`:`<button class="btn flamme" data-a="verfOeffnen" data-datum="${datum}">Ich bin da</button>`}<button class="btn" data-a="geh" data-ziel="tag" data-tag="${datum}">${icon("tag")}Tagesplan</button><span class="pille">${da.length} ${da.length===1?"Person":"Personen"}</span></div>
+    <div class="zeile">${ich?`<button class="btn" data-a="verfOeffnen" data-datum="${datum}">Meinen Eintrag ändern</button>`:`<button class="btn flamme" data-a="verfOeffnen" data-datum="${datum}">Ich bin dabei</button>`}<button class="btn" data-a="geh" data-ziel="tag" data-tag="${datum}">${icon("tag")}Tagesplan</button><span class="pille">${da.length} ${da.length===1?"Person":"Personen"}</span></div>
     ${nachT.length?`<div class="chips">${nachT.map(([t,n])=>`<span class="pille">${esc(t)} · ${n}</span>`).join("")}</div>`:""}
     <section><h3 style="margin-bottom:8px">Wer kommt</h3>${da.length?`<div class="liste">${da.map(v=>`<div class="zeile" style="align-items:flex-start">${ava(v.profil_id)}<div style="flex:1;min-width:0"><b>${esc(nameVon(v.profil_id))}</b> <span class="mass leise">${zeit(v.von,v.bis)}</span>
       <div class="klein leise">${v.alles_gleich?"Alles gleich gern":v.taetigkeiten.map((t,i)=>`${i+1}. ${esc(t)}`).join(" · ")||"–"}</div>${v.notiz?`<div class="klein">${esc(v.notiz)}</div>`:""}
@@ -254,6 +304,11 @@ const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich,
   [0, "Asbest im Dach: Regeln für alle", "Asbest ist nur im Dach und bleibt, wie es ist. Fest gebunden und unbeschädigt gibt es kaum Fasern ab – gefährlich wird es erst beim Bearbeiten. Darum: Dachplatten nicht anbohren, schleifen, reinigen oder streichen. Lampen, Kabeltrassen, Absorber und Ringanker nur an der Stahlkonstruktion befestigen. Bei der Einweisung allen Helfern sagen.", "Planung & Organisation", "Ganze Halle", null, 1],
   [0, "Deckenuntersicht klären", "Sind die sichtbaren Platten unter dem Dach selbst asbesthaltig oder eine eigene Verkleidung bzw. Dämmung? Davon hängt ab, ob die Decke gestrichen werden darf.", "Planung & Organisation", "Ganze Halle", null, 1],
   [0, "Haftpflicht für die Bauzeit prüfen", "Deckt die Haftpflicht der Gemeinde Schäden an Dritten während der Arbeiten? Sonst Bauherren-Haftpflicht abschließen.", "Planung & Organisation", "Ganze Halle", null, 2],
+  [0, "Unfallschutz für die Helfer klären", "Alle helfen ehrenamtlich und sind nicht bei der BG Bau angemeldet. Prüfen, ob eine Gruppen-Unfallversicherung (z. B. über den Gemeindeverband) oder die Sammelversicherung des Landes Baden-Württemberg für Ehrenamtliche greift – sonst eine Unfallversicherung für Bauhelfer abschließen.", "Planung & Organisation", "Ganze Halle", null, 1],
+  [0, "Notfallplan für die Bautage", "Je Bautag einen Ersthelfer benennen. Erste-Hilfe-Kasten und Feuerlöscher an festem Platz. Aushang: Notruf 112, Adresse Konzstraße 9, nächstes Krankenhaus, wer die Schlüssel hat.", "Planung & Organisation", "Ganze Halle", null, 1],
+  [0, "Schlüssel und Auf-/Abschließen regeln", "Wer hat Schlüssel, wer schließt an Bautagen auf und ab? Liste führen.", "Planung & Organisation", "Ganze Halle", null, 2],
+  [0, "Nachbarn informieren, Ruhezeiten beachten", "Nachbarn und Betriebe nebenan über die Bautage informieren. Laute Arbeiten nicht an Sonn- und Feiertagen.", "Planung & Organisation", "Außenbereich", null, 3],
+  [0, "Zufahrt, Anlieferung und Parken klären", "Stellplatz für Container und Paletten, Parken an Bautagen, Stellplatznachweis aus dem Bauantrag.", "Einkauf & Transport", "Außenbereich", null, 2],
   [0, "Heizkonzept festlegen", "Heizlast gesamtes Objekt: 89 kW. Wie kommt die Wärme in die Räume – Heizkörper, Fußbodenheizung (muss vor dem neuen Boden liegen!) oder Lüftungsgerät mit Heizregister? Für Gottesdienste zählt schnelles Aufheizen. Mit den Heizungsleuten der Gemeinde entscheiden.", "Heizung & Gas", "Ganze Halle", null, 1],
   [0, "Tore und Ausgänge abgleichen", "Die großen roten Schiebetore: bleiben sie, werden sie verschlossen oder durch Türen ersetzt? Schiebetore zählen in der Regel nicht als Notausgang – mit dem Bescheid abgleichen.", "Planung & Organisation", "Ganze Halle", null, 2],
   [0, "Hausanschluss und Leistung prüfen", "Netzbetreiber: Leistung für Küche, LED-Wand und Technik; ggf. Leistungserhöhung beantragen. Durch Elektriker aus der Gemeinde mit Eintragung beim Netzbetreiber.", "Elektrik", "Ganze Halle", "Elektrik", 2],
@@ -303,6 +358,7 @@ const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich,
   [3, "Sanitär WC-Block", "Wasser, Abwasser, Warmwasser; barrierefreies WC.", "Sanitär", "WC-Block", null, 2],
   [3, "Sanitär Küche", "Wasser, Abwasser, Spülmaschine.", "Sanitär", "Küche", null, 2],
   [3, "Lüftung", "Konzept für den Saal, Abluft WC, Dunstabzug Küche.", "Planung & Organisation", "Ganze Halle", null, 2],
+  [3, "Fettabscheider für die Küche klären", "Bei Gemeindeküchen mit regelmäßigem Essen kann die Stadtentwässerung einen Fettabscheider verlangen – vor dem Abwasseranschluss der Küche nachfragen.", "Sanitär", "Küche", null, 2],
   [4, "Neue Lampen Gottesdienstraum", "Lichtplanung (Helligkeit, dimmbar, Bühnenlicht getrennt). Befestigung an der Stahlkonstruktion, nicht in die Dachplatten. Anschluss durch Elektriker aus der Gemeinde.", "Elektrik", "Gottesdienstraum", "Elektrik", 2],
   [4, "Neue Lampen Gemeinschaftsraum", "Auswahl und Montage; Befestigung wie im Gottesdienstraum nur an der Stahlkonstruktion.", "Elektrik", "Gemeinschaftsraum", "Elektrik", 2],
   [4, "Wände verputzen bzw. spachteln", "Neue Wände; Bestandswände ausbessern.", "Trockenbau", "Ganze Halle", null, 2],
@@ -326,6 +382,8 @@ const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich,
   [5, "Bestuhlung festlegen", "300, 400 oder 500 Stühle in 3 Blöcken – in der App unter „Halle“ umschaltbar; Rettungswegbreiten mit der Genehmigung abgleichen.", "Planung & Organisation", "Gottesdienstraum", null, 3],
   [6, "Rettungswege und Notausgänge", "Frei, gekennzeichnet und beleuchtet.", "Planung & Organisation", "Ganze Halle", null, 1],
   [6, "Feuerlöscher und Rauchmelder", "Bzw. Brandmeldeanlage nach Auflage.", "Planung & Organisation", "Ganze Halle", null, 2],
+  [6, "Flucht- und Rettungsplan aushängen", "Plan mit Ausgängen, Feuerlöschern und Sammelplatz in jedem Raum; zulässige Personenzahl am Eingang.", "Planung & Organisation", "Ganze Halle", null, 2],
+  [6, "Ordnungsdienst für Gottesdienste einteilen", "Wer achtet bei Veranstaltungen auf freie Rettungswege und die Personenzahl? Brandschutzhelfer schulen lassen, falls die Genehmigung das fordert.", "Planung & Organisation", "Ganze Halle", null, 3],
   [6, "Barrierefreiheit prüfen", "Eingang, WC, Zugang Bühne.", "Planung & Organisation", "Ganze Halle", null, 2],
   [6, "Abnahme Elektrik", "Messprotokoll durch den eingetragenen Elektriker aus der Gemeinde.", "Elektrik", "Ganze Halle", "Elektrik", 1],
   [6, "Abnahme Gastherme", "Durch den Bezirksschornsteinfeger (gesetzlich vorgeschrieben).", "Heizung & Gas", "Ganze Halle", null, 1],
@@ -344,7 +402,8 @@ ANSICHTEN.aufgaben = () => {
   const spalte=st=>{ const l=liste.filter(a=>a.status===st).sort((a,b)=>((a.phase??9)-(b.phase??9))||(a.prio-b.prio)||((a.datum||"9")<(b.datum||"9")?-1:1));
     return `<section class="spalte"><h3>${STATUS[st]} <span class="pille ${st}">${l.length}</span></h3>${l.map(aufgabeKarte).join("")||`<p class="klein leise" style="padding:4px">–</p>`}</section>`; };
   return `<div class="kopf"><div><p class="etikett">Arbeiten & Zuständigkeiten</p><h1>Aufgaben</h1><p class="unter">${istLeitung()?"Lege Arbeiten an, teile Teams und Leute ein.":"Hier siehst du, was ansteht und was dir zugewiesen ist."}</p></div>
-    ${istLeitung()?`<button class="btn primaer" data-a="aufgabeNeu">${icon("plus")}Aufgabe anlegen</button>`:""}</div>
+    ${istLeitung()?`<div class="zeile">${(()=>{ const fehlt=S.aufgabe.length?PLAN_VORSCHLAEGE.filter(v=>!S.aufgabe.some(a=>a.titel===v[1])).length:0;
+      return fehlt?`<button class="btn" data-a="vorschlaege" title="Arbeiten aus dem Plan, die noch nicht in der Liste stehen">${mz(fehlt,"neuer Vorschlag","neue Vorschläge")}</button>`:""; })()}<button class="btn primaer" data-a="aufgabeNeu">${icon("plus")}Aufgabe anlegen</button></div>`:""}</div>
   <div class="zeile" style="margin-bottom:14px;gap:10px"><div class="reiter" role="group" aria-label="Filter">${[["alle","Alle"],["meine","Meine"],["ohne","Ohne Zuweisung"]].map(([k,l])=>`<button data-a="filterA" data-k="${k}" aria-pressed="${f.art===k}">${l}</button>`).join("")}</div>
     <select id="f-gewerk" data-a="filterG" style="width:auto;min-width:200px"><option value="">Alle Tätigkeiten</option>${gewerke.map(g=>`<option ${f.gewerk===g?"selected":""}>${esc(g)}</option>`).join("")}</select>
     <select id="f-phase" data-a="filterP" style="width:auto;min-width:200px"><option value="">Alle Phasen</option>${PHASEN.map((p,i)=>`<option value="${i}" ${f.phase===String(i)?"selected":""}>${i} · ${esc(p)}</option>`).join("")}</select></div>
@@ -355,7 +414,7 @@ function aufgabeKarte(a){ const t=teamVon(a.team_id);
   return `<button class="akarte" style="--farbe:${gewerkFarbe(a)}" data-a="aufgabe" data-id="${a.id}">
     <b>${a.prio===1?'<span style="color:var(--flamme)">●</span> ':""}${esc(a.titel)}</b>
     <span class="zeile klein leise" style="gap:6px">${a.phase!=null?`<span class="pille" title="${esc(PHASEN[a.phase]||"")}">P${a.phase}</span>`:""}${a.datum?`<span class="mass">${dKurz(a.datum)}</span>`:""}${a.bereich?`<span>${esc(a.bereich)}</span>`:""}${a.vorschlag?`<span class="pille vorschlag">Vorschlag</span>`:""}</span>
-    <span class="zeile weit">${a.zugewiesen.length?avas(a.zugewiesen,4):`<span class="klein leise">niemand zugewiesen</span>`}${t?`<span class="klein" style="color:${t.farbe};font-weight:600">${esc(t.name)}</span>`:""}</span></button>`; }
+    <span class="zeile weit">${a.zugewiesen.length?avas(a.zugewiesen,4):`<span class="klein leise">niemand zugewiesen</span>`}${t?`<span class="klein" style="color:${teamText(t.farbe)};font-weight:600">${esc(t.name)}</span>`:""}</span></button>`; }
 function aufgabeDialog(id){
   const a=S.aufgabe.find(x=>x.id===id); if(!a) return; const t=teamVon(a.team_id); const darf=istLeitung()||a.zugewiesen.includes(S.me.id);
   const ein=S.eintrag.filter(e=>e.aufgabe_id===id).sort((x,y)=>y.erstellt<x.erstellt?-1:1); const mat=S.material.filter(m=>m.aufgabe_id===id);
@@ -363,7 +422,7 @@ function aufgabeDialog(id){
   oeffne(a.titel, `
     <div class="zeile"><span class="pille ${a.status}">${STATUS[a.status]}</span>${a.phase!=null?`<span class="pille">Phase ${a.phase} · ${esc(PHASEN[a.phase]||"")}</span>`:""}${a.gewerk?`<span class="pille">${esc(a.gewerk)}</span>`:""}${a.bereich?`<span class="pille">${esc(a.bereich)}</span>`:""}${a.datum?`<span class="pille mass">${dKurz(a.datum)}</span>`:""}${a.prio===1?`<span class="pille" style="color:var(--flamme)">Wichtig</span>`:""}${a.vorschlag?`<span class="pille vorschlag">Vorschlag aus dem Plan</span>`:""}</div>
     ${a.beschreibung?`<p>${esc(a.beschreibung)}</p>`:""}
-    <div class="stapel" style="gap:6px"><span class="etikett">Team & Zuständige</span><div class="zeile">${t?`<span class="punkt" style="background:${t.farbe}"></span><b>${esc(t.name)}</b><span class="leise klein">Leitung: ${esc(t.leiter||"–")}</span>`:`<span class="leise">kein Team</span>`}</div>
+    <div class="stapel" style="gap:6px"><span class="etikett">Team & Zuständige</span><div class="zeile">${t?`<span class="punkt" style="background:${farbeOk(t.farbe)}"></span><b>${esc(t.name)}</b><span class="leise klein">Leitung: ${esc(t.leiter||"–")}</span>`:`<span class="leise">kein Team</span>`}</div>
       <div class="zeile">${a.zugewiesen.map(z=>`<span class="zeile" style="gap:6px">${ava(z,26)}<span class="klein">${esc(nameVon(z))}</span></span>`).join("")||`<span class="leise klein">Noch niemand zugewiesen.</span>`}</div>
       ${a.datum?`<p class="klein leise">Am ${dKurz(a.datum)} eingetragen: ${daAmTag.map(v=>esc(vorname(v.profil_id))).join(", ")||"noch niemand"}</p>`:""}</div>
     ${darf?`<div class="stapel" style="gap:6px"><span class="etikett">Status ändern</span><div class="reiter">${Object.entries(STATUS).map(([k,l])=>`<button data-a="aStatus" data-id="${a.id}" data-s="${k}" aria-pressed="${a.status===k}">${l}</button>`).join("")}</div></div>`:""}
@@ -421,24 +480,26 @@ ANSICHTEN.teams = () => {
   const L=[...S.leitung].sort((a,b)=>a.sort-b.sort);
   return `<div class="kopf"><div><p class="etikett">Wer macht was</p><h1>Teams & Leitung</h1><p class="unter">Tritt einem Team bei, damit die Teamleiter wissen, auf wen sie zählen können.</p></div>${istLeitung()?`<button class="btn primaer" data-a="teamNeu">${icon("plus")}Team anlegen</button>`:""}</div>
   <section class="karte" style="margin-bottom:16px"><header><h2>Leitungsgruppe</h2><div class="zeile"><span class="pille">${L.length}</span>${istLeitung()?`<button class="btn still klein" data-a="leitungNeu">${icon("plus")}Person</button>`:""}</div></header>
-    <div class="raster r3" style="gap:10px">${L.map(l=>`<div class="zeile" style="align-items:flex-start">${l.profil_id?ava(l.profil_id):`<span class="avatar" style="background:var(--text3)">${esc(l.name.split(" ").map(w=>w[0]).join("").slice(0,2))}</span>`}<div><b>${esc(l.name)}</b><div class="klein leise">${esc(l.schwerpunkt||"")}</div>${l.hinweis?`<div class="klein" style="color:var(--warn)">${esc(l.hinweis)}</div>`:""}${!l.profil_id?`<div class="klein leise">noch nicht angemeldet</div>`:""}</div></div>`).join("")}</div></section>
+    <div class="raster r3" style="gap:10px">${L.map(l=>`<div class="zeile" style="align-items:flex-start">${l.profil_id?ava(l.profil_id):`<span class="avatar" style="background:var(--text3)">${esc(l.name.split(" ").map(w=>w[0]).join("").slice(0,2))}</span>`}<div><b>${esc(l.name)}</b><div class="klein leise">${esc(l.schwerpunkt||"")}</div>${l.hinweis?`<div class="klein" style="color:var(--warn)">${esc(l.hinweis)}</div>`:""}${!l.profil_id?`<div class="klein leise">noch nicht angemeldet</div>`:""}</div></div>`).join("")||`<p class="klein leise">Noch niemand in der Leitungsgruppe eingetragen.</p>`}</div></section>
   <div class="raster r3">${[...S.team].sort((a,b)=>a.sort-b.sort).map(t=>{ const m=S.team_mitglied.filter(x=>x.team_id===t.id).map(x=>x.profil_id); const drin=m.includes(S.me.id);
-    return `<section class="karte" style="border-top:4px solid ${t.farbe||"var(--linie)"}"><header><div><h2>${esc(t.name)}</h2><p class="klein leise">Leitung: ${esc(t.leiter||"–")}</p></div>${istLeitung()?`<button class="btn still klein" data-a="teamBearbeiten" data-id="${t.id}">Bearbeiten</button>`:""}</header>
+    return `<section class="karte" style="border-top:4px solid ${farbeOk(t.farbe)}"><header><div><h2>${esc(t.name)}</h2><p class="klein leise">Leitung: ${esc(t.leiter||"–")}</p></div>${istLeitung()?`<button class="btn still klein" data-a="teamBearbeiten" data-id="${t.id}">Bearbeiten</button>`:""}</header>
       <p class="klein">${esc(t.beschreibung||"")}</p>
       <div class="zeile weit" style="margin-top:12px">${m.length?avas(m,8):`<span class="klein leise">noch niemand</span>`}<button class="btn klein ${drin?"":"primaer"}" data-a="${drin?"austreten":"beitreten"}" data-id="${t.id}">${drin?"Austreten":"Beitreten"}</button></div>
-      <p class="klein leise" style="margin-top:8px">${S.aufgabe.filter(a=>a.team_id===t.id&&a.status!=="erledigt").length} offene Aufgaben</p></section>`; }).join("")}</div>
+      <p class="klein leise" style="margin-top:8px">${mz(S.aufgabe.filter(a=>a.team_id===t.id&&a.status!=="erledigt").length,"offene Aufgabe","offene Aufgaben")}</p></section>`; }).join("")}</div>
   <section class="karte" style="margin-top:16px"><header><h2>Alle Mitglieder</h2><span class="pille">${S.profil.length}</span></header>
-    <div class="tabelle-rahmen"><table><thead><tr><th>Name</th><th>Rolle</th><th>Schwerpunkte</th><th>Hinweis</th></tr></thead><tbody>
-    ${[...S.profil].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<tr><td><span class="zeile" style="flex-wrap:nowrap">${ava(p.id,26)}<b>${esc(p.name)}</b></span></td>
-      <td>${istAdmin()&&p.id!==S.me.id?`<select data-a="rolle" data-id="${p.id}" style="width:auto">${["mitglied","bauleitung","admin"].map(r=>`<option value="${r}" ${p.rolle===r?"selected":""}>${rolleText(r)}</option>`).join("")}</select>`:`<span class="pille">${rolleText(p.rolle)}</span>`}</td>
-      <td class="klein">${(p.schwerpunkte||[]).map(esc).join(", ")||"–"}</td><td class="klein leise">${esc(p.hinweis||"")}</td></tr>`).join("")}</tbody></table></div></section>`;
+    <div class="tabelle-rahmen"><table class="karten-tabelle"><thead><tr><th>Name</th><th>Rolle</th><th>Schwerpunkte</th>${istLeitung()?"<th>Telefon</th>":""}<th>Hinweis</th></tr></thead><tbody>
+    ${[...S.profil].filter(p=>!p.gesperrt).sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<tr><td><span class="zeile" style="flex-wrap:nowrap">${ava(p.id,26)}<b>${esc(p.name)}</b></span></td>
+      <td data-titel="Rolle">${istAdmin()&&p.id!==S.me.id?`<select data-a="rolle" data-id="${p.id}" style="width:auto" aria-label="Rolle von ${esc(p.name)}">${["mitglied","bauleitung","admin"].map(r=>`<option value="${r}" ${p.rolle===r?"selected":""}>${rolleText(r)}</option>`).join("")}</select>`:`<span class="pille">${rolleText(p.rolle)}</span>`}</td>
+      <td class="klein" data-titel="Kann gut">${(p.schwerpunkte||[]).map(esc).join(", ")||"–"}</td>
+      ${istLeitung()?`<td class="klein" data-titel="Telefon">${p.telefon?`<a href="tel:${esc(p.telefon.replace(/[^\d+]/g,""))}">${esc(p.telefon)}</a>`:"–"}</td>`:""}
+      <td class="klein leise" data-titel="Hinweis">${esc(p.hinweis||"")}</td></tr>`).join("")}</tbody></table></div></section>`;
 };
 function teamForm(t){
   oeffne(t?"Team bearbeiten":"Neues Team", `<form class="stapel" data-form="team" ${t?`data-id="${t.id}"`:""}>
     <label class="feld">Name<input type="text" name="name" id="t-name" required value="${esc(t?.name||"")}"></label>
     <div class="felder"><label class="feld">Tätigkeit<select name="gewerk" id="t-gewerk"><option value="">–</option>${TAETIGKEITEN.map(x=>`<option ${t?.gewerk===x?"selected":""}>${esc(x)}</option>`).join("")}</select></label>
       <label class="feld">Leitung<input type="text" name="leiter" id="t-leiter" value="${esc(t?.leiter||"")}" placeholder="z. B. Andre, Igor"></label>
-      <label class="feld">Farbe<input type="color" name="farbe" id="t-farbe" value="${t?.farbe||"#2b4fa0"}" style="height:40px;padding:3px"></label></div>
+      <label class="feld">Farbe<input type="color" name="farbe" id="t-farbe" value="${farbeOk(t?.farbe,"#2b4fa0")}" style="height:40px;padding:3px"></label></div>
     <label class="feld">Beschreibung<textarea name="beschreibung" id="t-beschr">${esc(t?.beschreibung||"")}</textarea></label>
     <button class="btn primaer" type="submit">${icon("check")}Speichern</button></form>`);
 }
@@ -452,18 +513,18 @@ ANSICHTEN.material = () => {
       <p class="klein leise" style="margin-top:4px">${BAUHAUS.adresse} · ${BAUHAUS.zeiten} · <a href="tel:${BAUHAUS.tel.replace(/\s/g,"")}">${BAUHAUS.tel}</a></p></div>
     <div class="zeile"><a class="btn klein" href="${BAUHAUS.seite}" target="_blank" rel="noopener">Markt</a><a class="btn klein" href="${BAUHAUS.reservieren}" target="_blank" rel="noopener">Reservieren & Abholen</a>${istLeitung()?`<button class="btn klein primaer" data-a="mEinkaufsliste">Einkaufsliste kopieren</button>`:""}</div></div></section>
   <div class="reiter" style="margin-bottom:14px" role="group" aria-label="Status-Filter">${[["alle","Alle"],...Object.entries(MSTATUS)].map(([k,lb])=>`<button data-a="filterM" data-k="${k}" aria-pressed="${filterM===k}">${lb}${k!=="alle"?` · ${zaehl(k)}`:""}</button>`).join("")}</div>
-  <section class="karte">${l.length?`<div class="tabelle-rahmen"><table><thead><tr><th>Material</th><th>Menge</th><th>Tätigkeit / Aufgabe</th><th>Angefragt von</th><th>Status</th><th></th></tr></thead><tbody>
+  <section class="karte">${l.length?`<div class="tabelle-rahmen"><table class="karten-tabelle"><thead><tr><th>Material</th><th>Menge</th><th>Tätigkeit / Aufgabe</th><th>Angefragt von</th><th>Status</th><th><span class="sr">Löschen</span></th></tr></thead><tbody>
     ${l.map(m=>{ const a=S.aufgabe.find(x=>x.id===m.aufgabe_id); const eigen=m.angefragt_von===S.me.id&&m.status==="angefragt";
-      const nr=bauhausNr(m.link);
+      const link=linkOk(m.link), nr=bauhausNr(link);
       return `<tr><td><b>${esc(m.name)}</b>${m.vorschlag?` <span class="pille vorschlag">Vorschlag</span>`:""}${m.notiz?`<div class="klein leise">${esc(m.notiz)}</div>`:""}
-        <div class="klein">${m.link?`<a href="${esc(m.link)}" target="_blank" rel="noopener">${nr?"Bauhaus · Nr. "+nr:"Produktseite"}</a>`:`<a href="${bauhausSuche(m.name)}" target="_blank" rel="noopener" class="leise">bei Bauhaus suchen</a>`}${m.preis!=null?` · ${euro(m.preis)} je ${esc(m.einheit||"Einheit")}`:""}</div></td>
-        <td class="mass">${m.menge?zahlDe(m.menge)+" "+esc(m.einheit||""):`<span class="leise">${esc(m.einheit||"–")}</span>`}${m.preis!=null&&m.menge?`<div class="klein leise">≈ ${euro(m.preis*m.menge)}</div>`:""}</td>
-      <td class="klein">${esc(m.gewerk||"")}${a?`<div class="leise">${esc(a.titel)}</div>`:""}</td><td class="klein">${esc(nameVon(m.angefragt_von))}</td>
-      <td>${istLeitung()?`<select data-a="mStatusSel" data-id="${m.id}" style="width:auto">${Object.entries(MSTATUS).map(([k,lb])=>`<option value="${k}" ${m.status===k?"selected":""}>${lb}</option>`).join("")}</select>`:`<span class="pille ${m.status}">${MSTATUS[m.status]}</span>`}</td>
-      <td>${istLeitung()||eigen?`<button class="btn still klein gefahr" data-a="mLoeschen" data-id="${m.id}" aria-label="Löschen">${icon("papierkorb")}</button>`:""}</td></tr>`; }).join("")}</tbody></table></div>`
+        <div class="klein">${link?`<a href="${esc(link)}" target="_blank" rel="noopener noreferrer">${nr?"Bauhaus · Nr. "+nr:"Produktseite"}</a>`:`<a href="${bauhausSuche(m.name)}" target="_blank" rel="noopener" class="leise">bei Bauhaus suchen</a>`}${m.preis!=null?` · ${euro(m.preis)} je ${esc(m.einheit||"Einheit")}`:""}</div></td>
+        <td class="mass" data-titel="Menge">${m.menge?zahlDe(m.menge)+" "+esc(m.einheit||""):`<span class="leise">${esc(m.einheit||"–")}</span>`}${m.preis!=null&&m.menge?`<div class="klein leise">≈ ${euro(m.preis*m.menge)}</div>`:""}</td>
+      <td class="klein" data-titel="Für">${esc(m.gewerk||"–")}${a?`<div class="leise">${esc(a.titel)}</div>`:""}</td><td class="klein" data-titel="Von">${esc(nameVon(m.angefragt_von))}</td>
+      <td data-titel="Status">${istLeitung()?`<select data-a="mStatusSel" data-id="${m.id}" style="width:auto" aria-label="Status von ${esc(m.name)}">${Object.entries(MSTATUS).map(([k,lb])=>`<option value="${k}" ${m.status===k?"selected":""}>${lb}</option>`).join("")}</select>`:`<span class="pille ${m.status}">${MSTATUS[m.status]}</span>`}</td>
+      <td class="aktion">${istLeitung()||eigen?`<button class="btn still klein gefahr" data-a="mLoeschen" data-id="${m.id}" aria-label="${esc(m.name)} löschen">${icon("papierkorb")}</button>`:""}</td></tr>`; }).join("")}</tbody></table></div>`
     :`<div class="leer">Keine Einträge in dieser Ansicht.</div>`}
     ${(()=>{ const mitPreis=l.filter(m=>m.preis!=null&&m.menge&&m.status!=="abgelehnt"); const s=mitPreis.reduce((x,m)=>x+m.preis*m.menge,0);
-      return mitPreis.length?`<p class="klein leise" style="margin-top:12px;text-align:right">Summe der ${mitPreis.length} Posten mit Preis: <b>${euro(s)}</b> (Preise zur Orientierung, Stand beim Eintragen)</p>`:""; })()}</section>`;
+      return mitPreis.length?`<p class="klein leise" style="margin-top:12px;text-align:right">Summe (${mz(mitPreis.length,"Posten","Posten")} mit Preis): <b>${euro(s)}</b> · Preise zur Orientierung, Stand beim Eintragen</p>`:""; })()}</section>`;
 };
 /* Bauhaus Mannheim-Quadrate: keine Schnittstelle für Bestand oder Bestellung – Suche, Produktlink und „Reservieren & Abholen“ */
 const BAUHAUS = { markt:"BAUHAUS Mannheim-Quadrate", adresse:"R5 1-5, 68161 Mannheim", zeiten:"Mo–Sa 9–20 Uhr", tel:"0621 480282 0",
@@ -533,11 +594,15 @@ const seitenObj = () => S.planobjekt.find(o=>o.typ==="seiten");
 const seitenAn = () => seitenObj()?.label==="1";
 const lageObj = () => S.planobjekt.find(o=>o.typ==="lage");
 const buehneLage = () => lageObj()?.label==="quer" ? "quer" : "stirn";
-const sitzText = () => { const st=stuhlPositionen(bestuhlungN()).length, se=seitenAn()?seitenPositionen().length:0, ti=S.planobjekt.reduce((s,o)=>s+(OBJEKTE[o.typ]?.plaetze||0),0);
-  const teile=[st?`${st} Stühle`:"", se?`${se} an der Bühne`:"", ti?`${ti} an Tischen`:""].filter(Boolean); return teile.join(" + ")||"0 Sitzplätze"; };
-const sitzplaetze = () => S.planobjekt.reduce((s,o)=>s+(OBJEKTE[o.typ]?.plaetze||0),0)+stuhlPositionen(bestuhlungN()).length;
+const EINSTELLUNG_TYPEN = ["bestuhlung","seiten","lage"];   // unsichtbare Planobjekte für Einstellungen
+const moebel = () => S.planobjekt.filter(o=>!EINSTELLUNG_TYPEN.includes(o.typ));
+const sitzText = () => { const st=stuhlPositionen(bestuhlungN()).length, se=seitenAn()?seitenPositionen().length:0;
+  const pl=t=>moebel().filter(o=>t(o.typ)).reduce((s,o)=>s+(OBJEKTE[o.typ]?.plaetze||0),0);
+  const extra=pl(t=>t==="stuhlreihe"||t==="stuhl"), ti=pl(t=>t!=="stuhlreihe"&&t!=="stuhl");
+  const teile=[st?`${st} Stühle`:"", se?`${se} an der Bühne`:"", extra?`${extra} in eigenen Reihen`:"", ti?`${ti} an Tischen`:""].filter(Boolean); return teile.join(" + ")||"0 Sitzplätze"; };
+const bestuhlungText = bi => bi?`3 Blöcke (${bi.bloecke.join(" | ")}), ${bi.reihen} Reihen, Reihenabstand ${String(bi.abstand).replace(".",",")} m, Gänge ${String(bi.gang).replace(".",",")} m`:"";
 ANSICHTEN.halle = () => {
-  const plaetze=sitzplaetze(), bn=bestuhlungN(), bi=bestuhlungInfo(bn), arch=istArch();
+  const bn=bestuhlungN(), bi=bestuhlungInfo(bn), arch=istArch();
   const kopf=`<div class="kopf"><div><p class="etikett">Konzstraße 9 · 47,40 × 19,90 m Innenmaß · Traufe 3,70 m · First 5,09 m</p><h1>Halle & 3D</h1><p class="unter">${arch?"Erdgeschoss nach dem Plan des Architekten (Bauantrag) – so, wie die Halle genehmigt wird.":"Unsere eigene Planung für den Umbau, Maße vom Architekten. Plane die Einrichtung und geh virtuell durch die Halle."}</p></div>
     <div class="stapel" style="gap:8px;align-items:flex-end"><div class="reiter" role="group" aria-label="Planung"><button data-a="planung" data-k="eigen" aria-pressed="${!arch}">Eigene Planung</button><button data-a="planung" data-k="architekt" aria-pressed="${arch}">Architektenplanung</button></div>
     <div class="reiter" role="group" aria-label="Ansicht"><button data-a="halleReiter" data-k="plan" aria-pressed="${halleReiter==="plan"}">Grundriss${arch?"":" & Planen"}</button><button data-a="halleReiter" data-k="3d" aria-pressed="${halleReiter==="3d"}">3D begehen</button></div></div></div>`;
@@ -585,14 +650,14 @@ ANSICHTEN.halle = () => {
   </div>`:`
   <section class="karte" style="padding:10px">
     <div class="dreid" id="dreid"><div class="hud"><div class="zeile" style="gap:6px">${(arch?[["a_eingang","Eingang"],["a_halle","Begegnungsstätte"],["a_vorn","Zur Bühne"],["a_buehne","Auf der Bühne"],["a_neben","Begegnungsstätte 2"],["oben","Von oben"],["aussen","Von außen"]]:[["eingang","Eingang"],["raum","Gottesdienstraum"],["vorn","Zur Bühne"],["buehne","Auf der Bühne"],["gemein","Gemeinschaftsraum"],["oben","Von oben"],["aussen","Von außen"]]).map(([k,l])=>`<button class="btn klein" data-a="blick" data-k="${k}">${l}</button>`).join("")}</div>
-      <div class="tafel">Ziehen = umsehen · W A S D oder Pfeile = gehen · Shift = schneller · Mausrad = vor/zurück</div></div><div class="joy" aria-hidden="true"><i></i></div></div>
+      <div class="tafel">${matchMedia("(pointer: coarse)").matches?"Wischen = umsehen · Kreis unten links = gehen":"Ziehen = umsehen · W A S D oder Pfeile = gehen · Shift = schneller · Mausrad = vor/zurück"}</div></div><div class="joy" aria-hidden="true"><i></i></div></div>
     <div class="zeile weit klein leise" style="margin-top:10px;padding:0 4px">${arch?`<span>Architektenplanung mit übertragener Einrichtung und Bestuhlung.</span>`:`<label class="zeile" style="gap:6px"><input type="checkbox" id="neu-gelb" checked data-a="neuGelb"> Neue Wände gelb zeigen</label><span>Eingerichtete Objekte aus dem Grundriss erscheinen hier mit.</span>`}</div>
   </section>`}`;
 };
 function auswahlLeiste(){ const o=S.planobjekt.find(x=>x.id===planAuswahl); if(!o) return `<p class="klein leise">Tippe ein Objekt an, um es zu drehen oder zu entfernen.</p>`;
   return `<div class="zeile"><b>${esc(OBJEKTE[o.typ]?.n||o.typ)}</b><span class="mass leise">x ${o.x.toFixed(1).replace(".",",")} m · y ${o.y.toFixed(1).replace(".",",")} m · ${Math.round(o.rot||0)}°</span>
     <button class="btn klein" data-a="objDreh" data-g="15">${icon("drehen")}15°</button><button class="btn klein" data-a="objDreh" data-g="90">${icon("drehen")}90°</button><button class="btn klein gefahr" data-a="objWeg">${icon("papierkorb")}Entfernen</button></div>`; }
-function halleAktualisieren(){ const p=$("#plan-svg"); if(p&&!planZug){ p.innerHTML=planSvg(S.planobjekt,{bearbeiten:true,auswahl:planAuswahl,bestuhlung:bestuhlungN(),seiten:seitenAn()}); const a=$("#auswahl-leiste"); if(a) a.innerHTML=auswahlLeiste();
+function halleAktualisieren(){ lageSetzen(buehneLage()); const p=$("#plan-svg"); if(p&&!planZug){ p.innerHTML=planSvg(S.planobjekt,{bearbeiten:true,auswahl:planAuswahl,bestuhlung:bestuhlungN(),seiten:seitenAn()}); const a=$("#auswahl-leiste"); if(a) a.innerHTML=auswahlLeiste();
   const z=$("#plaetze"); if(z) z.textContent=sitzText(); }
   if(dreiD){ dreiD.objekte(S.planobjekt); if(dreiD._n!==bestuhlungN()){ dreiD._n=bestuhlungN(); dreiD.bestuhlung(dreiD._n); } if(dreiD._s!==seitenAn()){ dreiD._s=seitenAn(); dreiD.seiten(dreiD._s); } } }
 let planZug=null;
@@ -602,12 +667,14 @@ function halleStarten(){
   const punkt=(svg,e)=>{ const pt=svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY; const m=pt.matrixTransform(svg.getScreenCTM().inverse()); return {x:(m.x-40)/20,y:(m.y-40)/20}; };
   rahmen.addEventListener("pointerdown",e=>{ const g=e.target.closest("[data-obj]"); const svg=rahmen.querySelector("svg"); if(!g){ if(planAuswahl){ planAuswahl=null; halleAktualisieren(); } return; }
     const o=S.planobjekt.find(x=>x.id===g.dataset.obj); if(!o) return; const p=punkt(svg,e); planAuswahl=o.id; halleAktualisieren();
-    planZug={o,dx:p.x-o.x,dy:p.y-o.y,bewegt:false}; rahmen.setPointerCapture(e.pointerId); e.preventDefault(); });
+    planZug={o,dx:p.x-o.x,dy:p.y-o.y,x0:o.x,y0:o.y,bewegt:false}; rahmen.setPointerCapture(e.pointerId); e.preventDefault(); });
   rahmen.addEventListener("pointermove",e=>{ if(!planZug) return; const svg=rahmen.querySelector("svg"); const p=punkt(svg,e);
     const nx=Math.max(0.2,Math.min(HALLE.L-0.2,p.x-planZug.dx)), ny=Math.max(0.2,Math.min(HALLE.B-0.2,p.y-planZug.dy));
     planZug.o.x=Math.round(nx*10)/10; planZug.o.y=Math.round(ny*10)/10; planZug.bewegt=true;
     const g=svg.querySelector(`[data-obj="${planZug.o.id}"]`); if(g) g.setAttribute("transform",`translate(${planZug.o.x*20+40} ${planZug.o.y*20+40}) rotate(${planZug.o.rot||0})`); });
-  const los=async()=>{ if(!planZug) return; const {o,bewegt}=planZug; planZug=null; if(bewegt){ try{ await B.aendern("planobjekt",o.id,{x:o.x,y:o.y,geaendert:new Date().toISOString()}); }catch(e){ toast("Nicht gespeichert"); } } halleAktualisieren(); };
+  const los=async()=>{ if(!planZug) return; const {o,bewegt,x0,y0}=planZug; planZug=null;
+    if(bewegt){ try{ await B.aendern("planobjekt",o.id,{x:o.x,y:o.y,geaendert:new Date().toISOString()}); }catch(e){ o.x=x0; o.y=y0; toast("Nicht gespeichert: "+fehlerDeutsch(e.message||e)); } }
+    if(renderOffen) spaeterRendern(); else halleAktualisieren(); };
   rahmen.addEventListener("pointerup",los); rahmen.addEventListener("pointercancel",los);
 }
 
@@ -617,7 +684,7 @@ ANSICHTEN.profil = () => {
   return `<div class="kopf"><div><p class="etikett">${rolleText(p.rolle)}</p><h1>Mein Profil</h1></div>${B.modus==="live"?`<button class="btn" data-a="abmelden">Abmelden</button>`:""}</div>
   <div class="raster r2"><section class="karte"><form class="stapel" data-form="profil">
     <label class="feld">Name<input type="text" name="name" id="p-name" required value="${esc(p.name)}"></label>
-    <label class="feld">Telefon (für die Bauleitung)<input type="text" name="telefon" id="p-tel" value="${esc(p.telefon||"")}" placeholder="optional"></label>
+    <label class="feld">Telefon (wird der Bauleitung angezeigt)<input type="tel" name="telefon" id="p-tel" value="${esc(p.telefon||"")}" placeholder="optional"></label>
     <label class="feld">Hinweis<input type="text" name="hinweis" id="p-hinweis" value="${esc(p.hinweis||"")}" placeholder="z. B. lange Anreise, eher am Wochenende"></label>
     <div class="stapel" style="gap:6px"><span class="etikett">Was kannst du gut?</span><div class="chips">${TAETIGKEITEN.map(t=>`<button type="button" class="chip" data-a="schwer" data-t="${esc(t)}" aria-pressed="${sw.has(t)}">${esc(t)}</button>`).join("")}</div>
       <p class="klein leise">Wird beim Eintragen im Kalender als Wunsch vorgeschlagen.</p></div>
@@ -647,17 +714,17 @@ ANSICHTEN.benutzer = () => {
   return `<div class="kopf"><div><p class="etikett">Admin</p><h1>Benutzer</h1><p class="unter">${aktiv} aktiv${liste.length-aktiv?` · ${liste.length-aktiv} gesperrt`:""}. Jeder hat ein eigenes Konto (E-Mail + Passwort) und kann sich damit auf beliebig vielen Geräten anmelden.</p></div>
     <div class="zeile"><button class="btn primaer" data-a="zugangNeu">${icon("plus")}Zugang anlegen</button><button class="btn" data-a="benutzerNeuLaden">${icon("drehen")}Aktualisieren</button></div></div>
   ${benutzerInfo?.fehler?`<div class="hinweis klein">E-Mail-Adressen und letzte Anmeldung konnten nicht geladen werden (${esc(benutzerInfo.fehler)}). Ist die Datenbank-Erweiterung 2 eingespielt?</div>`:""}
-  <section class="karte"><div class="tabelle-rahmen"><table><thead><tr><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Zuletzt angemeldet</th><th>Zugang</th></tr></thead><tbody>
+  <section class="karte"><div class="tabelle-rahmen"><table class="karten-tabelle"><thead><tr><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Zuletzt angemeldet</th><th>Zugang</th></tr></thead><tbody>
   ${liste.map(p=>{ const i=info[p.id]||{}; const ich=p.id===S.me.id;
     return `<tr${p.gesperrt?' style="opacity:.55"':""}><td><span class="zeile" style="flex-wrap:nowrap">${ava(p.id,26)}<b>${esc(p.name)}</b>${ich?'<span class="pille">du</span>':""}</span></td>
-      <td class="klein">${esc(i.email||"–")}</td>
-      <td>${!ich?`<select data-a="rolle" data-id="${p.id}" style="width:auto">${["mitglied","bauleitung","admin"].map(r=>`<option value="${r}" ${p.rolle===r?"selected":""}>${rolleText(r)}</option>`).join("")}</select>`:`<span class="pille">${rolleText(p.rolle)}</span>`}</td>
-      <td class="klein mass">${datumZeit(i.zuletzt)}${p.pw_wechseln?`<br><span class="pille">Startpasswort</span>`:""}</td>
-      <td><div class="zeile" style="flex-wrap:nowrap;gap:6px">${!ich&&!p.gesperrt&&i.email?`<button class="btn klein" data-a="pwLink" data-id="${p.id}" title="Schickt einen Link, mit dem ${esc(p.name.split(" ")[0])} ein neues Passwort festlegt">Passwort-Link</button>`:""}${ich?"":p.gesperrt?`<button class="btn klein" data-a="sperren" data-id="${p.id}" data-k="0">Entsperren</button>`:`<button class="btn klein gefahr" data-a="sperren" data-id="${p.id}" data-k="1">Sperren</button>`}</div></td></tr>`; }).join("")}
+      <td class="klein" data-titel="E-Mail" style="overflow-wrap:anywhere">${esc(i.email||"–")}</td>
+      <td data-titel="Rolle">${!ich?`<select data-a="rolle" data-id="${p.id}" style="width:auto" aria-label="Rolle von ${esc(p.name)}">${["mitglied","bauleitung","admin"].map(r=>`<option value="${r}" ${p.rolle===r?"selected":""}>${rolleText(r)}</option>`).join("")}</select>`:`<span class="pille">${rolleText(p.rolle)}</span>`}</td>
+      <td class="klein mass" data-titel="Zuletzt">${datumZeit(i.zuletzt)}${p.pw_wechseln?` <span class="pille">Startpasswort</span>`:""}</td>
+      <td data-titel="Zugang"><div class="zeile" style="gap:6px">${!ich&&!p.gesperrt&&i.email?`<button class="btn klein" data-a="pwLink" data-id="${p.id}" title="Schickt einen Link, mit dem ${esc(p.name.split(" ")[0])} ein neues Passwort festlegt">Passwort-Link</button>`:""}${ich?"":p.gesperrt?`<button class="btn klein" data-a="sperren" data-id="${p.id}" data-k="0">Entsperren</button>`:`<button class="btn klein gefahr" data-a="sperren" data-id="${p.id}" data-k="1">Sperren</button>`}</div></td></tr>`; }).join("")}
   </tbody></table></div></section>
   ${bekannteKarte()}
   <div class="raster r2" style="margin-top:16px">
-    <section class="karte stapel"><h2>Selbst registrieren lassen</h2><p class="klein">Gemeindemitglieder legen sich ihren Zugang selbst an: Link öffnen, Name, E-Mail und Passwort eingeben – der Gemeinde-Code steckt schon im Link. Wer zur Leitungsgruppe gehört, wird beim Beitritt automatisch Bauleitung.</p>
+    <section class="karte stapel"><h2>Selbst registrieren lassen</h2><p class="klein">Gemeindemitglieder legen sich ihren Zugang selbst an: Link öffnen, Name, E-Mail und Passwort eingeben – der Gemeinde-Code steckt schon im Link. Jeder startet als Gemeindemitglied. Wer zur Leitungsgruppe gehört, ordnest du danach oben bei „Bekannte Personen“ mit einem Tipp zu – damit wird er Bauleitung.</p>
       <form class="stapel" data-form="einladung"><label class="feld">Aktueller Gemeinde-Code<input type="text" name="code" id="b-einl" required value="${esc(merkeCode())}" autocomplete="off"></label>
         <div class="zeile"><button class="btn primaer" type="submit" name="wie" value="wa">Per WhatsApp einladen</button><button class="btn" type="submit" name="wie" value="kopie">Einladung kopieren</button></div></form>
       ${B.modus==="live"?`<details><summary class="klein">Gemeinde-Code ändern</summary><form class="zeile" data-form="code" style="margin-top:8px"><input type="text" name="code" id="b-code" required placeholder="neuer Gemeinde-Code" style="flex:1;min-width:160px"><button class="btn" type="submit">Code ändern</button></form><p class="klein leise">Ändern, wenn der Code die Runde gemacht hat. Bestehende Zugänge bleiben.</p></details>`:""}</section>
@@ -685,12 +752,22 @@ const zugangsText = w => `Hallo ${w.name.split(" ")[0]}, hier ist dein Zugang zu
 // Bekannte Personen (Leitungsgruppe) ohne Zugang: Startpasswörter je Person einmal erzeugen; angelegte Zugangsdaten nur im Speicher dieser Sitzung
 const bkPw={}; const neueZugaenge=[];
 const bkRolle = l => /pastor/i.test(l.schwerpunkt||"") ? "mitglied" : "bauleitung";
-// Vorname passt, auch verkürzt (Tobi ↔ Tobias)
-const vornameGleich = (a,b) => { a=a.split(" ")[0].toLowerCase(); b=b.split(" ")[0].toLowerCase(); return a===b||(a.length>=3&&b.length>=3&&(a.startsWith(b)||b.startsWith(a))); };
-function bekannteOhneZugang(){ return [...S.leitung].filter(l=>!l.profil_id&&!S.profil.some(p=>vornameGleich(p.name,l.name))).sort((x,y)=>(x.sort??99)-(y.sort??99)); }
+// Gleicher Vorname – bekannte Kurzformen zählen mit (Tobi ↔ Tobias), aber nicht Andre ↔ Andreas
+const KURZFORM = {tobi:"tobias",chris:"christoph",dani:"daniel",andi:"andreas"};
+const vornameGleich = (a,b) => { const n=s=>{ s=String(s||"").trim().split(/\s+/)[0].toLowerCase(); return KURZFORM[s]||s; }; return !!n(a)&&n(a)===n(b); };
+const nameGleich = (a,b) => String(a||"").trim().toLowerCase().replace(/\s+/g," ")===String(b||"").trim().toLowerCase().replace(/\s+/g," ");
+function bekannteOhneZugang(){ return [...S.leitung].filter(l=>!l.profil_id).sort((x,y)=>(x.sort??99)-(y.sort??99)); }
+// Schon registriert? Konto mit gleichem Namen (sonst gleichem Vornamen), das noch niemandem aus der Leitungsgruppe gehört
+function bkKandidat(l){ const frei=S.profil.filter(p=>!p.gesperrt&&!S.leitung.some(x=>x.profil_id===p.id));
+  return frei.find(p=>nameGleich(p.name,l.name))||frei.find(p=>vornameGleich(p.name,l.name))||null; }
 function bekannteKarte(){
   const offen=bekannteOhneZugang();
-  const zeile=l=>{ const pw=bkPw[l.id]||(bkPw[l.id]=startpasswort());
+  const zeile=l=>{ const k=bkKandidat(l);
+    if(k) return `<div class="bk-zeile bk-treffer"><div class="bk-name"><b>${esc(l.name)}</b><span class="klein leise">${esc(l.schwerpunkt||"")}</span></div>
+      <p class="klein">Hat sich schon registriert als <b>${esc(k.name)}</b> (${esc(rolleText(k.rolle))})?</p>
+      <button class="btn primaer klein" data-a="bkVerknuepfen" data-id="${l.id}" data-p="${k.id}">Ja, zuordnen${bkRolle(l)==="bauleitung"&&k.rolle==="mitglied"?" + Bauleitung":""}</button>
+      <div class="bk-schon"><button type="button" class="link klein" data-a="bkSchon" data-id="${l.id}">Anderes Konto wählen</button></div></div>`;
+    const pw=bkPw[l.id]||(bkPw[l.id]=startpasswort());
     return `<form class="bk-zeile" data-form="bekannt" data-id="${l.id}">
       <div class="bk-name"><b>${esc(l.name)}</b><span class="klein leise">${esc(l.schwerpunkt||"")}${l.hinweis?" · "+esc(l.hinweis):""}</span></div>
       <input type="email" name="email" id="bk-mail-${l.id}" required placeholder="E-Mail" aria-label="E-Mail von ${esc(l.name)}" autocomplete="off">
@@ -707,6 +784,12 @@ function bekannteKarte(){
       <div class="bk-fertige">${liste}</div>
       <p class="klein leise">Die Startpasswörter werden nirgends gespeichert. Nach dem Neuladen der Seite sind sie hier weg – beim ersten Anmelden legt jeder sein eigenes Passwort fest.</p></div>`:""}</section>`;
 }
+// Leitungsgruppe ↔ Konto verbinden; der Admin macht dabei aus „Gemeindemitglied“ gleich „Bauleitung“
+async function bkVerbinden(lid,pid){ const l=S.leitung.find(x=>x.id===lid), p=S.profil.find(x=>x.id===pid); if(!l||!p) return;
+  try{ await speichere(()=>B.aendern("leitung",l.id,{profil_id:p.id}));
+    if(istAdmin()&&bkRolle(l)==="bauleitung"&&p.rolle==="mitglied") await speichere(()=>B.aendern("profil",p.id,{rolle:"bauleitung"}));
+    toast(`${p.name.split(" ")[0]} ist zugeordnet`); }catch(e){}
+  await neu("leitung"); await neu("profil"); schliesse(); render(); }
 function zugangFertig(w,ergebnis){
   const text=zugangsText(w);
   const s=oeffne("Zugang angelegt",`<div class="stapel">
@@ -731,7 +814,11 @@ function fehlerDeutsch(m){ m=String(m||"");
   if(/gemeinde-code stimmt nicht/i.test(m)) return "Der Gemeinde-Code stimmt nicht. Bitte genau so eingeben, wie du ihn bekommen hast (Groß- und Kleinschreibung zählt).";
   if(/email not confirmed/i.test(m)) return "Die E-Mail ist noch nicht bestätigt.";
   if(/invalid.*email|unable to validate email/i.test(m)) return "Die E-Mail-Adresse ist ungültig.";
-  if(/failed to fetch|network/i.test(m)) return "Keine Verbindung. Bitte Internet prüfen.";
+  if(/failed to fetch|network|load failed/i.test(m)) return "Keine Verbindung. Bitte Internet prüfen.";
+  if(/row-level security|permission denied|42501|not authorized|nur admin/i.test(m)) return "Dafür fehlt dir die Berechtigung.";
+  if(/duplicate key|unique constraint|23505/i.test(m)) return "Das gibt es schon – bitte die Seite neu laden.";
+  if(/jwt|session.*(expired|missing)|refresh token/i.test(m)) return "Die Anmeldung ist abgelaufen. Bitte die Seite neu laden.";
+  if(/violates check constraint/i.test(m)) return "Ein Wert hat ein ungültiges Format.";
   return m; }
 let torCode=new URLSearchParams(location.search).get("einladung")||"";
 function zeigeTor(art,fehler="",info=""){
@@ -745,6 +832,7 @@ function zeigeTor(art,fehler="",info=""){
       <label class="feld">Neues Passwort<input type="password" name="pw1" id="t-p1" minlength="8" required autocomplete="new-password"></label>
       <label class="feld">Wiederholen<input type="password" name="pw2" id="t-p2" minlength="8" required autocomplete="new-password"></label>
       ${fehler?`<p class="fehler">${esc(fehler)}</p>`:""}<button class="btn primaer" type="submit">Speichern und weiter</button></form>`:
+    art==="gesperrt"?`<div class="stapel"><h2>Zugang gesperrt</h2><p>Dein Zugang ist gesperrt. Bitte wende dich an die Bauleitung.</p><button class="btn" type="button" data-a="abmelden">Abmelden</button></div>`:
     beit?`<form class="stapel" data-form="beitreten"><p>Fast geschafft. Gib deinen Namen und den Gemeinde-Code ein.</p>
       <label class="feld">Dein Name<input type="text" name="name" id="t-n" required autocomplete="name"></label>
       <label class="feld">Gemeinde-Code<input type="text" name="code" id="t-c" required></label>
@@ -763,7 +851,7 @@ function zeigeTor(art,fehler="",info=""){
 
 /* ================= Aktionen ================= */
 const AKT = {
-  geh:t=>{ ansicht=t.dataset.ziel; if(t.dataset.tag) tpDatum=t.dataset.tag; if(t.dataset.hreiter) halleReiter=t.dataset.hreiter; schliesse(); render(); window.scrollTo(0,0); },
+  geh:t=>{ ansicht=t.dataset.ziel; if(ansicht==="tag") tpDatum=t.dataset.tag||null; if(t.dataset.hreiter) halleReiter=t.dataset.hreiter; schliesse(); render(); window.scrollTo(0,0); },
   mehr:()=>oeffne("Mehr", `<nav class="nav">${[["halle","Halle & 3D"],["tagebuch","Bautagebuch"],["teams","Teams & Leitung"],["material","Material"],["werkzeug","Werkzeug"],["profil","Mein Profil"],...(istAdmin()?[["benutzer","Benutzer verwalten"]]:[])].map(([k,l])=>`<button data-a="geh" data-ziel="${k}">${icon(k)}<span>${l}</span></button>`).join("")}</nav>`),
   zu:()=>schliesse(),
   demoReset:()=>{ DemoBackend.zuruecksetzen(); ladeAlles().then(()=>{ S.me=S.profil.find(p=>p.id===DemoBackend.d.me); render(); toast("Beispieldaten zurückgesetzt"); }); },
@@ -782,14 +870,26 @@ const AKT = {
   aufgabeBearbeiten:t=>aufgabeForm(S.aufgabe.find(a=>a.id===t.dataset.id)),
   zug:t=>t.setAttribute("aria-pressed",t.getAttribute("aria-pressed")!=="true"),
   aStatus:async t=>{ await speichere(()=>B.aendern("aufgabe",t.dataset.id,{status:t.dataset.s}),"Status: "+STATUS[t.dataset.s]); await neu("aufgabe"); aufgabeDialog(t.dataset.id); render(); },
-  aMich:async t=>{ const a=S.aufgabe.find(x=>x.id===t.dataset.id); await speichere(()=>B.aendern("aufgabe",a.id,{zugewiesen:[...a.zugewiesen,S.me.id]}),"Dir zugewiesen"); await neu("aufgabe"); aufgabeDialog(a.id); render(); },
+  aMich:async t=>{ await neu("aufgabe"); const a=S.aufgabe.find(x=>x.id===t.dataset.id); if(!a) return;   // frisch laden, damit gleichzeitige Zuweisungen nicht verloren gehen
+    if(!a.zugewiesen.includes(S.me.id)) await speichere(()=>B.aendern("aufgabe",a.id,{zugewiesen:[...a.zugewiesen,S.me.id]}),"Dir zugewiesen"); await neu("aufgabe"); aufgabeDialog(a.id); render(); },
   aufgabeLoeschenFrage:t=>{ const z=t.closest("form").querySelector("[data-loeschfrage]"); z.innerHTML=`<div class="hinweis zeile weit"><span>Aufgabe wirklich löschen? Notizen bleiben im Bautagebuch.</span><span class="zeile"><button type="button" class="btn klein gefahr" data-a="aufgabeLoeschen" data-id="${t.dataset.id}">Ja, löschen</button><button type="button" class="btn klein still" data-a="frageZu">Nein</button></span></div>`; },
   frageZu:t=>{ t.closest("[data-loeschfrage],[data-leerfrage]").innerHTML=""; },
   aufgabeLoeschen:async t=>{ await speichere(()=>B.loeschen("aufgabe",t.dataset.id),"Gelöscht"); await neu("aufgabe"); schliesse(); render(); },
   vorschlaege:async ()=>{ const tm=g=>S.team.find(t=>t.gewerk===g)?.id||null;
+    if(S.aufgabe.length){ const fehlt=PLAN_VORSCHLAEGE.map((v,i)=>[v,i]).filter(([v])=>!S.aufgabe.some(a=>a.titel===v[1]));
+      if(!fehlt.length) return toast("Alle Vorschläge sind schon übernommen");
+      return oeffne("Vorschläge aus dem Plan",`<form class="stapel" data-form="vorschlaegeWahl"><p class="klein">Diese Arbeiten stehen noch nicht in der Aufgabenliste. Was bewusst gelöscht wurde, einfach abwählen.</p>
+        <div class="vorschlag-liste">${fehlt.map(([v,i])=>`<label class="zeile vorschlag-zeile" style="align-items:flex-start;flex-wrap:nowrap"><input type="checkbox" name="v" value="${i}" checked style="width:auto;margin-top:3px"><span><b>${esc(v[1])}</b><span class="klein leise" style="display:block">Phase ${v[0]} · ${esc(PHASEN[v[0]]||"")}${v[2]?" – "+esc(v[2]):""}</span></span></label>`).join("")}</div>
+        <button class="btn primaer" type="submit">${icon("plus")}Ausgewählte übernehmen</button></form>`); }
     const zeilen=PLAN_VORSCHLAEGE.map(([phase,titel,beschreibung,gewerk,bereich,tg,prio])=>({titel,beschreibung:beschreibung||null,gewerk,bereich,phase,status:"offen",prio,team_id:tg?tm(tg):null,zugewiesen:[],vorschlag:true}));
-    await speichere(()=>B.neuViele("aufgabe",zeilen));
-    await neu("aufgabe"); render(); toast(PLAN_VORSCHLAEGE.length+" Aufgaben übernommen"); },
+    await neu("aufgabe"); const neue=zeilen.filter(z=>!S.aufgabe.some(a=>a.titel===z.titel)); if(!neue.length){ render(); return toast("Alle Vorschläge sind schon übernommen"); }
+    await speichere(()=>B.neuViele("aufgabe",neue));
+    await neu("aufgabe"); render(); toast(mz(neue.length,"Aufgabe","Aufgaben")+" übernommen"); },
+  fotoGross:t=>fotoDialog(t.dataset.eid,+t.dataset.i||0),
+  eBearbeiten:t=>eintragBearbeiten(t.dataset.id),
+  eLoeschen:async t=>{ const e=S.eintrag.find(x=>x.id===t.dataset.id); if(!e) return;
+    await speichere(()=>B.loeschen("eintrag",e.id),"Eintrag gelöscht"); B.fotosWeg?.(e.fotos); await neu("eintrag"); schliesse(); render(); },
+  bkVerknuepfen:async t=>{ await bkVerbinden(t.dataset.id,t.dataset.p); },
   eintragNeu:()=>eintragDialog(null),
   materialNeu:t=>materialDialog(t.dataset.aufgabe||null),
   mStatus:async t=>{ await speichere(()=>B.aendern("material",t.dataset.id,{status:t.dataset.s}),MSTATUS[t.dataset.s]); await neu("material"); render(); },
@@ -819,15 +919,19 @@ const AKT = {
   grundeinrichtung:async ()=>{ const da=new Set(S.planobjekt.map(o=>o.typ)); const neue=grundeinrichtung().filter(o=>!da.has(o.typ));
     if(!neue.length) return toast("Bühne und Esstische sind schon eingerichtet");
     await speichere(()=>B.neuViele("planobjekt",neue)); await neu("planobjekt"); halleAktualisieren(); toast(neue.length+" Objekte gesetzt"); },
-  planLeerenFrage:()=>{ $("[data-leerfrage]").innerHTML=`<div class="hinweis zeile weit" style="margin-bottom:12px"><span>Alle ${S.planobjekt.length} Objekte aus dem Plan entfernen? Das gilt für alle.</span><span class="zeile"><button class="btn klein gefahr" data-a="planLeeren">Ja, entfernen</button><button class="btn klein still" data-a="frageZu">Nein</button></span></div>`; },
-  planLeeren:async ()=>{ if(!istLeitung()) return; for(const o of [...S.planobjekt]) await B.loeschen("planobjekt",o.id); planAuswahl=null; await neu("planobjekt"); render(); },
+  planLeerenFrage:()=>{ const n=moebel().length; if(!n) return toast("Es stehen keine Objekte im Plan");
+    $("[data-leerfrage]").innerHTML=`<div class="hinweis zeile weit" style="margin-bottom:12px"><span>${n===1?"Das eine Objekt":"Alle "+n+" Objekte"} aus dem Plan entfernen? Das gilt für alle. Bestuhlung und Lage der Bühne bleiben.</span><span class="zeile"><button class="btn klein gefahr" data-a="planLeeren">Ja, entfernen</button><button class="btn klein still" data-a="frageZu">Nein</button></span></div>`; },
+  planLeeren:async ()=>{ if(!istLeitung()) return; try{ for(const o of moebel()) await B.loeschen("planobjekt",o.id); toast("Plan geleert"); }catch(e){ toast("Nicht alles entfernt: "+fehlerDeutsch(e.message||e)); }
+    planAuswahl=null; await neu("planobjekt"); render(); },
   blick:t=>dreiD?.ansicht(t.dataset.k),
   tor:t=>zeigeTor(t.dataset.k),
   tpTag:t=>{ const d=+t.dataset.d; tpDatum=d===0?heuteIso():plusTage(tpDatum||heuteIso(),d); render(); },
-  tpAnlegen:async ()=>{ if(S.tagesplan_punkt.some(x=>x.datum===tpDatum)) return render();
-    await speichere(()=>B.neuViele("tagesplan_punkt",tagesplanEntwurf(tpDatum,S.aufgabe,vorname)),"Tagesplan angelegt"); await neu("tagesplan_punkt"); render(); },
-  tpAufgabenNach:async ()=>{ const pk=S.tagesplan_punkt.filter(x=>x.datum===tpDatum);
-    const neue=tagesplanEntwurf(tpDatum,S.aufgabe,vorname).filter(x=>x.abschnitt==="arbeit"&&!pk.some(y=>y.aufgabe_id===x.aufgabe_id));
+  tpAnlegen:async t=>{ t.disabled=true; await neu("tagesplan_punkt");   // frisch prüfen: hat ihn gerade jemand anderes angelegt?
+    if(S.tagesplan_punkt.some(x=>x.datum===tpDatum)){ toast("Der Tagesplan ist schon angelegt"); return render(); }
+    try{ await speichere(()=>B.neuViele("tagesplan_punkt",tagesplanEntwurf(tpDatum,S.aufgabe,tpName)),"Tagesplan angelegt"); }catch(e){} await neu("tagesplan_punkt"); render(); },
+  tpAufgabenNach:async ()=>{ await neu("tagesplan_punkt"); const pk=S.tagesplan_punkt.filter(x=>x.datum===tpDatum);
+    const neue=tagesplanEntwurf(tpDatum,S.aufgabe,tpName).filter(x=>x.abschnitt==="arbeit"&&!pk.some(y=>y.aufgabe_id===x.aufgabe_id));
+    if(!neue.length){ render(); return toast("Schon alles im Tagesplan"); }
     const basis=Math.max(-1,...pk.filter(x=>x.abschnitt==="arbeit").map(x=>x.sort))+1; neue.forEach((x,i)=>x.sort=basis+i);
     await speichere(()=>B.neuViele("tagesplan_punkt",neue),neue.length===1?"1 Aufgabe übernommen":neue.length+" Aufgaben übernommen"); await neu("tagesplan_punkt"); render(); },
   tpHaken:async t=>{ const x=S.tagesplan_punkt.find(y=>y.id===t.dataset.id); if(!x) return; const an=!x.erledigt;
@@ -845,8 +949,8 @@ const AKT = {
   mBauhausSuche:t=>{ const f=t.closest("form"); const q=f.dataset.suche&&f.elements.name.value&&BAUHAUS_KATALOG.some(k=>k[0]===f.elements.name.value)?f.dataset.suche:(f.elements.name.value.trim()||"Baustoffe"); window.open(bauhausSuche(q),"_blank","noopener"); },
   mEinkaufsliste:async ()=>{ const l=S.material.filter(m=>m.status==="freigegeben");
     if(!l.length) return toast("Keine freigegebenen Posten");
-    const txt=`Einkaufsliste ${BAUHAUS.markt} (${BAUHAUS.adresse})\n\n`+l.map(m=>`☐ ${m.menge?zahlDe(m.menge)+" "+(m.einheit||"")+" ":""}${m.name}${bauhausNr(m.link)?" – Nr. "+bauhausNr(m.link):""}${m.link?"\n   "+m.link:""}`).join("\n");
-    try{ await navigator.clipboard.writeText(txt); toast(l.length+" freigegebene Posten kopiert"); }catch(e){ toast("Kopieren ging nicht"); } },
+    const txt=`Einkaufsliste ${BAUHAUS.markt} (${BAUHAUS.adresse})\n\n`+l.map(m=>{ const link=linkOk(m.link); return `☐ ${m.menge?zahlDe(m.menge)+" "+(m.einheit||"")+" ":""}${m.name}${bauhausNr(link)?" – Nr. "+bauhausNr(link):""}${link?"\n   "+link:""}`; }).join("\n");
+    try{ await navigator.clipboard.writeText(txt); toast(mz(l.length,"freigegebener Posten","freigegebene Posten")+" kopiert"); }catch(e){ toast("Kopieren ging nicht"); } },
   leitungNeu:()=>oeffne("Person zur Leitungsgruppe",`<form class="stapel" data-form="leitung">
     <label class="feld">Name<input type="text" name="name" id="l-name" required placeholder="Vorname Nachname" autocomplete="off"></label>
     <label class="feld">Schwerpunkt<input type="text" name="schwerpunkt" id="l-schwer" value="alles" autocomplete="off"></label>
@@ -872,39 +976,60 @@ const AKT = {
   sperren:async t=>{ const an=t.dataset.k==="1"; await speichere(()=>B.sperren(t.dataset.id,an),an?"Zugang gesperrt":"Zugang wieder frei"); await neu("profil"); render(); }
 };
 async function neu(t){ try{ S[t]=await B.alle(t); }catch(e){} }
-document.addEventListener("click",e=>{ const t=e.target.closest("[data-a]"); if(!t||t.tagName==="SELECT"||(t.tagName==="INPUT"&&t.type!=="checkbox")) return; if(t.type==="checkbox"&&t.dataset.a!=="neuGelb") return; const f=AKT[t.dataset.a]; if(f){ f(t,e); } });
+// Löschen per Mülleimer: erst nachfragen (zweiter Tipp innerhalb von 4 Sekunden)
+const SICHER_FRAGEN = new Set(["mLoeschen","wLoeschen","tpLoeschen","eLoeschen","objWeg"]);
+function sicher(t){ if(t.dataset.sicher==="1") return true;
+  t.dataset.sicher="1"; t._vorher=t.innerHTML; t.innerHTML=`${icon("papierkorb")}Wirklich?`; t.classList.add("frage");
+  setTimeout(()=>{ if(t.isConnected&&t.dataset.sicher==="1"){ delete t.dataset.sicher; t.innerHTML=t._vorher; t.classList.remove("frage"); } },4000); return false; }
+document.addEventListener("click",e=>{ const t=e.target.closest("[data-a]"); if(!t||t.tagName==="SELECT"||(t.tagName==="INPUT"&&t.type!=="checkbox")) return; if(t.type==="checkbox"&&t.dataset.a!=="neuGelb") return;
+  const f=AKT[t.dataset.a]; if(!f) return; if(SICHER_FRAGEN.has(t.dataset.a)&&!sicher(t)) return; f(t,e); });
 document.addEventListener("change",async e=>{ const t=e.target; const a=t.dataset?.a;
   if(t.matches('input[type=file]')){ const z=t.closest("form")?.querySelector("[data-fotozahl]"); if(z) z.textContent=t.files.length?`${t.files.length} Foto${t.files.length>1?"s":""} gewählt`:""; }
   if(a==="filterG"){ filterA.gewerk=t.value; render(); }
   if(a==="filterP"){ filterA.phase=t.value; render(); }
   if(a==="tpDatum"&&t.value){ tpDatum=t.value; render(); }
-  if(a==="mStatusSel"){ await speichere(()=>B.aendern("material",t.dataset.id,{status:t.value}),MSTATUS[t.value]); await neu("material"); }
-  if(a==="rolle"){ await speichere(()=>B.aendern("profil",t.dataset.id,{rolle:t.value}),"Rolle geändert"); await neu("profil"); render(); }
+  if(a==="mStatusSel"){ try{ await speichere(()=>B.aendern("material",t.dataset.id,{status:t.value}),MSTATUS[t.value]); }catch(_){} await neu("material"); t.blur(); render(); }
+  if(a==="rolle"){ try{ const r=await speichere(()=>B.aendern("profil",t.dataset.id,{rolle:t.value})); toast(r&&r.rolle!==t.value?"Rolle nicht geändert – das darf nur ein Admin":"Rolle geändert"); }catch(_){} await neu("profil"); t.blur(); render(); }
   if(a==="neuGelb") dreiD?.neueHervorheben(t.checked);
 });
-document.addEventListener("input",e=>{ if(e.target.dataset?.a==="suchW"){ suchW=e.target.value; const pos=e.target.selectionStart; render(); const i=$("#w-suche"); if(i){ i.focus(); i.setSelectionRange(pos,pos); } } });
+// Werkzeug-Suche: erst nach fertig getipptem Wort neu zeichnen (Handy-Tastaturen mit Wortvorschlag)
+function suchenZeichnen(i){ suchW=i.value; const pos=i.selectionStart; render(); const n=$("#w-suche"); if(n){ n.focus(); n.setSelectionRange(pos,pos); } }
+document.addEventListener("input",e=>{ const t=e.target;
+  if(t.dataset?.a==="suchW"){ if(!e.isComposing) suchenZeichnen(t); return; }
+  const f=t.form; if(f&&f.dataset.form&&document.getElementById("ansicht")?.contains(f)) f.dataset.geaendert="1"; });   // ungespeicherte Eingabe nicht überschreiben
+document.addEventListener("compositionend",e=>{ if(e.target.dataset?.a==="suchW") suchenZeichnen(e.target); });
 
 /* ================= Formulare ================= */
 const FORM = {
   verf:async f=>{ const s=f.closest(".schleier"); const daten=f.dataset.daten.split(","); const gleich=f.gleich.checked;
     const werte={von:f.von.value||null,bis:f.bis.value||null,taetigkeiten:gleich?[]:[...s._reihe],alles_gleich:gleich,notiz:f.notiz.value.trim()||null};
-    for(const d of daten){ const vorh=S.verfuegbarkeit.find(v=>v.datum===d&&v.profil_id===S.me.id);
-      await speichere(()=>vorh?B.aendern("verfuegbarkeit",vorh.id,werte):B.neu("verfuegbarkeit",{...werte,datum:d,profil_id:S.me.id})); }
-    toast(daten.length>1?`${daten.length} Tage eingetragen`:"Eingetragen"); mehrfach=null; await neu("verfuegbarkeit"); schliesse(); render(); },
+    await neu("verfuegbarkeit"); let fehler=0;   // frisch laden: vielleicht schon auf einem anderen Gerät eingetragen
+    for(const d of daten){ const vorh=()=>S.verfuegbarkeit.find(v=>v.datum===d&&v.profil_id===S.me.id);
+      try{ if(vorh()) await B.aendern("verfuegbarkeit",vorh().id,werte);
+        else try{ await B.neu("verfuegbarkeit",{...werte,datum:d,profil_id:S.me.id}); }
+          catch(e){ if(!/duplicate|unique|23505/i.test(e.message||e.code||"")) throw e; await neu("verfuegbarkeit"); await B.aendern("verfuegbarkeit",vorh().id,werte); } }
+      catch(e){ fehler++; console.error(e); toast(`${dKurz(d)} nicht gespeichert: ${fehlerDeutsch(e.message||e)}`); } }
+    if(!fehler) toast(daten.length>1?`${daten.length} Tage eingetragen`:"Eingetragen"); else if(fehler<daten.length) toast(`${daten.length-fehler} von ${daten.length} Tagen eingetragen`);
+    mehrfach=null; await neu("verfuegbarkeit"); schliesse(); render(); },
   aufgabe:async f=>{ const zug=$$('[data-a="zug"][aria-pressed="true"]',f).map(b=>b.dataset.id);
     const w={titel:f.titel.value.trim(),beschreibung:f.beschreibung.value.trim()||null,gewerk:f.gewerk.value||null,bereich:f.bereich.value||null,phase:f.phase.value===""?null:+f.phase.value,datum:f.datum.value||null,team_id:f.team_id.value||null,prio:+f.prio.value,zugewiesen:zug};
     if(f.status) w.status=f.status.value;
     const id=f.dataset.id; if(id) w.vorschlag=false;
     const r=await speichere(()=>id?B.aendern("aufgabe",id,w):B.neu("aufgabe",{...w,status:"offen"}),"Gespeichert"); await neu("aufgabe"); render(); aufgabeDialog(id||r.id); },
   eintrag:async f=>{ const knopf=f.querySelector("[type=submit]"); knopf.disabled=true; knopf.textContent="Speichert …";
-    try{ const fotos=[]; for(const d of [...(f.fotos?.files||[])]) fotos.push(await B.fotoHoch(d));
+    try{ const fotos=[]; const dateien=[...(f.fotos?.files||[])];
+      for(const [i,d] of dateien.entries()){ knopf.textContent=`Foto ${i+1} von ${dateien.length} …`;
+        try{ fotos.push(await B.fotoHoch(d)); }
+        catch(e){ throw new Error(/lesbar/i.test(e.message||"")?`„${d.name}“ kann dieser Browser nicht lesen (z. B. HEIC vom iPhone). Bitte als JPG wählen oder in der Kamera „Maximal kompatibel“ einstellen.`:`Foto „${d.name}“ konnte nicht hochgeladen werden: ${fehlerDeutsch(e.message||e)}`); } }
       const text=(f.text.value||"").trim(); if(!text&&!fotos.length){ toast("Bitte Text oder Foto angeben"); knopf.disabled=false; knopf.textContent="Speichern"; return; }
       const aufgabe_id=f.aufgabe_id?.value||f.dataset.aufgabe||null;
       await speichere(()=>B.neu("eintrag",{datum:f.datum?.value||heuteIso(),text:text||null,aufgabe_id,fotos,autor:S.me.id}),"Eintrag gespeichert");
       await neu("eintrag"); if(f.dataset.aufgabe&&!f.datum){ aufgabeDialog(f.dataset.aufgabe); } else schliesse(); render();
-    }catch(e){ knopf.disabled=false; knopf.textContent="Speichern"; } },
+    }catch(e){ knopf.disabled=false; knopf.textContent="Speichern"; if(!/^Nicht gespeichert/.test($(".toast")?.textContent||"")) toast(e.message||String(e)); } },
   material:async f=>{ const w={name:f.elements.name.value.trim(),menge:f.menge.value?+f.menge.value:null,einheit:f.einheit.value.trim()||null,gewerk:f.gewerk.value||null,aufgabe_id:f.aufgabe_id.value||null,notiz:f.notiz.value.trim()||null,status:"angefragt",angefragt_von:S.me.id};
-    const link=f.link.value.trim(), preis=f.preis.value?+f.preis.value:null; if(link) w.link=link; if(preis!=null) w.preis=preis;
+    const roh=f.link.value.trim(), link=linkOk(roh), preis=f.preis.value?+f.preis.value:null;
+    if(roh&&!link){ toast("Der Produktlink muss mit https:// beginnen"); f.link.focus(); return; }
+    if(link) w.link=link; if(preis!=null) w.preis=preis;
     try{ await B.neu("material",w); toast("Anfrage gesendet"); }
     catch(e){ if(/column|schema cache/i.test(e.message||"")&&(w.link||w.preis!=null)){ // Datenbank noch ohne Erweiterung 3: Link und Preis in die Notiz
         delete w.link; delete w.preis; w.notiz=[w.notiz,link,preis!=null?euro(preis)+" je "+(w.einheit||"Einheit"):""].filter(Boolean).join(" · ");
@@ -923,7 +1048,16 @@ const FORM = {
     const notiz=f.notiz.value.trim()||(auf?.gewerk==="Mauern (Ytong)"?TP_MAUERN:null);
     await speichere(()=>B.neu("tagesplan_punkt",{datum:tpDatum,abschnitt,titel,wer:f.wer.value.trim()||null,notiz,aufgabe_id:auf?.id||null,sort:Math.max(-1,...pk.map(x=>x.sort))+1,erledigt:false}),"Hinzugefügt");
     await neu("tagesplan_punkt"); schliesse(); render(); },
-  bkZuordnen:async f=>{ await speichere(()=>B.aendern("leitung",f.dataset.id,{profil_id:f.profil.value}),"Zugeordnet"); await neu("leitung"); schliesse(); render(); },
+  vorschlaegeWahl:async f=>{ const tm=g=>S.team.find(t=>t.gewerk===g)?.id||null; const wahl=$$('input[name="v"]:checked',f).map(c=>PLAN_VORSCHLAEGE[+c.value]);
+    if(!wahl.length) return toast("Nichts ausgewählt");
+    await speichere(()=>B.neuViele("aufgabe",wahl.map(([phase,titel,beschreibung,gewerk,bereich,tg,prio])=>({titel,beschreibung:beschreibung||null,gewerk,bereich,phase,status:"offen",prio,team_id:tg?tm(tg):null,zugewiesen:[],vorschlag:true}))),mz(wahl.length,"Aufgabe","Aufgaben")+" übernommen");
+    await neu("aufgabe"); schliesse(); render(); },
+  bkZuordnen:async f=>{ await bkVerbinden(f.dataset.id,f.profil.value); },
+  eAendern:async f=>{ const e=S.eintrag.find(x=>x.id===f.dataset.id); if(!e) return; const weg=new Set($$('input[name="weg"]:checked',f).map(c=>+c.value));
+    const fotos=e.fotos.filter((_,i)=>!weg.has(i)); const text=f.text.value.trim()||null;
+    if(!text&&!fotos.length) return toast("Ein Eintrag braucht Text oder ein Foto – sonst „Eintrag löschen“");
+    await speichere(()=>B.aendern("eintrag",e.id,{datum:f.datum.value||e.datum,text,fotos}),"Eintrag gespeichert");
+    if(weg.size) B.fotosWeg?.(e.fotos.filter((_,i)=>weg.has(i))); await neu("eintrag"); schliesse(); render(); },
   bekannt:async f=>{ const l=S.leitung.find(x=>x.id===f.dataset.id); if(!l) return;
     const w={name:l.name,email:f.email.value.trim().toLowerCase(),rolle:f.rolle.value,pw:f.pw.value.trim()};
     const knopf=f.querySelector("[type=submit]"); knopf.disabled=true; knopf.textContent="Legt an …";
@@ -946,10 +1080,11 @@ const FORM = {
   pwAendern:async f=>{ if(f.pw1.value!==f.pw2.value) return toast("Die Passwörter stimmen nicht überein");
     await speichere(()=>B.passwortAendern(f.pw1.value),"Passwort geändert – gilt ab jetzt auf allen Geräten"); f.reset(); },
   vergessen:async f=>{ try{ await B.passwortVergessen(f.email.value.trim()); zeigeTor("anmelden","","Wenn die E-Mail registriert ist, kommt gleich ein Link. Schau auch im Spam-Ordner nach."); }
-    catch(e){ zeigeTor("vergessen",e.message); } },
-  neuesPasswort:async f=>{ if(f.pw1.value!==f.pw2.value) return zeigeTor("neuesPasswort","Die Passwörter stimmen nicht überein.");
-    const erst=!!S.me?.pw_wechseln;
-    try{ await B.passwortAendern(f.pw1.value); if(erst) await B.pwGewechselt(); history.replaceState(null,"",location.pathname); await nachAnmeldung(); }catch(e){ zeigeTor(erst?"erstesPasswort":"neuesPasswort",e.message); } },
+    catch(e){ zeigeTor("vergessen",fehlerDeutsch(e.message)); } },
+  neuesPasswort:async f=>{ const erst=!!S.me?.pw_wechseln, art=erst?"erstesPasswort":"neuesPasswort";
+    if(f.pw1.value!==f.pw2.value) return zeigeTor(art,"Die Passwörter stimmen nicht überein.");
+    // Auch beim Passwort-Link: wer hier ein eigenes Passwort festlegt, braucht kein Startpasswort mehr zu ändern
+    try{ await B.passwortAendern(f.pw1.value); await B.pwGewechselt(); history.replaceState(null,"",location.pathname); await nachAnmeldung(); }catch(e){ zeigeTor(art,fehlerDeutsch(e.message)); } },
   anmelden:async f=>{ try{ await B.anmelden(f.email.value.trim(),f.pw.value); await nachAnmeldung(); }catch(e){ zeigeTor("anmelden",fehlerDeutsch(e.message)); } },
   registrieren:async f=>{ const name=f.elements.name.value.trim(), code=f.code.value.trim(), email=f.email.value.trim(), pw=f.pw.value;
     try{
@@ -960,11 +1095,13 @@ const FORM = {
         const p=await B.meinProfil(); if(p) return nachAnmeldung(); }
       await B.beitreten(code,name); await nachAnmeldung(); }
     catch(e){ const m=fehlerDeutsch(e.message); if(await B.sitzung()) zeigeTor("beitreten",m); else zeigeTor("registrieren",m); } },
-  beitreten:async f=>{ try{ await B.beitreten(f.code.value.trim(),f.elements.name.value.trim()); await nachAnmeldung(); }catch(e){ zeigeTor("beitreten",e.message); } }
+  beitreten:async f=>{ try{ await B.beitreten(f.code.value.trim(),f.elements.name.value.trim()); await nachAnmeldung(); }catch(e){ zeigeTor("beitreten",fehlerDeutsch(e.message)); } }
 };
-document.addEventListener("submit",e=>{ const f=e.target; if(!f.dataset?.form) return; e.preventDefault(); FORM[f.dataset.form]?.(f,e); });
+// Doppelt tippen schickt nichts doppelt ab
+document.addEventListener("submit",async e=>{ const f=e.target; if(!f.dataset?.form) return; e.preventDefault(); if(f.dataset.laeuft) return;
+  f.dataset.laeuft="1"; try{ await FORM[f.dataset.form]?.(f,e); delete f.dataset.geaendert; }catch(err){ console.error(err); } finally{ delete f.dataset.laeuft; } });
 
-async function nachAnmeldung(){ const p=await B.meinProfil(); if(!p) return zeigeTor("beitreten"); if(p.gesperrt) return zeigeTor("beitreten","Dein Zugang ist gesperrt. Bitte wende dich an die Bauleitung."); S.me=p;
+async function nachAnmeldung(){ const p=await B.meinProfil(); if(!p) return zeigeTor("beitreten"); if(p.gesperrt) return zeigeTor("gesperrt"); S.me=p; letzterTag=heuteIso();
   if(p.pw_wechseln&&B.modus==="live") return zeigeTor("erstesPasswort"); B.abonnieren(nachladen); await ladeAlles(); render(); }
 
 /* ================= Start ================= */
