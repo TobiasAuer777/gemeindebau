@@ -1582,6 +1582,7 @@ function fehlerDeutsch(m){ m=String(m||"");
   if(/already (been )?registered|already exists/i.test(m)) return "Diese E-Mail ist schon registriert. Bitte anmelden.";
   if(/password should be at least|weak password/i.test(m)) return "Das Passwort ist zu kurz oder zu einfach – bitte mindestens 8 Zeichen.";
   if(/rate limit|too many requests|over_.*_limit/i.test(m)) return "Zu viele Versuche in kurzer Zeit. Bitte ein paar Minuten warten.";
+  if(/gemeinde-code stimmt nicht/i.test(m)) return "Der Gemeinde-Code stimmt nicht. Bitte genau so eingeben, wie du ihn bekommen hast (Groß- und Kleinschreibung zählt).";
   if(/email not confirmed/i.test(m)) return "Die E-Mail ist noch nicht bestätigt.";
   if(/invalid.*email|unable to validate email/i.test(m)) return "Die E-Mail-Adresse ist ungültig.";
   if(/failed to fetch|network/i.test(m)) return "Keine Verbindung. Bitte Internet prüfen.";
@@ -1791,8 +1792,14 @@ const FORM = {
     const erst=!!S.me?.pw_wechseln;
     try{ await B.passwortAendern(f.pw1.value); if(erst) await B.pwGewechselt(); history.replaceState(null,"",location.pathname); await nachAnmeldung(); }catch(e){ zeigeTor(erst?"erstesPasswort":"neuesPasswort",e.message); } },
   anmelden:async f=>{ try{ await B.anmelden(f.email.value.trim(),f.pw.value); await nachAnmeldung(); }catch(e){ zeigeTor("anmelden",fehlerDeutsch(e.message)); } },
-  registrieren:async f=>{ const name=f.elements.name.value.trim(), code=f.code.value.trim();
-    try{ await B.registrieren(f.email.value.trim(),f.pw.value); await B.beitreten(code,name); await nachAnmeldung(); }
+  registrieren:async f=>{ const name=f.elements.name.value.trim(), code=f.code.value.trim(), email=f.email.value.trim(), pw=f.pw.value;
+    try{
+      try{ await B.registrieren(email,pw); }
+      catch(e){ // Konto gibt es schon (z. B. erster Versuch mit falschem Code): mit denselben Daten anmelden und weitermachen
+        if(!/already (been )?registered|already exists/i.test(e.message||"")) throw e;
+        try{ await B.anmelden(email,pw); }catch(_){ throw new Error("Diese E-Mail hat schon einen Zugang, aber das Passwort passt nicht. Bitte oben auf „Anmelden“ und dort „Passwort vergessen?“ nutzen."); }
+        const p=await B.meinProfil(); if(p) return nachAnmeldung(); }
+      await B.beitreten(code,name); await nachAnmeldung(); }
     catch(e){ const m=fehlerDeutsch(e.message); if(await B.sitzung()) zeigeTor("beitreten",m); else zeigeTor("registrieren",m); } },
   beitreten:async f=>{ try{ await B.beitreten(f.code.value.trim(),f.elements.name.value.trim()); await nachAnmeldung(); }catch(e){ zeigeTor("beitreten",e.message); } }
 };
