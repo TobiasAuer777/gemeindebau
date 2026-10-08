@@ -20,11 +20,12 @@ const IC = {
   plus:'<path d="M12 5v14M5 12h14"/>', foto:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
   zu:'<path d="M6 6l12 12M18 6 6 18"/>', links:'<path d="m15 5-7 7 7 7"/>', rechts:'<path d="m9 5 7 7-7 7"/>', check:'<path d="m5 12 4 4 10-10"/>',
   drehen:'<path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v4h-4"/>',
+  tag:'<rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="m8 8.5 1.6 1.6L12.5 7M8 14.5l1.6 1.6 2.9-3.1M14.5 9h2M14.5 15h2"/>',
   sonne:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
   mond:'<path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/>', papierkorb:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>'
 };
 const icon = (n,cls="") => `<svg class="${cls}" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]||""}</svg>`;
-const NAV = [["start","Start"],["kalender","Kalender"],["aufgaben","Aufgaben"],["tagebuch","Bautagebuch"],["halle","Halle & 3D"],"-",["teams","Teams & Leitung"],["material","Material"],["werkzeug","Werkzeug"]];
+const NAV = [["start","Start"],["tag","Tagesplan"],["kalender","Kalender"],["aufgaben","Aufgaben"],["tagebuch","Bautagebuch"],["halle","Halle & 3D"],"-",["teams","Teams & Leitung"],["material","Material"],["werkzeug","Werkzeug"]];
 
 /* ---------- Personen & Formate ---------- */
 const person = id => S.profil.find(p=>p.id===id);
@@ -77,7 +78,7 @@ function rahmen(){
     ${B.modus==="demo"?`<div class="demo-band"><b>Vorschau mit Beispieldaten.</b> Alles, was du hier einträgst, bleibt nur in diesem Browser. Die echte Seite für die Gemeinde läuft mit eigener Anmeldung. <button class="btn klein" data-a="demoReset">Beispieldaten zurücksetzen</button></div>`:""}
     <div id="ansicht">${ANSICHTEN[ansicht]()}</div>
   </main>
-  <nav class="unten" aria-label="Bereiche">${[["start","Start"],["kalender","Kalender"],["aufgaben","Aufgaben"],["halle","Halle"],["mehr","Mehr"]].map(([k,l])=>`<button data-a="${k==="mehr"?"mehr":"geh"}" data-ziel="${k}" ${ansicht===k||(k==="mehr"&&["tagebuch","teams","material","werkzeug","profil","benutzer"].includes(ansicht))?'aria-current="page"':''}>${icon(k)}${l}</button>`).join("")}</nav>
+  <nav class="unten" aria-label="Bereiche">${[["start","Start"],["tag","Tagesplan"],["kalender","Kalender"],["aufgaben","Aufgaben"],["mehr","Mehr"]].map(([k,l])=>`<button data-a="${k==="mehr"?"mehr":"geh"}" data-ziel="${k}" ${ansicht===k||(k==="mehr"&&["halle","tagebuch","teams","material","werkzeug","profil","benutzer"].includes(ansicht))?'aria-current="page"':''}>${icon(k)}${l}</button>`).join("")}</nav>
 </div>`;
 }
 const rolleText = r => ({admin:"Admin · Bauleitung",bauleitung:"Bauleitung",mitglied:"Gemeindemitglied"})[r]||r;
@@ -115,10 +116,16 @@ ANSICHTEN.start = () => {
   const nachT=taetigkeitsZaehlung(daSa);
   const anfragen=S.material.filter(m=>m.status==="angefragt");
   const ohne=S.aufgabe.filter(a=>!a.zugewiesen.length&&a.status!=="erledigt");
+  const tpD=tpStandard(), tpP=S.tagesplan_punkt.filter(x=>x.datum===tpD), tpF=tpP.filter(x=>x.erledigt).length, tpOffen=tpP.filter(x=>!x.erledigt);
   return `<div class="kopf"><div><p class="etikett">Umnutzung Werkhalle → Begegnungsstätte</p><h1>Hallo ${esc(S.me.name.split(" ")[0])}!</h1>
     <p class="unter">${istLeitung()?"Deine Bauleitungs-Übersicht.":"Schön, dass du mit anpackst."} Samstage sind die großen Bautage.</p></div>
     <div class="zeile"><button class="btn primaer" data-a="verfOeffnen" data-datum="${sa}">${icon("kalender")}Ich bin da …</button><button class="btn" data-a="eintragNeu">${icon("foto")}Foto & Notiz</button><button class="btn" data-a="materialNeu">${icon("material")}Material anfragen</button></div></div>
   <div class="raster r2">
+    <section class="karte"><header><div><p class="etikett">Tagesplan</p><h2>${dLang(tpD)}</h2></div>${tpP.length?`<span class="zahl">${tpF}<small>von ${tpP.length}</small></span>`:""}</header>
+      ${tpP.length?`<div class="tp-balken" role="img" aria-label="${tpF} von ${tpP.length} erledigt"><i style="width:${Math.round(tpF/tpP.length*100)}%"></i></div>
+        <div class="liste" style="margin-top:12px">${tpOffen.slice(0,4).map(x=>`<div class="zeile" style="flex-wrap:nowrap"><span class="punkt" style="background:var(--gold)"></span><span>${esc(x.titel)}${x.wer?` <span class="klein leise">· ${esc(x.wer)}</span>`:""}</span></div>`).join("")||`<p class="klein leise">Alles abgehakt.</p>`}</div>`
+        :`<div class="leer">Für diesen Tag gibt es noch keinen Tagesplan.${istLeitung()?" Leg ihn an – mit Start, den Aufgaben des Tages und dem Aufräumen am Schluss.":""}</div>`}
+      <div class="zeile" style="margin-top:14px"><button class="btn primaer" data-a="geh" data-ziel="tag" data-tag="${tpD}">${icon("tag")}${tpP.length?"Zum Tagesplan":istLeitung()?"Tagesplan anlegen":"Ansehen"}</button></div></section>
     <section class="karte" style="border-top:4px solid var(--flamme)"><header><div><p class="etikett">Nächster Bautag</p><h2>${dLang(sa)}</h2></div><span class="zahl">${daSa.length}<small>dabei</small></span></header>
       ${daSa.length?`<div class="stapel">${avas(daSa.map(v=>v.profil_id),10)}
         <div class="chips">${nachT.map(([t,n])=>`<span class="pille">${esc(t)} · ${n}</span>`).join("")}</div></div>`:`<div class="leer">Noch niemand eingetragen. Trag dich als Erster ein.</div>`}
@@ -146,6 +153,50 @@ function eintragKarte(e){ const a=S.aufgabe.find(x=>x.id===e.aufgabe_id);
     <div class="zeile">${ava(e.autor,26)}<div class="klein"><b>${esc(nameVon(e.autor))}</b> <span class="leise">· ${dKurz(e.datum)}</span>${a?`<div class="leise">${esc(a.titel)}</div>`:""}</div></div>
     <p>${esc(e.text||"")}</p></article>`; }
 
+/* ---------- Tagesplan ---------- */
+let tpDatum=null;
+function tpStandard(){ const h=heuteIso(); const tage=[...new Set(S.tagesplan_punkt.map(x=>x.datum))].sort();
+  if(tage.includes(h)) return h; return tage.find(d=>d>h) || (new Date().getDay()===6?h:naechsterSamstag()); }
+const uhr = s => s ? new Date(s).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"}) : "";
+function tpPunkt(x){ const auf=x.aufgabe_id&&S.aufgabe.find(y=>y.id===x.aufgabe_id);
+  return `<div class="tp-punkt${x.erledigt?" fertig":""}">
+    <button class="tp-haken" data-a="tpHaken" data-id="${x.id}" aria-pressed="${!!x.erledigt}" aria-label="${esc(x.titel)}: ${x.erledigt?"erledigt – wieder öffnen":"abhaken"}">${icon("check")}</button>
+    <div class="tp-text"><b>${esc(x.titel)}</b>${x.wer?`<span class="tp-wer">${icon("teams")}${esc(x.wer)}</span>`:""}${x.notiz?`<span class="klein leise">${esc(x.notiz)}</span>`:""}
+      ${x.erledigt?`<span class="tp-wann">${icon("check")}${esc(x.erledigt_von?vorname(x.erledigt_von):"erledigt")}${x.erledigt_um?" · "+uhr(x.erledigt_um)+" Uhr":""}</span>`:""}</div>
+    <div class="tp-aktionen">${auf?`<button class="btn still klein" data-a="aufgabe" data-id="${auf.id}" aria-label="Aufgabe öffnen" title="Aufgabe öffnen">${icon("aufgaben")}</button>`:""}${istLeitung()?`<button class="btn still klein" data-a="tpLoeschen" data-id="${x.id}" aria-label="Punkt entfernen" title="Entfernen">${icon("zu")}</button>`:""}</div></div>`; }
+ANSICHTEN.tag = () => {
+  if(!tpDatum) tpDatum=tpStandard();
+  const d=tpDatum, pk=S.tagesplan_punkt.filter(x=>x.datum===d).sort((x,y)=>x.sort-y.sort||(x.erstellt||"").localeCompare(y.erstellt||""));
+  const fertig=pk.filter(x=>x.erledigt).length; const da=S.verfuegbarkeit.filter(v=>v.datum===d);
+  const fehlend=S.aufgabe.filter(x=>x.datum===d&&x.status!=="erledigt"&&!pk.some(y=>y.aufgabe_id===x.id));
+  const kopf=`<div class="kopf"><div><p class="etikett">Bautag</p><h1>Tagesplan</h1><p class="unter">${dLang(d)}${da.length?` · ${da.length} ${da.length===1?"Person":"Personen"} eingetragen`:""}</p></div>
+    <div class="zeile tp-nav"><button class="btn still" data-a="tpTag" data-d="-1" aria-label="Voriger Tag">${icon("links")}</button><input type="date" id="tp-datum" data-a="tpDatum" value="${d}" aria-label="Datum" style="width:auto"><button class="btn still" data-a="tpTag" data-d="1" aria-label="Nächster Tag">${icon("rechts")}</button><button class="btn klein" data-a="tpTag" data-d="0">Heute</button>${pk.length?`<button class="btn klein" data-a="tpDrucken">Drucken</button>`:""}</div></div>`;
+  if(!pk.length) return kopf+`<div class="tp-wrap"><section class="karte stapel" style="align-items:flex-start"><h2>Noch kein Tagesplan</h2>
+    <p class="leise">${istLeitung()?`Der Tagesplan bekommt feste Punkte zum Start (Einweisung, Gerüste prüfen …) und zum Schluss (Werkzeug reinigen und aufräumen, sauber machen, abschließen) und dazu die Aufgaben, die für diesen Tag geplant sind${fehlend.length?` – im Moment ${fehlend.length}`:""}. Danach kannst du alles ergänzen oder streichen.`:"Die Bauleitung legt den Tagesplan an. Dann kannst du hier abhaken, was erledigt ist."}</p>
+    ${istLeitung()?`<button class="btn primaer" data-a="tpAnlegen">${icon("tag")}Tagesplan anlegen</button>`:""}</section></div>`;
+  const abschnitt=([k,titel])=>{ const l=pk.filter(x=>x.abschnitt===k), f=l.filter(x=>x.erledigt).length;
+    return `<section class="karte"><header><h2>${titel}</h2><div class="zeile"><span class="pille ${l.length&&f===l.length?"erledigt":""}">${f} / ${l.length}</span>${istLeitung()?`<button class="btn still klein" data-a="tpNeu" data-k="${k}">${icon("plus")}Punkt</button>`:""}</div></header>
+      ${k==="arbeit"&&istLeitung()&&fehlend.length?`<div class="hinweis zeile weit" style="margin-bottom:10px"><span>${fehlend.length===1?"1 Aufgabe ist":fehlend.length+" Aufgaben sind"} für diesen Tag geplant, aber noch nicht im Tagesplan.</span><button class="btn klein" data-a="tpAufgabenNach">Übernehmen</button></div>`:""}
+      ${l.length?`<div class="tp-liste">${l.map(tpPunkt).join("")}</div>`:`<p class="klein leise">Noch keine Punkte.</p>`}</section>`; };
+  return kopf+`<div class="tp-wrap">
+    <section class="karte"><div class="zeile weit"><div><span class="zahl">${fertig}<small>von ${pk.length} erledigt</small></span></div>${da.length?`<div class="zeile">${avas(da.map(v=>v.profil_id),12)}</div>`:""}</div>
+      <div class="tp-balken" style="margin-top:12px" role="img" aria-label="${fertig} von ${pk.length} erledigt"><i style="width:${Math.round(fertig/pk.length*100)}%"></i></div></section>
+    ${TP_ABSCHNITTE.map(abschnitt).join("")}</div>`;
+};
+function tpDialog(abschnitt){
+  const da=S.verfuegbarkeit.filter(v=>v.datum===tpDatum).map(v=>vorname(v.profil_id));
+  const offen=S.aufgabe.filter(x=>x.status!=="erledigt").sort((x,y)=>(x.phase??9)-(y.phase??9)||x.titel.localeCompare(y.titel));
+  oeffne("Punkt hinzufügen",`<form class="stapel" data-form="tpPunkt">
+    <label class="feld">Abschnitt<select name="abschnitt" id="tp-abschnitt">${TP_ABSCHNITTE.map(([k,t])=>`<option value="${k}" ${k===abschnitt?"selected":""}>${t}</option>`).join("")}</select></label>
+    <label class="feld">Aus den Aufgaben (optional)<select name="aufgabe_id" id="tp-aufgabe"><option value="">– keine –</option>${offen.map(x=>`<option value="${x.id}">${esc(x.titel)}</option>`).join("")}</select></label>
+    <label class="feld">Was ist zu tun?<input type="text" name="titel" id="tp-titel" placeholder="z. B. Wand Küche: Reihen 3 bis 6" autocomplete="off"></label>
+    <label class="feld">Wer bzw. Team<input type="text" name="wer" id="tp-wer" list="tp-wer-liste" placeholder="z. B. Team A: Igor, Andre" autocomplete="off"></label>
+    <datalist id="tp-wer-liste">${["Team A","Team B","Alle",...da].map(n=>`<option value="${esc(n)}">`).join("")}</datalist>
+    <label class="feld">Hinweis (optional)<textarea name="notiz" id="tp-notiz" rows="2" style="min-height:60px"></textarea></label>
+    <p class="klein leise">Wählst du eine Aufgabe, wird ihr Titel übernommen, wenn das Feld „Was ist zu tun?“ leer bleibt.</p>
+    <button class="btn primaer" type="submit">${icon("plus")}Hinzufügen</button></form>`);
+}
+
 /* ---------- Kalender ---------- */
 ANSICHTEN.kalender = () => {
   const j=kalMonat.getFullYear(), m=kalMonat.getMonth(); const erster=new Date(j,m,1), start=new Date(erster); start.setDate(1-((erster.getDay()+6)%7));
@@ -167,7 +218,7 @@ function tagDialog(datum){
   const da=S.verfuegbarkeit.filter(v=>v.datum===datum).sort((a,b)=>(a.von||"")<(b.von||"")?-1:1);
   const plan=S.aufgabe.filter(a=>a.datum===datum); const nachT=taetigkeitsZaehlung(da); const ich=da.find(v=>v.profil_id===S.me.id);
   oeffne(dLang(datum), `
-    <div class="zeile">${ich?`<button class="btn" data-a="verfOeffnen" data-datum="${datum}">Meinen Eintrag ändern</button>`:`<button class="btn flamme" data-a="verfOeffnen" data-datum="${datum}">Ich bin da</button>`}<span class="pille">${da.length} ${da.length===1?"Person":"Personen"}</span></div>
+    <div class="zeile">${ich?`<button class="btn" data-a="verfOeffnen" data-datum="${datum}">Meinen Eintrag ändern</button>`:`<button class="btn flamme" data-a="verfOeffnen" data-datum="${datum}">Ich bin da</button>`}<button class="btn" data-a="geh" data-ziel="tag" data-tag="${datum}">${icon("tag")}Tagesplan</button><span class="pille">${da.length} ${da.length===1?"Person":"Personen"}</span></div>
     ${nachT.length?`<div class="chips">${nachT.map(([t,n])=>`<span class="pille">${esc(t)} · ${n}</span>`).join("")}</div>`:""}
     <section><h3 style="margin-bottom:8px">Wer kommt</h3>${da.length?`<div class="liste">${da.map(v=>`<div class="zeile" style="align-items:flex-start">${ava(v.profil_id)}<div style="flex:1;min-width:0"><b>${esc(nameVon(v.profil_id))}</b> <span class="mass leise">${zeit(v.von,v.bis)}</span>
       <div class="klein leise">${v.alles_gleich?"Alles gleich gern":v.taetigkeiten.map((t,i)=>`${i+1}. ${esc(t)}`).join(" · ")||"–"}</div>${v.notiz?`<div class="klein">${esc(v.notiz)}</div>`:""}
@@ -206,7 +257,7 @@ const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich,
   [0, "Bestandsaufnahme mit Fotos", "Alle Räume fotografieren, Zählerstände notieren.", "Planung & Organisation", "Ganze Halle", null, 2],
   [0, "Restbestände des Vormieters klären", "Gabelstapler, Druckluftkessel, Feuerlöscher, Schilder: Was gehört wem, was bleibt, was wird abgeholt?", "Planung & Organisation", "Ganze Halle", null, 2],
   [0, "Baustelle einrichten", "Baustrom-Verteiler, Container für Bauschutt und Mischabfall, Erste-Hilfe-Kasten, Feuerlöscher, Baustellen-Regeln aushängen.", "Aufräumen & Entsorgen", "Ganze Halle", "Rückbau", 2],
-  [0, "Gerüst bzw. Hubarbeitsbühne organisieren", "Für Decke und Lampen; Raumhöhe 3,70 m (Traufe) bis 5,09 m (First).", "Einkauf & Transport", "Ganze Halle", null, 2],
+  [0, "Gerüste einplanen", "Igor und Tobi haben je ein Gerüst – für Decke und Wände sprühen und zum Mauern ab Arbeitshöhe. Raumhöhe 3,70 m (Traufe) bis 5,09 m (First): Reicht die Arbeitshöhe bis unter den First? Sonst Hubarbeitsbühne leihen.", "Planung & Organisation", "Ganze Halle", null, 2],
   [0, "Materialliste und Lieferzeiten erfassen", "Vor allem Küche, Gastherme, Bodenbelag, LED-Wand und Türen.", "Einkauf & Transport", "Ganze Halle", null, 2],
   [1, "Strom abschalten, alte Elektrik stilllegen", "Betroffene Bereiche spannungsfrei schalten und sichern. Durch Elektriker aus der Gemeinde.", "Elektrik", "Ganze Halle", "Elektrik", 1],
   [1, "Gas absperren, alte Heizgeräte demontieren", "Durch Gemeindemitglied mit Gas-Konzession.", "Heizung & Gas", "Ganze Halle", null, 1],
@@ -220,7 +271,10 @@ const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich,
   [1, "Alte Bodenbeläge entfernen", "Kleberreste auf Schadstoffe prüfen.", "Rückbau & Abbruch", "Ganze Halle", "Rückbau", 2],
   [1, "Schutt getrennt entsorgen", "Bauschutt, Holz, Metall, Elektroschrott, Mischabfall.", "Aufräumen & Entsorgen", "Ganze Halle", "Rückbau", 2],
   [1, "Halle besenrein, Fotos ins Bautagebuch", "", "Aufräumen & Entsorgen", "Ganze Halle", "Rückbau", 3],
+  [1, "Decke sprühen vorbereiten", "Nur wenn die Deckenplatten asbestfrei sind (siehe „Deckenuntersicht klären“) – am Asbest wird nicht gearbeitet. Am besten jetzt, solange die Halle leer ist: Fenster, Tore und Boden abdecken bzw. abkleben, Gerüste von Igor und Tobi aufbauen.", "Malern", "Ganze Halle", null, 2],
+  [1, "Decke mit dem Farbsprüher streichen", "Airless-Sprühgerät; Atemschutz gegen Sprühnebel, Schutzbrille, gut lüften. Vor neuen Wänden, Kabeltrassen und Lampen – dann muss kaum etwas abgeklebt werden.", "Malern", "Ganze Halle", null, 2],
   [2, "Neue Wände anreißen", "Mit dem aktuellen Plan abgleichen: Türbreiten, Fluchtwege.", "Mauern (Ytong)", "Ganze Halle", "Mauern", 1],
+  [2, "Mauer-Teams einteilen", "Mindestens 2 Teams mauern gleichzeitig. Zuerst die erste Steinlage genau in Waage setzen. Dann versetzt: Sobald Team 1 ein paar Steine der Reihe gesetzt hat, beginnt Team 2 die nächste Reihe dahinter. Versatz der Stoßfugen mindestens 0,4 × Steinhöhe. Ab Arbeitshöhe von den Gerüsten aus. Steht im Tagesplan bei jeder Mauer-Aufgabe.", "Mauern (Ytong)", "Ganze Halle", "Mauern", 1],
   [2, "Dosen und Leerrohre in neuen Wänden festlegen", "Elektro-Planung abschließen, bevor gemauert wird.", "Elektrik", "Ganze Halle", "Elektrik", 1],
   [2, "Wand hinter der Bühne mit Ringanker", "Ca. 19,9 m von Außenwand zu Außenwand, Ytong, Ringanker aus U-Schalen, Bewehrung und Beton nach Statik.", "Mauern (Ytong)", "Bühne", "Mauern", 1],
   [2, "Anschluss der Ringanker-Wände festlegen", "Beide langen Wände: Maueranker zu den Außenwänden, Kopfanschluss an die Stahlkonstruktion – nicht in die asbesthaltigen Dachplatten. Vorher statisch freigeben lassen.", "Mauern (Ytong)", "Bühne", "Mauern", 1],
@@ -245,12 +299,10 @@ const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich,
   [3, "Sanitär WC-Block", "Wasser, Abwasser, Warmwasser; barrierefreies WC.", "Sanitär", "WC-Block", null, 2],
   [3, "Sanitär Küche", "Wasser, Abwasser, Spülmaschine.", "Sanitär", "Küche", null, 2],
   [3, "Lüftung", "Konzept für den Saal, Abluft WC, Dunstabzug Küche.", "Planung & Organisation", "Ganze Halle", null, 2],
-  [4, "Decke vorbereiten", "Nur wenn die Deckenplatten asbestfrei sind (siehe „Deckenuntersicht klären“): abstauben, Risse schließen, abdecken. Asbesthaltige Platten nicht reinigen, schleifen oder streichen.", "Malern", "Ganze Halle", null, 2],
-  [4, "Decke streichen", "Mit Hubarbeitsbühne oder Rollgerüst – vor dem neuen Boden. Nur auf asbestfreien Flächen.", "Malern", "Ganze Halle", null, 2],
   [4, "Neue Lampen Gottesdienstraum", "Lichtplanung (Helligkeit, dimmbar, Bühnenlicht getrennt). Befestigung an der Stahlkonstruktion, nicht in die Dachplatten. Anschluss durch Elektriker aus der Gemeinde.", "Elektrik", "Gottesdienstraum", "Elektrik", 2],
   [4, "Neue Lampen Gemeinschaftsraum", "Auswahl und Montage; Befestigung wie im Gottesdienstraum nur an der Stahlkonstruktion.", "Elektrik", "Gemeinschaftsraum", "Elektrik", 2],
   [4, "Wände verputzen bzw. spachteln", "Neue Wände; Bestandswände ausbessern.", "Trockenbau", "Ganze Halle", null, 2],
-  [4, "Wände streichen", "", "Malern", "Ganze Halle", null, 2],
+  [4, "Wände streichen", "Mit dem Farbsprüher; Boden, Fenster, Türen und Dosen vorher abdecken. Hohe Wände von den Gerüsten aus.", "Malern", "Ganze Halle", null, 2],
   [4, "Raumakustik Gottesdienstraum", "Absorber gegen Nachhall planen – an Wänden oder an den Stahlträgern, nicht an den Dachplatten.", "Bühne & Technik", "Gottesdienstraum", null, 2],
   [4, "Fliesen WC-Block", "Boden und Wände.", "Fliesen", "WC-Block", "Fliesen", 2],
   [4, "Fliesen Küche", "Boden und Spritzschutz.", "Fliesen", "Küche", "Fliesen", 2],
@@ -603,8 +655,8 @@ function zeigeTor(art,fehler="",info=""){
 
 /* ================= Aktionen ================= */
 const AKT = {
-  geh:t=>{ ansicht=t.dataset.ziel; schliesse(); render(); window.scrollTo(0,0); },
-  mehr:()=>oeffne("Mehr", `<nav class="nav">${[["tagebuch","Bautagebuch"],["teams","Teams & Leitung"],["material","Material"],["werkzeug","Werkzeug"],["profil","Mein Profil"],...(istAdmin()?[["benutzer","Benutzer verwalten"]]:[])].map(([k,l])=>`<button data-a="geh" data-ziel="${k}">${icon(k)}<span>${l}</span></button>`).join("")}</nav>`),
+  geh:t=>{ ansicht=t.dataset.ziel; if(t.dataset.tag) tpDatum=t.dataset.tag; schliesse(); render(); window.scrollTo(0,0); },
+  mehr:()=>oeffne("Mehr", `<nav class="nav">${[["halle","Halle & 3D"],["tagebuch","Bautagebuch"],["teams","Teams & Leitung"],["material","Material"],["werkzeug","Werkzeug"],["profil","Mein Profil"],...(istAdmin()?[["benutzer","Benutzer verwalten"]]:[])].map(([k,l])=>`<button data-a="geh" data-ziel="${k}">${icon(k)}<span>${l}</span></button>`).join("")}</nav>`),
   zu:()=>schliesse(),
   demoReset:()=>{ DemoBackend.zuruecksetzen(); ladeAlles().then(()=>{ S.me=S.profil.find(p=>p.id===DemoBackend.d.me); render(); toast("Beispieldaten zurückgesetzt"); }); },
   monat:t=>{ const d=+t.dataset.d; kalMonat = d===0?new Date():new Date(kalMonat.getFullYear(),kalMonat.getMonth()+d,1); render(); },
@@ -659,6 +711,19 @@ const AKT = {
   planLeeren:async ()=>{ for(const o of [...S.planobjekt]) await B.loeschen("planobjekt",o.id); planAuswahl=null; await neu("planobjekt"); render(); },
   blick:t=>dreiD?.ansicht(t.dataset.k),
   tor:t=>zeigeTor(t.dataset.k),
+  tpTag:t=>{ const d=+t.dataset.d; tpDatum=d===0?heuteIso():plusTage(tpDatum||heuteIso(),d); render(); },
+  tpAnlegen:async ()=>{ if(S.tagesplan_punkt.some(x=>x.datum===tpDatum)) return render();
+    await speichere(()=>B.neuViele("tagesplan_punkt",tagesplanEntwurf(tpDatum,S.aufgabe,vorname)),"Tagesplan angelegt"); await neu("tagesplan_punkt"); render(); },
+  tpAufgabenNach:async ()=>{ const pk=S.tagesplan_punkt.filter(x=>x.datum===tpDatum);
+    const neue=tagesplanEntwurf(tpDatum,S.aufgabe,vorname).filter(x=>x.abschnitt==="arbeit"&&!pk.some(y=>y.aufgabe_id===x.aufgabe_id));
+    const basis=Math.max(-1,...pk.filter(x=>x.abschnitt==="arbeit").map(x=>x.sort))+1; neue.forEach((x,i)=>x.sort=basis+i);
+    await speichere(()=>B.neuViele("tagesplan_punkt",neue),neue.length===1?"1 Aufgabe übernommen":neue.length+" Aufgaben übernommen"); await neu("tagesplan_punkt"); render(); },
+  tpHaken:async t=>{ const x=S.tagesplan_punkt.find(y=>y.id===t.dataset.id); if(!x) return; const an=!x.erledigt;
+    const w={erledigt:an,erledigt_von:an?S.me.id:null,erledigt_um:an?new Date().toISOString():null}; Object.assign(x,w); render();
+    try{ await speichere(()=>B.aendern("tagesplan_punkt",x.id,w)); }catch(e){} await neu("tagesplan_punkt"); render(); },
+  tpNeu:t=>tpDialog(t.dataset.k||"arbeit"),
+  tpLoeschen:async t=>{ await speichere(()=>B.loeschen("tagesplan_punkt",t.dataset.id),"Punkt entfernt"); await neu("tagesplan_punkt"); render(); },
+  tpDrucken:()=>{ const vorher=document.documentElement.dataset.theme; themaSetzen("light"); setTimeout(()=>{ window.print(); themaSetzen(vorher||null); },50); },
   thema:()=>{ const neu=istDunkel()?"light":"dark"; themaSetzen(neu); try{ localStorage.setItem("gb-thema",neu); }catch(e){}
     $$(".thema-knopf").forEach(k=>k.outerHTML=themaKnopf()); if(ansicht==="halle"&&!document.querySelector(".tor")) render(); },
   abmelden:async ()=>{ await B.abmelden(); location.reload(); },
@@ -674,6 +739,7 @@ document.addEventListener("change",async e=>{ const t=e.target; const a=t.datase
   if(t.matches('input[type=file]')){ const z=t.closest("form")?.querySelector("[data-fotozahl]"); if(z) z.textContent=t.files.length?`${t.files.length} Foto${t.files.length>1?"s":""} gewählt`:""; }
   if(a==="filterG"){ filterA.gewerk=t.value; render(); }
   if(a==="filterP"){ filterA.phase=t.value; render(); }
+  if(a==="tpDatum"&&t.value){ tpDatum=t.value; render(); }
   if(a==="mStatusSel"){ await speichere(()=>B.aendern("material",t.dataset.id,{status:t.value}),MSTATUS[t.value]); await neu("material"); }
   if(a==="rolle"){ await speichere(()=>B.aendern("profil",t.dataset.id,{rolle:t.value}),"Rolle geändert"); await neu("profil"); render(); }
   if(a==="neuGelb") dreiD?.neueHervorheben(t.checked);
@@ -708,6 +774,12 @@ const FORM = {
     await speichere(()=>B.aendern("profil",S.me.id,{name:f.elements.name.value.trim(),telefon:f.telefon.value.trim()||null,hinweis:f.hinweis.value.trim()||null,schwerpunkte:sw}),"Profil gespeichert");
     await neu("profil"); S.me=S.profil.find(p=>p.id===S.me.id)||S.me; render(); },
   code:async f=>{ await speichere(()=>B.codeSetzen(f.code.value),"Code geändert"); merkeCode(f.code.value.trim()); f.reset(); render(); },
+  tpPunkt:async f=>{ const auf=S.aufgabe.find(x=>x.id===f.aufgabe_id.value)||null; const titel=f.titel.value.trim()||auf?.titel||"";
+    if(!titel){ toast("Bitte eintragen, was zu tun ist"); f.titel.focus(); return; }
+    const abschnitt=f.abschnitt.value; const pk=S.tagesplan_punkt.filter(x=>x.datum===tpDatum&&x.abschnitt===abschnitt);
+    const notiz=f.notiz.value.trim()||(auf?.gewerk==="Mauern (Ytong)"?TP_MAUERN:null);
+    await speichere(()=>B.neu("tagesplan_punkt",{datum:tpDatum,abschnitt,titel,wer:f.wer.value.trim()||null,notiz,aufgabe_id:auf?.id||null,sort:Math.max(-1,...pk.map(x=>x.sort))+1,erledigt:false}),"Hinzugefügt");
+    await neu("tagesplan_punkt"); schliesse(); render(); },
   zugang:async f=>{ const w={name:f.elements.name.value.trim(),email:f.email.value.trim().toLowerCase(),rolle:f.rolle.value,pw:f.pw.value.trim()};
     const knopf=f.querySelector("[type=submit]"); knopf.disabled=true; knopf.textContent="Legt an …";
     try{ const r=await B.zugangAnlegen(w); await neu("profil"); benutzerInfo=null; render(); zugangFertig(w,r); }

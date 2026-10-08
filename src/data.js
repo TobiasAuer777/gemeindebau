@@ -6,7 +6,31 @@ const BEREICHE = ["Gottesdienstraum","Bühne","Gemeinschaftsraum","Küche","WC-B
   "Pastor-Büro","Warteraum","Flur & Eingang","Außenbereich","Ganze Halle"];
 const STATUS = {offen:"Offen",geplant:"Geplant",in_arbeit:"In Arbeit",erledigt:"Erledigt"};
 const MSTATUS = {bedarf:"Bedarf",angefragt:"Angefragt",freigegeben:"Freigegeben",bestellt:"Bestellt",geliefert:"Geliefert",abgelehnt:"Abgelehnt"};
-const TABELLEN = ["profil","leitung","team","team_mitglied","aufgabe","eintrag","verfuegbarkeit","material","werkzeug","planobjekt"];
+const TABELLEN = ["profil","leitung","team","team_mitglied","aufgabe","eintrag","verfuegbarkeit","material","werkzeug","planobjekt","tagesplan_punkt"];
+
+/* ---------- Tagesplan: feste Punkte für jeden Bautag ---------- */
+const TP_ABSCHNITTE = [["start","Zum Start"],["arbeit","Arbeiten heute"],["ende","Zum Schluss"]];
+const TP_START = [
+  ["Halle aufschließen, Baustrom und Licht an", null],
+  ["Kurze Einweisung", "Tagesziel, Teams einteilen, Regeln: nichts am Dach (Asbest), Erste-Hilfe-Kasten und Feuerlöscher zeigen"],
+  ["Werkzeug und Material bereitlegen", "Was fehlt, gleich als Material-Anfrage eintragen"],
+  ["Gerüste prüfen", "Standsicher, Rollen gebremst, Geländer dran – vor jeder Arbeit in der Höhe"]];
+const TP_ENDE = [
+  ["Werkzeug reinigen", "Mörtelkübel, Kellen, Rührer, Farbsprüher auswaschen, solange es noch frisch ist"],
+  ["Werkzeug aufräumen", "Zurück an seinen Platz bzw. zum Besitzer; Leihwerkzeug zählen"],
+  ["Arbeitsbereiche sauber machen", "Fegen, Laufwege und Fluchtwege frei, Kabel aufrollen"],
+  ["Müll trennen und wegbringen", "Bauschutt, Holz, Metall, Restmüll"],
+  ["Fotos und Notiz ins Bautagebuch", "Was ist heute geschafft, was ist offen?"],
+  ["Material für den nächsten Bautag melden", null],
+  ["Baustrom aus, Fenster und Tore zu, abschließen", null]];
+const TP_MAUERN = "Mindestens 2 Teams gleichzeitig: Sobald Team 1 ein paar Steine der Reihe gesetzt hat, beginnt Team 2 die nächste Reihe dahinter. Versatz mindestens 0,4 × Steinhöhe. Ab Arbeitshöhe von den Gerüsten aus.";
+// Punkte für einen neuen Tagesplan: Start, die Aufgaben dieses Tages, Schluss
+function tagesplanEntwurf(datum, aufgaben, nameVonId){
+  const P=(abschnitt,titel,notiz,sort,extra={})=>({datum,abschnitt,titel,notiz:notiz||null,wer:null,aufgabe_id:null,sort,erledigt:false,erledigt_von:null,erledigt_um:null,...extra});
+  const arbeit=aufgaben.filter(a=>a.datum===datum&&a.status!=="erledigt").map((a,i)=>P("arbeit",a.titel,
+    a.gewerk==="Mauern (Ytong)"?TP_MAUERN:(a.beschreibung||null),i,{aufgabe_id:a.id,wer:(a.zugewiesen||[]).map(nameVonId).filter(Boolean).join(", ")||null}));
+  return [...TP_START.map(([t,n],i)=>P("start",t,n,i)),...arbeit,...TP_ENDE.map(([t,n],i)=>P("ende",t,n,i))];
+}
 
 const iso = d => { const z=new Date(d); z.setMinutes(z.getMinutes()-z.getTimezoneOffset()); return z.toISOString().slice(0,10); };
 const heuteIso = () => iso(new Date());
@@ -61,22 +85,26 @@ function demoDaten(){
     M("Bewehrungsstahl Ringanker",null,"m","Mauern (Ytong)","bedarf",null,a3,tobi,true),M("Schuttsäcke",50,"Stück","Rückbau & Abbruch","angefragt","Beispiel-Anfrage",a1,roland)];
   const W=(p,name,kategorie,anzahl,verf,notiz)=>({id:uid(),name,kategorie,anzahl,verfuegbarkeit:verf,notiz:notiz||null,besitzer:p.id,erstellt:new Date().toISOString()});
   const werkzeug=[W(igor,"Mörtelrührer","Mauern",1,"Samstags dabei"),W(andre,"Fliesenschneider 1,2 m","Fliesen",1,"nach Absprache"),
-    W(roland,"Abbruchhammer","Rückbau",1,"bleibt auf der Baustelle"),W(daniel,"Kabeltrommel 50 m","Elektrik",2,"Samstags dabei"),W(christoph,"Rollgerüst","Allgemein",1,"nach Absprache")];
+    W(roland,"Abbruchhammer","Rückbau",1,"bleibt auf der Baustelle"),W(daniel,"Kabeltrommel 50 m","Elektrik",2,"Samstags dabei"),W(christoph,"Rollgerüst","Allgemein",1,"nach Absprache"),
+    W(igor,"Gerüst","Allgemein",1,"für Decke, Wände und Mauern ab Arbeitshöhe"),W(tobi,"Gerüst","Allgemein",1,"für Decke, Wände und Mauern ab Arbeitshöhe")];
   const planobjekt=[...grundeinrichtung(),{typ:"bestuhlung",x:0,y:0,rot:0,label:"400"},{typ:"seiten",x:0,y:0,rot:0,label:"1"}].map(o=>({id:uid(),...o}));
-  return {me:tobi.id,profil,leitung,team,team_mitglied,aufgabe,eintrag,verfuegbarkeit,material,werkzeug,planobjekt};
+  const namen=Object.fromEntries(profil.map(p=>[p.id,p.name.split(" ")[0]]));
+  const tagesplan_punkt=tagesplanEntwurf(sa,aufgabe,id=>namen[id]).map(x=>({id:uid(),...x}));
+  tagesplan_punkt.filter(x=>x.abschnitt==="start").slice(0,2).forEach(x=>{ x.erledigt=true; x.erledigt_von=andreas.id; x.erledigt_um=new Date(sa+"T08:10:00").toISOString(); });
+  return {me:tobi.id,profil,leitung,team,team_mitglied,aufgabe,eintrag,verfuegbarkeit,material,werkzeug,planobjekt,tagesplan_punkt};
 }
 
 const DemoBackend = {
   modus:"demo", d:null,
-  async init(){ let roh=null; try{ roh=localStorage.getItem("gb-demo-v7"); }catch(e){}
+  async init(){ let roh=null; try{ roh=localStorage.getItem("gb-demo-v8"); }catch(e){}
     this.d = roh ? JSON.parse(roh) : demoDaten(); this.speichern(); return true; },
-  speichern(){ try{ const kopie={...this.d}; localStorage.setItem("gb-demo-v7",JSON.stringify(kopie)); }catch(e){} },
+  speichern(){ try{ const kopie={...this.d}; localStorage.setItem("gb-demo-v8",JSON.stringify(kopie)); }catch(e){} },
   zuruecksetzen(){ this.d=demoDaten(); this.speichern(); },
   async sitzung(){ return {user:{id:this.d.me}}; },
   async meinProfil(){ return this.d.profil.find(p=>p.id===this.d.me)||null; },
   async alle(t){ return JSON.parse(JSON.stringify(this.d[t]||[])); },
-  async neu(t,o){ const z={id:uid(),...o}; if(t==="team_mitglied") delete z.id; this.d[t].push(z); this.speichern(); return z; },
-  async neuViele(t,liste){ for(const o of liste) this.d[t].push({id:uid(),...o}); this.speichern(); },
+  async neu(t,o){ const z={id:uid(),...o}; if(t==="team_mitglied") delete z.id; (this.d[t]||(this.d[t]=[])).push(z); this.speichern(); return z; },
+  async neuViele(t,liste){ for(const o of liste) (this.d[t]||(this.d[t]=[])).push({id:uid(),...o}); this.speichern(); },
   async aendern(t,id,p){ const z=this.d[t].find(r=>r.id===id); Object.assign(z,p); this.speichern(); return z; },
   async loeschen(t,id){ this.d[t]=this.d[t].filter(r=>r.id!==id); this.speichern(); },
   async austreten(teamId,profilId){ this.d.team_mitglied=this.d.team_mitglied.filter(r=>!(r.team_id===teamId&&r.profil_id===profilId)); this.speichern(); },

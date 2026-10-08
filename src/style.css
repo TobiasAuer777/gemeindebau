@@ -230,3 +230,29 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blau);bo
 /* Zugangsdaten zum Weiterschicken */
 .vorlage{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;padding:12px 14px;border-radius:12px;border:1px solid var(--linie);background:var(--flaeche2);font:inherit;font-size:.92rem;line-height:1.5}
 a.btn{text-decoration:none}
+/* Tagesplan */
+.tp-wrap{display:flex;flex-direction:column;gap:16px;max-width:920px}
+.tp-nav input[type=date]{padding:7px 10px;border-radius:999px}
+.tp-balken{height:8px;border-radius:99px;background:var(--flaeche2);overflow:hidden}
+.tp-balken i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--ok),color-mix(in srgb,var(--ok) 70%,var(--gold)));transition:width .3s ease}
+.tp-liste{display:flex;flex-direction:column}
+.tp-punkt{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:start;padding:13px 0;border-top:1px solid var(--linie)}
+.tp-punkt:first-child{border-top:0;padding-top:2px}
+.tp-haken{width:30px;height:30px;border-radius:9px;border:1.5px solid color-mix(in srgb,var(--text3) 80%,transparent);background:var(--flaeche);display:grid;place-items:center;cursor:pointer;color:transparent;padding:0;transition:background-color .15s,border-color .15s}
+.tp-haken:hover{border-color:var(--ok)}
+.tp-haken svg{width:18px;height:18px}
+.tp-haken[aria-pressed="true"]{background:var(--ok);border-color:var(--ok);color:var(--flaeche)}
+.tp-text{display:flex;flex-direction:column;gap:3px;min-width:0;padding-top:4px}
+.tp-text b{font-weight:600;color:var(--tinte);line-height:1.35}
+.tp-punkt.fertig .tp-text b{color:var(--text3);text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--text3) 60%,transparent)}
+.tp-wer{display:inline-flex;gap:5px;align-items:center;font-size:13px;font-weight:600;color:var(--blau)}
+.tp-wer svg,.tp-wann svg{width:14px;height:14px;flex:none}
+.tp-wann{display:inline-flex;gap:4px;align-items:center;font-size:12.5px;font-weight:600;color:var(--ok)}
+.tp-aktionen{display:flex;gap:2px}
+.tp-aktionen .btn{padding:6px}
+@media print{
+  .seite,.unten,.oberleiste,.handykopf,.demo-band,.tp-aktionen,.tp-nav,[data-a="tpNeu"],[data-a="tpAufgabenNach"],.hinweis{display:none!important}
+  .app{display:block} body{background:#fff} .haupt{padding:0}
+  .karte{box-shadow:none;break-inside:avoid;border-color:#ccc} .tp-haken{border-color:#555}
+}
+.zahl{white-space:nowrap}

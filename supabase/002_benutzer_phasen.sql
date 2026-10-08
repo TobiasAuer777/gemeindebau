@@ -1,4 +1,4 @@
--- Gemeindebau – Erweiterung 2: Phasen für Aufgaben, Benutzerverwaltung (Liste, sperren, Zugänge anlegen)
+-- Gemeindebau – Erweiterung 2: Phasen für Aufgaben, Benutzerverwaltung (Liste, sperren, Zugänge anlegen), Tagesplan
 -- Ausführen: Supabase → SQL Editor → New query → alles einfügen → Run
 
 -- Aufgaben bekommen eine Bauphase (0 = Vorbereitung … 6 = Abnahmen)
@@ -111,5 +111,63 @@ $$ update profil set pw_wechseln = false where id = auth.uid() $$;
 
 revoke execute on function public.zugang_anlegen(uuid, text, text), public.passwort_gewechselt() from public, anon;
 grant execute on function public.zugang_anlegen(uuid, text, text), public.passwort_gewechselt() to authenticated;
+
+-- ---------- Tagesplan ----------
+-- Für jeden Bautag eine Liste zum Abhaken: Start, Arbeiten, Schluss (Sauber machen, Werkzeug aufräumen …).
+-- Anlegen, ändern und löschen darf die Leitung; abhaken darf jedes Mitglied.
+create table if not exists public.tagesplan_punkt (
+  id uuid primary key default gen_random_uuid(),
+  datum date not null,
+  abschnitt text not null default 'arbeit' check (abschnitt in ('start','arbeit','ende')),
+  titel text not null,
+  notiz text,
+  wer text,
+  aufgabe_id uuid references public.aufgabe on delete set null,
+  sort int not null default 0,
+  erledigt boolean not null default false,
+  erledigt_von uuid references public.profil on delete set null,
+  erledigt_um timestamptz,
+  erstellt timestamptz not null default now()
+);
+create index if not exists tagesplan_punkt_datum on public.tagesplan_punkt (datum, abschnitt, sort);
+alter table public.tagesplan_punkt enable row level security;
+drop policy if exists lesen on public.tagesplan_punkt;
+create policy lesen on public.tagesplan_punkt for select to authenticated using (public.ist_mitglied());
+drop policy if exists anlegen on public.tagesplan_punkt;
+create policy anlegen on public.tagesplan_punkt for insert to authenticated with check (public.ist_leitung());
+drop policy if exists aendern on public.tagesplan_punkt;
+create policy aendern on public.tagesplan_punkt for update to authenticated using (public.ist_mitglied()) with check (public.ist_mitglied());
+drop policy if exists loeschen on public.tagesplan_punkt;
+create policy loeschen on public.tagesplan_punkt for delete to authenticated using (public.ist_leitung());
+
+-- Mitglieder dürfen nur abhaken; wer und wann setzt die Datenbank selbst
+create or replace function public.tagesplan_schuetzen() returns trigger
+  language plpgsql security definer set search_path = public as
+$$
+begin
+  if not ist_leitung() then
+    new.datum := old.datum; new.abschnitt := old.abschnitt; new.titel := old.titel; new.notiz := old.notiz;
+    new.wer := old.wer; new.aufgabe_id := old.aufgabe_id; new.sort := old.sort;
+  end if;
+  if new.erledigt and not old.erledigt then new.erledigt_von := auth.uid(); new.erledigt_um := now();
+  elsif not new.erledigt then new.erledigt_von := null; new.erledigt_um := null;
+  else new.erledigt_von := old.erledigt_von; new.erledigt_um := old.erledigt_um; end if;
+  return new;
+end $$;
+drop trigger if exists tagesplan_schutz on public.tagesplan_punkt;
+create trigger tagesplan_schutz before update on public.tagesplan_punkt for each row execute function public.tagesplan_schuetzen();
+
+-- Live-Abgleich: Änderungen erscheinen sofort auf allen Geräten
+do $$
+declare t text;
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+    foreach t in array array['profil','leitung','team','team_mitglied','aufgabe','eintrag','verfuegbarkeit','material','werkzeug','planobjekt','tagesplan_punkt'] loop
+      if not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t) then
+        execute format('alter publication supabase_realtime add table public.%I', t);
+      end if;
+    end loop;
+  end if;
+end $$;
 
 select 'Erweiterung 2 eingespielt' as ergebnis;
