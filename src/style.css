@@ -269,3 +269,6 @@ a.btn{text-decoration:none}
   body.druck-zugaenge #ansicht > :not(#bekannte){display:none!important}
   body.druck-zugaenge #bekannte .bk-liste,body.druck-zugaenge #bekannte header .pille,body.druck-zugaenge #bekannte .bk-druck .zeile .btn,body.druck-zugaenge #bekannte .bk-fertig .btn{display:none!important}
 }
+/* Material: Bauhaus */
+.bauhaus-karte{margin-bottom:14px;border-left:3px solid #e2001a}
+.bauhaus-feld{padding:12px;border-radius:12px;background:var(--flaeche2)}

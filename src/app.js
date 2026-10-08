@@ -444,24 +444,62 @@ ANSICHTEN.material = () => {
   let l=[...S.material].sort((a,b)=>b.erstellt<a.erstellt?-1:1); if(filterM!=="alle") l=l.filter(m=>m.status===filterM);
   const zaehl=k=>S.material.filter(m=>m.status===k).length;
   return `<div class="kopf"><div><p class="etikett">Bedarf, Anfragen & Bestellungen</p><h1>Material</h1><p class="unter">Jeder kann Material anfragen. Die Bauleitung gibt frei und bestellt.</p></div><button class="btn primaer" data-a="materialNeu">${icon("plus")}Material anfragen</button></div>
+  <section class="karte bauhaus-karte"><div class="zeile weit"><div><p class="etikett">Einkauf</p><h2 style="margin-top:4px">${BAUHAUS.markt}</h2>
+      <p class="klein leise" style="margin-top:4px">${BAUHAUS.adresse} · ${BAUHAUS.zeiten} · <a href="tel:${BAUHAUS.tel.replace(/\s/g,"")}">${BAUHAUS.tel}</a></p></div>
+    <div class="zeile"><a class="btn klein" href="${BAUHAUS.seite}" target="_blank" rel="noopener">Markt</a><a class="btn klein" href="${BAUHAUS.reservieren}" target="_blank" rel="noopener">Reservieren & Abholen</a>${istLeitung()?`<button class="btn klein primaer" data-a="mEinkaufsliste">Einkaufsliste kopieren</button>`:""}</div></div></section>
   <div class="reiter" style="margin-bottom:14px" role="group" aria-label="Status-Filter">${[["alle","Alle"],...Object.entries(MSTATUS)].map(([k,lb])=>`<button data-a="filterM" data-k="${k}" aria-pressed="${filterM===k}">${lb}${k!=="alle"?` · ${zaehl(k)}`:""}</button>`).join("")}</div>
   <section class="karte">${l.length?`<div class="tabelle-rahmen"><table><thead><tr><th>Material</th><th>Menge</th><th>Tätigkeit / Aufgabe</th><th>Angefragt von</th><th>Status</th><th></th></tr></thead><tbody>
     ${l.map(m=>{ const a=S.aufgabe.find(x=>x.id===m.aufgabe_id); const eigen=m.angefragt_von===S.me.id&&m.status==="angefragt";
-      return `<tr><td><b>${esc(m.name)}</b>${m.vorschlag?` <span class="pille vorschlag">Vorschlag</span>`:""}${m.notiz?`<div class="klein leise">${esc(m.notiz)}</div>`:""}</td><td class="mass">${m.menge?zahlDe(m.menge)+" "+esc(m.einheit||""):`<span class="leise">${esc(m.einheit||"–")}</span>`}</td>
+      const nr=bauhausNr(m.link);
+      return `<tr><td><b>${esc(m.name)}</b>${m.vorschlag?` <span class="pille vorschlag">Vorschlag</span>`:""}${m.notiz?`<div class="klein leise">${esc(m.notiz)}</div>`:""}
+        <div class="klein">${m.link?`<a href="${esc(m.link)}" target="_blank" rel="noopener">${nr?"Bauhaus · Nr. "+nr:"Produktseite"}</a>`:`<a href="${bauhausSuche(m.name)}" target="_blank" rel="noopener" class="leise">bei Bauhaus suchen</a>`}${m.preis!=null?` · ${euro(m.preis)} je ${esc(m.einheit||"Einheit")}`:""}</div></td>
+        <td class="mass">${m.menge?zahlDe(m.menge)+" "+esc(m.einheit||""):`<span class="leise">${esc(m.einheit||"–")}</span>`}${m.preis!=null&&m.menge?`<div class="klein leise">≈ ${euro(m.preis*m.menge)}</div>`:""}</td>
       <td class="klein">${esc(m.gewerk||"")}${a?`<div class="leise">${esc(a.titel)}</div>`:""}</td><td class="klein">${esc(nameVon(m.angefragt_von))}</td>
       <td>${istLeitung()?`<select data-a="mStatusSel" data-id="${m.id}" style="width:auto">${Object.entries(MSTATUS).map(([k,lb])=>`<option value="${k}" ${m.status===k?"selected":""}>${lb}</option>`).join("")}</select>`:`<span class="pille ${m.status}">${MSTATUS[m.status]}</span>`}</td>
       <td>${istLeitung()||eigen?`<button class="btn still klein gefahr" data-a="mLoeschen" data-id="${m.id}" aria-label="Löschen">${icon("papierkorb")}</button>`:""}</td></tr>`; }).join("")}</tbody></table></div>`
-    :`<div class="leer">Keine Einträge in dieser Ansicht.</div>`}</section>`;
+    :`<div class="leer">Keine Einträge in dieser Ansicht.</div>`}
+    ${(()=>{ const mitPreis=l.filter(m=>m.preis!=null&&m.menge&&m.status!=="abgelehnt"); const s=mitPreis.reduce((x,m)=>x+m.preis*m.menge,0);
+      return mitPreis.length?`<p class="klein leise" style="margin-top:12px;text-align:right">Summe der ${mitPreis.length} Posten mit Preis: <b>${euro(s)}</b> (Preise zur Orientierung, Stand beim Eintragen)</p>`:""; })()}</section>`;
 };
-function materialDialog(aufgabeId){
-  const a=S.aufgabe.find(x=>x.id===aufgabeId);
+/* Bauhaus Mannheim-Quadrate: keine Schnittstelle für Bestand oder Bestellung – Suche, Produktlink und „Reservieren & Abholen“ */
+const BAUHAUS = { markt:"BAUHAUS Mannheim-Quadrate", adresse:"R5 1-5, 68161 Mannheim", zeiten:"Mo–Sa 9–20 Uhr", tel:"0621 480282 0",
+  seite:"https://www.bauhaus.info/fc/mannheim/655", reservieren:"https://www.bauhaus.info/s/service/vorteile/reservieren-und-abholen" };
+const bauhausSuche = q => "https://www.bauhaus.info/search?q="+encodeURIComponent(q);
+const bauhausNr = url => (String(url||"").match(/bauhaus\.info\/.*\/p\/(\d{6,})/)||[])[1]||null;
+const euro = n => n==null||n==="" ? "" : Number(n).toLocaleString("de-DE",{style:"currency",currency:"EUR"});
+// Schnellauswahl: Material aus dem Plan  [Name, Einheit, Tätigkeit, Suchbegriff bei Bauhaus]
+const BAUHAUS_KATALOG = [
+  ["Porenbeton-Planblock 17,5 cm","Stück","Mauern (Ytong)","Porenbeton Planblock 17,5"],
+  ["Porenbeton-Planblock 24 cm","Stück","Mauern (Ytong)","Porenbeton Planblock 24"],
+  ["Dünnbettmörtel für Porenbeton","Sack","Mauern (Ytong)","Dünnbettmörtel Porenbeton"],
+  ["Ausgleichsmörtel erste Steinlage","Sack","Mauern (Ytong)","Kimmsteinmörtel"],
+  ["Mauersperrbahn","Rolle","Mauern (Ytong)","Mauersperrbahn"],
+  ["U-Schalen Porenbeton (Ringanker)","Stück","Mauern (Ytong)","Porenbeton U-Schale"],
+  ["Betonstahl für Ringanker","Stück","Mauern (Ytong)","Betonstahl"],
+  ["Fertigbeton für Ringanker","Sack","Mauern (Ytong)","Fertigbeton"],
+  ["Maueranker / Mauerverbinder","Stück","Mauern (Ytong)","Mauerverbinder"],
+  ["Porenbeton-Handsäge","Stück","Mauern (Ytong)","Porenbetonsäge"],
+  ["Deckenfarbe weiß (für Farbsprüher)","Eimer","Malern","Deckenfarbe weiß"],
+  ["Abdeckfolie","Rolle","Malern","Abdeckfolie"],
+  ["Malerkrepp","Rolle","Malern","Malerkrepp"],
+  ["Schuttsäcke","Stück","Rückbau & Abbruch","Schuttsack"],
+  ["Staubmasken FFP2","Packung","Rückbau & Abbruch","FFP2 Maske"],
+  ["Arbeitshandschuhe","Paar","Aufräumen & Entsorgen","Arbeitshandschuhe"]];
+function materialDialog(aufgabeId,vorlage){
+  const a=S.aufgabe.find(x=>x.id===aufgabeId); const v=vorlage||{};
   oeffne("Material anfragen", `<form class="stapel" data-form="material">
-    <label class="feld">Was wird gebraucht?<input type="text" name="name" id="m-name" required placeholder="z. B. Ytong-Plansteine 24 cm"></label>
+    <div class="stapel" style="gap:6px"><span class="etikett">Schnellauswahl</span><div class="chips">${BAUHAUS_KATALOG.map((k,i)=>`<button type="button" class="chip" data-a="mVorlage" data-i="${i}">${esc(k[0])}</button>`).join("")}</div></div>
+    <label class="feld">Was wird gebraucht?<input type="text" name="name" id="m-name" required placeholder="z. B. Ytong-Plansteine 24 cm" value="${esc(v.name||"")}"></label>
     <div class="felder"><label class="feld">Menge<input type="number" name="menge" id="m-menge" step="any" min="0"></label><label class="feld">Einheit<input type="text" name="einheit" id="m-einheit" placeholder="Stück, Sack, m, Palette …"></label>
       <label class="feld">Tätigkeit<select name="gewerk" id="m-gewerk"><option value="">–</option>${TAETIGKEITEN.map(t=>`<option ${a?.gewerk===t?"selected":""}>${esc(t)}</option>`).join("")}</select></label>
       <label class="feld">Für Aufgabe<select name="aufgabe_id" id="m-aufgabe"><option value="">–</option>${S.aufgabe.map(x=>`<option value="${x.id}" ${x.id===aufgabeId?"selected":""}>${esc(x.titel)}</option>`).join("")}</select></label></div>
+    <div class="bauhaus-feld stapel" style="gap:8px"><div class="zeile weit"><span class="etikett">Bei Bauhaus Mannheim</span><button type="button" class="btn klein" data-a="mBauhausSuche">${icon("rechts")}Bei Bauhaus suchen</button></div>
+      <div class="felder"><label class="feld">Produktlink (optional)<input type="url" name="link" id="m-link" placeholder="https://www.bauhaus.info/…/p/…" value="${esc(v.link||"")}"></label>
+      <label class="feld">Preis je Einheit in € (optional)<input type="number" name="preis" id="m-preis" step="0.01" min="0" value="${v.preis??""}"></label></div>
+      <p class="klein leise">Suchen, passendes Produkt öffnen, Adresse kopieren und hier einfügen. Die Artikelnummer liest die App selbst heraus.</p></div>
     <label class="feld">Notiz<input type="text" name="notiz" id="m-notiz" placeholder="Hersteller, Maße, bis wann gebraucht …"></label>
     <button class="btn primaer" type="submit">${icon("check")}Anfrage senden</button></form>`, "Die Bauleitung sieht deine Anfrage auf ihrer Startseite.");
+  if(v.einheit){ const s=document.querySelector(".schleier"); s.querySelector("#m-einheit").value=v.einheit; if(v.gewerk) s.querySelector("#m-gewerk").value=v.gewerk; }
 }
 
 /* ---------- Werkzeug ---------- */
@@ -764,6 +802,13 @@ const AKT = {
     $$(".thema-knopf").forEach(k=>k.outerHTML=themaKnopf()); if(ansicht==="halle"&&!document.querySelector(".tor")) render(); },
   abmelden:async ()=>{ await B.abmelden(); location.reload(); },
   zugangNeu:()=>zugangDialog(),
+  mVorlage:t=>{ const k=BAUHAUS_KATALOG[+t.dataset.i]; const f=t.closest("form"); f.elements.name.value=k[0]; f.einheit.value=k[1]; f.gewerk.value=k[2]; f.dataset.suche=k[3];
+    $$('[data-a="mVorlage"]',f).forEach(c=>c.setAttribute("aria-pressed",c===t)); f.menge.focus(); },
+  mBauhausSuche:t=>{ const f=t.closest("form"); const q=f.dataset.suche&&f.elements.name.value&&BAUHAUS_KATALOG.some(k=>k[0]===f.elements.name.value)?f.dataset.suche:(f.elements.name.value.trim()||"Baustoffe"); window.open(bauhausSuche(q),"_blank","noopener"); },
+  mEinkaufsliste:async ()=>{ const l=S.material.filter(m=>m.status==="freigegeben");
+    if(!l.length) return toast("Keine freigegebenen Posten");
+    const txt=`Einkaufsliste ${BAUHAUS.markt} (${BAUHAUS.adresse})\n\n`+l.map(m=>`☐ ${m.menge?zahlDe(m.menge)+" "+(m.einheit||"")+" ":""}${m.name}${bauhausNr(m.link)?" – Nr. "+bauhausNr(m.link):""}${m.link?"\n   "+m.link:""}`).join("\n");
+    try{ await navigator.clipboard.writeText(txt); toast(l.length+" freigegebene Posten kopiert"); }catch(e){ toast("Kopieren ging nicht"); } },
   leitungNeu:()=>oeffne("Person zur Leitungsgruppe",`<form class="stapel" data-form="leitung">
     <label class="feld">Name<input type="text" name="name" id="l-name" required placeholder="Vorname Nachname" autocomplete="off"></label>
     <label class="feld">Schwerpunkt<input type="text" name="schwerpunkt" id="l-schwer" value="alles" autocomplete="off"></label>
@@ -812,7 +857,12 @@ const FORM = {
       await neu("eintrag"); if(f.dataset.aufgabe&&!f.datum){ aufgabeDialog(f.dataset.aufgabe); } else schliesse(); render();
     }catch(e){ knopf.disabled=false; knopf.textContent="Speichern"; } },
   material:async f=>{ const w={name:f.elements.name.value.trim(),menge:f.menge.value?+f.menge.value:null,einheit:f.einheit.value.trim()||null,gewerk:f.gewerk.value||null,aufgabe_id:f.aufgabe_id.value||null,notiz:f.notiz.value.trim()||null,status:"angefragt",angefragt_von:S.me.id};
-    await speichere(()=>B.neu("material",w),"Anfrage gesendet"); await neu("material"); schliesse(); render(); },
+    const link=f.link.value.trim(), preis=f.preis.value?+f.preis.value:null; if(link) w.link=link; if(preis!=null) w.preis=preis;
+    try{ await B.neu("material",w); toast("Anfrage gesendet"); }
+    catch(e){ if(/column|schema cache/i.test(e.message||"")&&(w.link||w.preis!=null)){ // Datenbank noch ohne Erweiterung 3: Link und Preis in die Notiz
+        delete w.link; delete w.preis; w.notiz=[w.notiz,link,preis!=null?euro(preis)+" je "+(w.einheit||"Einheit"):""].filter(Boolean).join(" · ");
+        await speichere(()=>B.neu("material",w),"Anfrage gesendet"); } else { toast("Nicht gespeichert: "+(e.message||e)); return; } }
+    await neu("material"); schliesse(); render(); },
   werkzeug:async f=>{ await speichere(()=>B.neu("werkzeug",{name:f.elements.name.value.trim(),kategorie:f.kategorie.value,anzahl:+f.anzahl.value||1,verfuegbarkeit:f.verfuegbarkeit.value,notiz:f.notiz.value.trim()||null,besitzer:S.me.id}),"Eingetragen. Danke!"); await neu("werkzeug"); schliesse(); render(); },
   team:async f=>{ const w={name:f.elements.name.value.trim(),gewerk:f.gewerk.value||null,leiter:f.leiter.value.trim()||null,farbe:f.farbe.value,beschreibung:f.beschreibung.value.trim()||null};
     await speichere(()=>f.dataset.id?B.aendern("team",f.dataset.id,w):B.neu("team",{...w,sort:S.team.length+1}),"Gespeichert"); await neu("team"); schliesse(); render(); },
