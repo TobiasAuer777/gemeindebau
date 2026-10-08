@@ -40,17 +40,18 @@ const RAEUME_EIGEN = [
 ];
 const BUEHNE_EIGEN = {x:42.7,y:2.85,w:4.0,h:14.0,hoehe:0.6};   // 14 m breit, 4 m tief (Tobi, 08.10.)
 const LED_EIGEN = {y1:4.9,y2:14.8,unten:0.9,oben:3.9,wand:46.7};   // 10 m × 3 m an der Wand hinter der Bühne
-const TECHNIK_EIGEN = {x:21.8,y:6.6,w:2.4,h:6.4};            // im Plan gepunktet: Technikbereich (Ton, Licht, Video)
+// Technik steht immer direkt an einer Wand (Tobi, 08.10.): hier an der Trennwand x = 21,2 m, gegenüber der Bühne
+const TECHNIK_EIGEN = {x:21.32,y:6.6,w:2.4,h:6.4};           // im Plan gepunktet: Technikbereich (Ton, Licht, Video)
 // Architektenplanung: Bühne am Ende des großen Saals vor der Trennwand (x = 40,0), Technik und Bestuhlung rücken mit
 const BUEHNE_ARCH = {...BUEHNE_EIGEN, x:36.0};
 const LED_ARCH = {...LED_EIGEN, wand:40.0};
 const ARCH_DX = BUEHNE_ARCH.x-BUEHNE_EIGEN.x;
-const TECHNIK_ARCH = {...TECHNIK_EIGEN, x:TECHNIK_EIGEN.x+ARCH_DX};
+const TECHNIK_ARCH = {...TECHNIK_EIGEN, x:9.0};   // an der Blockwand x = 8,88 m (zwischen den Türen bei y 5,1–6,0 und 17,9–18,8)
 // Option in der Architektenplanung: Bühne an der Längsseite beim Hof Kinder-Spiel (y = 0), Blick der Gemeinde nach Norden.
 // An der Längswand ist die Traufe nur 3,70 m hoch – die LED-Wand sitzt deshalb auf Bühnenhöhe (0,65–3,60 m).
 const BUEHNE_QUER = {x:17.5,y:0,w:14.0,h:4.0,hoehe:0.6,quer:true};
 const LED_QUER = {x1:19.5,x2:29.5,unten:0.65,oben:3.6,quer:true};
-const TECHNIK_QUER = {x:21.3,y:17.95,w:6.4,h:1.8,quer:true};
+const TECHNIK_QUER = {x:21.3,y:18.1,w:6.4,h:1.8,quer:true};   // bündig an der Außenwand y = 19,9 m
 const BESTUHLUNG_QUER = {
   300:{bloecke:[10,14,10], abstand:0.95, gang:1.5, vorne:3.4},
   400:{bloecke:[12,16,12], abstand:0.95, gang:1.2, vorne:3.2},
