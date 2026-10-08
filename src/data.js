@@ -116,7 +116,7 @@ const LiveBackend = {
   async aendern(t,id,p){ const {data,error}=await this.sb.from(t).update(p).eq("id",id).select().maybeSingle(); if(error) throw error; return data; },
   async loeschen(t,id){ const {error}=await this.sb.from(t).delete().eq("id",id); if(error) throw error; },
   async austreten(teamId,profilId){ const {error}=await this.sb.from("team_mitglied").delete().eq("team_id",teamId).eq("profil_id",profilId); if(error) throw error; },
-  async fotoHoch(datei){ const blob=await verkleinern(datei,1600,.82,true); const s=await this.sitzung();
+  async fotoHoch(datei){ const blob=await verkleinern(datei,1400,.78,true); const s=await this.sitzung();
     const pfad=`${s.user.id}/${Date.now()}-${Math.random().toString(36).slice(2,7)}.jpg`;
     const {error}=await this.sb.storage.from("fotos").upload(pfad,blob,{contentType:"image/jpeg"}); if(error) throw error; return pfad; },
   async fotoUrls(pfade){ const o={}; if(!pfade.length) return o;
