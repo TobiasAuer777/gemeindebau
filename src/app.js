@@ -650,6 +650,17 @@ function zugangFertig(w,ergebnis){
 }
 
 /* ---------- Anmeldung (live) ---------- */
+// Fehlermeldungen von Supabase auf Deutsch
+function fehlerDeutsch(m){ m=String(m||"");
+  if(/signups? (are|is) disabled|logins? (are|is) disabled|provider is disabled/i.test(m)) return "Anmelden per E-Mail ist gerade ausgeschaltet. Bitte der Bauleitung Bescheid geben.";
+  if(/invalid login credentials/i.test(m)) return "E-Mail oder Passwort stimmt nicht.";
+  if(/already (been )?registered|already exists/i.test(m)) return "Diese E-Mail ist schon registriert. Bitte anmelden.";
+  if(/password should be at least|weak password/i.test(m)) return "Das Passwort ist zu kurz oder zu einfach – bitte mindestens 8 Zeichen.";
+  if(/rate limit|too many requests|over_.*_limit/i.test(m)) return "Zu viele Versuche in kurzer Zeit. Bitte ein paar Minuten warten.";
+  if(/email not confirmed/i.test(m)) return "Die E-Mail ist noch nicht bestätigt.";
+  if(/invalid.*email|unable to validate email/i.test(m)) return "Die E-Mail-Adresse ist ungültig.";
+  if(/failed to fetch|network/i.test(m)) return "Keine Verbindung. Bitte Internet prüfen.";
+  return m; }
 let torCode=new URLSearchParams(location.search).get("einladung")||"";
 function zeigeTor(art,fehler="",info=""){
   const reg=art==="registrieren", beit=art==="beitreten", verg=art==="vergessen", erstPw=art==="erstesPasswort", neuPw=art==="neuesPasswort"||erstPw;
@@ -815,11 +826,11 @@ const FORM = {
     try{ const r=await B.zugangAnlegen(w); neueZugaenge.push(w); if(r?.bestaetigen) toast("Achtung: In Supabase ist „Confirm email“ noch an");
       else toast(l.name.split(" ")[0]+" hat jetzt einen Zugang");
       await neu("profil"); await neu("leitung"); benutzerInfo=null; render(); document.getElementById("bekannte")?.scrollIntoView({block:"start"}); }
-    catch(e){ knopf.disabled=false; knopf.textContent="Anlegen"; toast(e.message||String(e)); } },
+    catch(e){ knopf.disabled=false; knopf.textContent="Anlegen"; toast(fehlerDeutsch(e.message||e)); } },
   zugang:async f=>{ const w={name:f.elements.name.value.trim(),email:f.email.value.trim().toLowerCase(),rolle:f.rolle.value,pw:f.pw.value.trim()};
     const knopf=f.querySelector("[type=submit]"); knopf.disabled=true; knopf.textContent="Legt an …";
     try{ const r=await B.zugangAnlegen(w); await neu("profil"); benutzerInfo=null; render(); zugangFertig(w,r); }
-    catch(e){ zugangDialog(e.message||String(e),w); } },
+    catch(e){ zugangDialog(fehlerDeutsch(e.message||e),w); } },
   einladung:async (f,e)=>{ const code=f.code.value.trim(); merkeCode(code); const wie=e?.submitter?.value||"wa";
     const link=APP_URL+"?einladung="+encodeURIComponent(code);
     const text=`Hallo! Für den Umbau unserer Halle (Konzstraße 9) gibt es eine App für Aufgaben, Kalender und Bautagebuch. Leg dir dort deinen Zugang an:\n\n${link}\n\nName, E-Mail und ein Passwort eingeben – fertig. Der Gemeinde-Code ist schon eingetragen (${code}).`;
@@ -832,10 +843,10 @@ const FORM = {
   neuesPasswort:async f=>{ if(f.pw1.value!==f.pw2.value) return zeigeTor("neuesPasswort","Die Passwörter stimmen nicht überein.");
     const erst=!!S.me?.pw_wechseln;
     try{ await B.passwortAendern(f.pw1.value); if(erst) await B.pwGewechselt(); history.replaceState(null,"",location.pathname); await nachAnmeldung(); }catch(e){ zeigeTor(erst?"erstesPasswort":"neuesPasswort",e.message); } },
-  anmelden:async f=>{ try{ await B.anmelden(f.email.value.trim(),f.pw.value); await nachAnmeldung(); }catch(e){ zeigeTor("anmelden",e.message==="Invalid login credentials"?"E-Mail oder Passwort stimmt nicht.":e.message); } },
+  anmelden:async f=>{ try{ await B.anmelden(f.email.value.trim(),f.pw.value); await nachAnmeldung(); }catch(e){ zeigeTor("anmelden",fehlerDeutsch(e.message)); } },
   registrieren:async f=>{ const name=f.elements.name.value.trim(), code=f.code.value.trim();
     try{ await B.registrieren(f.email.value.trim(),f.pw.value); await B.beitreten(code,name); await nachAnmeldung(); }
-    catch(e){ const m=/registered/i.test(e.message)?"Diese E-Mail ist schon registriert. Bitte anmelden.":e.message; if(await B.sitzung()) zeigeTor("beitreten",m); else zeigeTor("registrieren",m); } },
+    catch(e){ const m=fehlerDeutsch(e.message); if(await B.sitzung()) zeigeTor("beitreten",m); else zeigeTor("registrieren",m); } },
   beitreten:async f=>{ try{ await B.beitreten(f.code.value.trim(),f.elements.name.value.trim()); await nachAnmeldung(); }catch(e){ zeigeTor("beitreten",e.message); } }
 };
 document.addEventListener("submit",e=>{ const f=e.target; if(!f.dataset?.form) return; e.preventDefault(); FORM[f.dataset.form]?.(f,e); });
