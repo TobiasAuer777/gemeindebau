@@ -1,4 +1,4 @@
--- Gemeindebau – Erweiterung 2: Phasen für Aufgaben, Benutzerverwaltung (Liste, sperren)
+-- Gemeindebau – Erweiterung 2: Phasen für Aufgaben, Benutzerverwaltung (Liste, sperren, Zugänge anlegen)
 -- Ausführen: Supabase → SQL Editor → New query → alles einfügen → Run
 
 -- Aufgaben bekommen eine Bauphase (0 = Vorbereitung … 6 = Abnahmen)
@@ -84,5 +84,32 @@ grant execute on function public.benutzer_liste(), public.benutzer_sperren(uuid,
 -- Ringanker an beiden langen Wänden (Trennwand und Wand hinter der Bühne)
 update public.team set beschreibung = 'Neue Wände (gelb im Plan) in Ytong; Ringanker an beiden langen Wänden'
   where name = 'Mauerwerk & Ytong';
+
+-- ---------- Zugänge anlegen (Admin) ----------
+-- Die App legt das Konto mit E-Mail und Startpasswort an (normale Registrierung über einen zweiten,
+-- unabhängigen Client – die Admin-Sitzung bleibt bestehen). Hier entsteht danach das Profil mit Rolle.
+-- Beim ersten Anmelden muss die Person ein eigenes Passwort festlegen (pw_wechseln).
+alter table public.profil add column if not exists pw_wechseln boolean not null default false;
+
+create or replace function public.zugang_anlegen(p_id uuid, p_name text, p_rolle text) returns void
+  language plpgsql security definer set search_path = public as
+$$
+begin
+  if not ist_admin() then raise exception 'nur Admin'; end if;
+  if p_rolle not in ('mitglied','bauleitung','admin') then raise exception 'unbekannte Rolle'; end if;
+  if trim(coalesce(p_name,'')) = '' then raise exception 'Name fehlt'; end if;
+  if not exists (select 1 from auth.users where id = p_id) then raise exception 'Konto nicht gefunden'; end if;
+  if exists (select 1 from profil where id = p_id) then raise exception 'Diese Person hat schon einen Zugang'; end if;
+  insert into profil (id, name, rolle, pw_wechseln) values (p_id, trim(p_name), p_rolle, true);
+  update leitung set profil_id = p_id
+    where profil_id is null and lower(split_part(name,' ',1)) = lower(split_part(trim(p_name),' ',1));
+end $$;
+
+create or replace function public.passwort_gewechselt() returns void
+  language sql security definer set search_path = public as
+$$ update profil set pw_wechseln = false where id = auth.uid() $$;
+
+revoke execute on function public.zugang_anlegen(uuid, text, text), public.passwort_gewechselt() from public, anon;
+grant execute on function public.zugang_anlegen(uuid, text, text), public.passwort_gewechselt() to authenticated;
 
 select 'Erweiterung 2 eingespielt' as ergebnis;

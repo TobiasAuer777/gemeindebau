@@ -183,19 +183,25 @@ function verfDialog(daten){
 }
 
 /* ---------- Aufgaben ---------- */
-const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich, team-gewerk, prio] – abgestimmt mit Tobis Checkliste
+const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich, team-gewerk, prio] – abgestimmt mit Tobis Checkliste; alles in Eigenleistung durch Gemeindemitglieder (eigene Firmen, Konzessionen)
   [0, "Baugenehmigung verfolgen", "Nutzungsänderung, Az. 20261647. Klären, welche Arbeiten vorher erlaubt sind; Nutzung als Versammlungsstätte erst nach Genehmigung und Abnahme.", "Planung & Organisation", "Ganze Halle", null, 1],
   [0, "Auflagen aus dem Bescheid übernehmen", "Brandschutz, Rettungswege, Sicherheitsbeleuchtung, Personenzahl – als Aufgaben ergänzen, sobald der Bescheid da ist.", "Planung & Organisation", "Ganze Halle", null, 1],
-  [0, "Statiker beauftragen", "Ytong-Wände auf der Bodenplatte, Ringanker an beiden langen Wänden inkl. Anschluss an Außenwände, Last der LED-Wand. Die roten Wände sind nicht tragend.", "Planung & Organisation", "Ganze Halle", null, 1],
-  [0, "Schadstoffe vor dem Rückbau prüfen", "Asbest in Bodenplatten, Kleber, Dach- oder Fassadenplatten; alte Dämmwolle; Öl im Boden. Bei Verdacht Probe nehmen lassen.", "Planung & Organisation", "Ganze Halle", null, 1],
-  [0, "Helfer bei der BG BAU anmelden", "Unfallversicherung für ehrenamtliche Bauhelfer; Bauherren-Haftpflicht prüfen.", "Planung & Organisation", "Ganze Halle", null, 1],
-  [0, "Hausanschluss und Leistung prüfen", "Netzbetreiber: Leistung für Küche, LED-Wand und Technik; ggf. Leistungserhöhung beantragen. Fachbetrieb nötig.", "Elektrik", "Ganze Halle", "Elektrik", 2],
+  [0, "Statik klären", "Ytong-Wände auf der Bodenplatte, Ringanker an beiden langen Wänden inkl. Anschluss an Außenwände und Stahlkonstruktion, Last der LED-Wand. Die roten Wände sind nicht tragend. Durch Gemeindemitglied mit entsprechender Berechtigung.", "Planung & Organisation", "Ganze Halle", null, 1],
+  [0, "Asbest im Dach: Regeln für alle", "Asbest ist nur im Dach und bleibt, wie es ist. Fest gebunden und unbeschädigt gibt es kaum Fasern ab – gefährlich wird es erst beim Bearbeiten. Darum: Dachplatten nicht anbohren, schleifen, reinigen oder streichen. Lampen, Kabeltrassen, Absorber und Ringanker nur an der Stahlkonstruktion befestigen. Bei der Einweisung allen Helfern sagen.", "Planung & Organisation", "Ganze Halle", null, 1],
+  [0, "Deckenuntersicht klären", "Sind die sichtbaren Platten unter dem Dach selbst asbesthaltig oder eine eigene Verkleidung bzw. Dämmung? Davon hängt ab, ob die Decke gestrichen werden darf.", "Planung & Organisation", "Ganze Halle", null, 1],
+  [0, "Haftpflicht für die Bauzeit prüfen", "Deckt die Haftpflicht der Gemeinde Schäden an Dritten während der Arbeiten? Sonst Bauherren-Haftpflicht abschließen.", "Planung & Organisation", "Ganze Halle", null, 2],
+  [0, "Heizkonzept festlegen", "Heizlast gesamtes Objekt: 89 kW. Wie kommt die Wärme in die Räume – Heizkörper, Fußbodenheizung (muss vor dem neuen Boden liegen!) oder Lüftungsgerät mit Heizregister? Für Gottesdienste zählt schnelles Aufheizen. Mit den Heizungsleuten der Gemeinde entscheiden.", "Heizung & Gas", "Ganze Halle", null, 1],
+  [0, "Tore und Ausgänge abgleichen", "Die großen roten Schiebetore: bleiben sie, werden sie verschlossen oder durch Türen ersetzt? Schiebetore zählen in der Regel nicht als Notausgang – mit dem Bescheid abgleichen.", "Planung & Organisation", "Ganze Halle", null, 2],
+  [0, "Hausanschluss und Leistung prüfen", "Netzbetreiber: Leistung für Küche, LED-Wand und Technik; ggf. Leistungserhöhung beantragen. Durch Elektriker aus der Gemeinde mit Eintragung beim Netzbetreiber.", "Elektrik", "Ganze Halle", "Elektrik", 2],
   [0, "Bestandsaufnahme mit Fotos", "Alle Räume fotografieren, Zählerstände notieren.", "Planung & Organisation", "Ganze Halle", null, 2],
+  [0, "Restbestände des Vormieters klären", "Gabelstapler, Druckluftkessel, Feuerlöscher, Schilder: Was gehört wem, was bleibt, was wird abgeholt?", "Planung & Organisation", "Ganze Halle", null, 2],
   [0, "Baustelle einrichten", "Baustrom-Verteiler, Container für Bauschutt und Mischabfall, Erste-Hilfe-Kasten, Feuerlöscher, Baustellen-Regeln aushängen.", "Aufräumen & Entsorgen", "Ganze Halle", "Rückbau", 2],
   [0, "Gerüst bzw. Hubarbeitsbühne organisieren", "Für Decke und Lampen; Raumhöhe 3,70 m (Traufe) bis 5,09 m (First).", "Einkauf & Transport", "Ganze Halle", null, 2],
   [0, "Materialliste und Lieferzeiten erfassen", "Vor allem Küche, Gastherme, Bodenbelag, LED-Wand und Türen.", "Einkauf & Transport", "Ganze Halle", null, 2],
-  [1, "Strom abschalten, alte Elektrik stilllegen", "Betroffene Bereiche spannungsfrei schalten und sichern. Fachbetrieb nötig.", "Elektrik", "Ganze Halle", "Elektrik", 1],
-  [1, "Gas absperren, alte Gastherme demontieren", "Fachbetrieb nötig.", "Heizung & Gas", "Ganze Halle", null, 1],
+  [1, "Strom abschalten, alte Elektrik stilllegen", "Betroffene Bereiche spannungsfrei schalten und sichern. Durch Elektriker aus der Gemeinde.", "Elektrik", "Ganze Halle", "Elektrik", 1],
+  [1, "Gas absperren, alte Heizgeräte demontieren", "Durch Gemeindemitglied mit Gas-Konzession.", "Heizung & Gas", "Ganze Halle", null, 1],
+  [1, "Alte Hallenheizung und Lüftungsrohre abbauen", "Deckenlufterhitzer und lange Blechrohre unter der Decke. Vorher Gas bzw. Strom sicher trennen. Dachplatten dabei nicht beschädigen.", "Heizung & Gas", "Ganze Halle", "Rückbau", 2],
+  [1, "Druckluftanlage abbauen", "Druckluftkessel und Leitungen an Wänden und Decke. Kessel vorher drucklos machen.", "Rückbau & Abbruch", "Ganze Halle", "Rückbau", 2],
   [1, "Alte Lampen abbauen", "Gottesdienstraum und Gemeinschaftsraum.", "Rückbau & Abbruch", "Ganze Halle", "Rückbau", 2],
   [1, "Alte Leitungen, Dosen und Verteiler zurückbauen", "Elektrik kommt komplett neu.", "Elektrik", "Ganze Halle", "Elektrik", 2],
   [1, "Rote Wand oben rechts abbrechen", "Gottesdienstraum, ca. 4,2 m (rot im Plan). Nicht tragend.", "Rückbau & Abbruch", "Gottesdienstraum", "Rückbau", 1],
@@ -207,7 +213,7 @@ const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich,
   [2, "Neue Wände anreißen", "Mit dem aktuellen Plan abgleichen: Türbreiten, Fluchtwege.", "Mauern (Ytong)", "Ganze Halle", "Mauern", 1],
   [2, "Dosen und Leerrohre in neuen Wänden festlegen", "Elektro-Planung abschließen, bevor gemauert wird.", "Elektrik", "Ganze Halle", "Elektrik", 1],
   [2, "Wand hinter der Bühne mit Ringanker", "Ca. 19,9 m von Außenwand zu Außenwand, Ytong, Ringanker aus U-Schalen, Bewehrung und Beton nach Statik.", "Mauern (Ytong)", "Bühne", "Mauern", 1],
-  [2, "Anschluss der Ringanker-Wände festlegen", "Beide langen Wände: Maueranker zu den Außenwänden, Kopfanschluss an Dach bzw. Decke. Vorher vom Statiker freigeben lassen.", "Mauern (Ytong)", "Bühne", "Mauern", 1],
+  [2, "Anschluss der Ringanker-Wände festlegen", "Beide langen Wände: Maueranker zu den Außenwänden, Kopfanschluss an die Stahlkonstruktion – nicht in die asbesthaltigen Dachplatten. Vorher statisch freigeben lassen.", "Mauern (Ytong)", "Bühne", "Mauern", 1],
   [2, "Trennwand Gemeinschaftsraum | Gottesdienstraum mit Ringanker", "Ca. 19,9 m, Ytong, Ringanker nach Statik (läuft über die 2 Türöffnungen durch), Stürze für die Türen.", "Mauern (Ytong)", "Gemeinschaftsraum", "Mauern", 2],
   [2, "Wand zum Flur im Gemeinschaftsraum", "Ca. 11 m, Ytong.", "Mauern (Ytong)", "Gemeinschaftsraum", "Mauern", 2],
   [2, "Wände Küche", "NGF 20,96 m², mit Türöffnung.", "Mauern (Ytong)", "Küche", "Mauern", 2],
@@ -216,30 +222,30 @@ const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich,
   [2, "Durchbrüche vorsehen", "Abwasser, Wasser, Abgas und Lüftung für Küche, WC und Therme.", "Mauern (Ytong)", "Ganze Halle", "Mauern", 2],
   [2, "Türzargen bzw. Türmaße", "Maße für Türbestellung nehmen; Brandschutztüren nach Auflage.", "Trockenbau", "Ganze Halle", null, 2],
   [3, "Elektroplan erstellen", "Stromkreise je Raum, Steckdosen, Schalter, Licht, Küche, Therme, Bühne, LED-Wand, Technikbereich.", "Elektrik", "Ganze Halle", "Elektrik", 1],
-  [3, "Neue Unterverteilung", "FI/LS-Schutz, Zählerplatz prüfen. Fachbetrieb nötig.", "Elektrik", "Ganze Halle", "Elektrik", 1],
-  [3, "Neue Leitungen ziehen", "Kabeltrassen an der Decke, Leerrohre in den Wänden.", "Elektrik", "Ganze Halle", "Elektrik", 2],
+  [3, "Neue Unterverteilung", "FI/LS-Schutz, Zählerplatz prüfen. Durch Elektriker aus der Gemeinde.", "Elektrik", "Ganze Halle", "Elektrik", 1],
+  [3, "Neue Leitungen ziehen", "Kabeltrassen an den Stahlträgern (nicht in die Dachplatten), Leerrohre in den Wänden.", "Elektrik", "Ganze Halle", "Elektrik", 2],
   [3, "Bühnenstrom und Stromkreis LED-Wand", "Steckdosen und ggf. CEE-Anschluss an der Bühne, eigener Stromkreis für die LED-Wand.", "Elektrik", "Bühne", "Elektrik", 2],
   [3, "Daten- und Audioleitungen Technik → Bühne", "Leerrohr oder Bodenkanal vom Technikbereich zur Bühne und LED-Wand – vor dem neuen Boden!", "Elektrik", "Gottesdienstraum", "Elektrik", 1],
   [3, "Netzwerk und WLAN", "Für Technik und Gemeinde.", "Elektrik", "Ganze Halle", "Elektrik", 3],
   [3, "Sicherheitsbeleuchtung und Rettungszeichen", "Nach Auflage aus der Genehmigung.", "Elektrik", "Ganze Halle", "Elektrik", 2],
-  [3, "Elektro-Prüfung und Messprotokoll", "Fertigmeldung an den Netzbetreiber. Fachbetrieb nötig.", "Elektrik", "Ganze Halle", "Elektrik", 1],
-  [3, "Heizlast berechnen, Therme auswählen", "Gottesdienstraum 528,97 m², Gemeinschaftsraum 209,21 m². Fachbetrieb nötig.", "Heizung & Gas", "Ganze Halle", null, 1],
-  [3, "Neue Gastherme einbauen", "Abgasführung, Abnahme durch den Schornsteinfeger. Fachbetrieb nötig.", "Heizung & Gas", "Ganze Halle", null, 1],
-  [3, "Heizkörper bzw. Heizflächen", "Prüfen oder neu planen.", "Heizung & Gas", "Ganze Halle", null, 2],
+  [3, "Elektro-Prüfung und Messprotokoll", "Fertigmeldung an den Netzbetreiber durch den eingetragenen Elektriker aus der Gemeinde.", "Elektrik", "Ganze Halle", "Elektrik", 1],
+  [3, "Therme auswählen (Heizlast 89 kW)", "Heizlast gesamtes Objekt: 89 kW. Brennwert, raumluftunabhängig. Eine Therme um 90–100 kW oder 2 Geräte als Kaskade (je ca. 45–50 kW): läuft bei wenig Bedarf sparsamer und fällt nie ganz aus. Unter 100 kW ist kein eigener Heizraum nötig; raumluftabhängig betrieben braucht der Aufstellraum ab 50 kW eine Zuluftöffnung ins Freie von mindestens 228 cm² (FeuVO BW § 3).", "Heizung & Gas", "Ganze Halle", null, 1],
+  [3, "Neue Gastherme einbauen", "Gasleitung, Abgasführung, Kondensat-Ablauf. Durch Gemeindemitglied mit Gas-Konzession. Neue Gasheizung ist nach dem Gebäudemodernisierungsgesetz (seit 29.07.2026) erlaubt; ab 2029 muss ein steigender Anteil Biogas bzw. Wasserstoff dabei sein – beim Gastarif beachten.", "Heizung & Gas", "Ganze Halle", null, 1],
+  [3, "Heizflächen einbauen", "Nach dem Heizkonzept: Heizkörper, Fußbodenheizung oder Lüftungsgerät mit Heizregister.", "Heizung & Gas", "Ganze Halle", null, 2],
   [3, "Sanitär WC-Block", "Wasser, Abwasser, Warmwasser; barrierefreies WC.", "Sanitär", "WC-Block", null, 2],
   [3, "Sanitär Küche", "Wasser, Abwasser, Spülmaschine.", "Sanitär", "Küche", null, 2],
   [3, "Lüftung", "Konzept für den Saal, Abluft WC, Dunstabzug Küche.", "Planung & Organisation", "Ganze Halle", null, 2],
-  [4, "Decke vorbereiten", "Gottesdienstraum und Gemeinschaftsraum: reinigen, Risse schließen, abdecken.", "Malern", "Ganze Halle", null, 2],
-  [4, "Decke streichen", "Mit Hubarbeitsbühne oder Rollgerüst – vor dem neuen Boden.", "Malern", "Ganze Halle", null, 2],
-  [4, "Neue Lampen Gottesdienstraum", "Lichtplanung (Helligkeit, dimmbar, Bühnenlicht getrennt), Montage; Anschluss durch Elektrofachkraft.", "Elektrik", "Gottesdienstraum", "Elektrik", 2],
-  [4, "Neue Lampen Gemeinschaftsraum", "Auswahl und Montage.", "Elektrik", "Gemeinschaftsraum", "Elektrik", 2],
+  [4, "Decke vorbereiten", "Nur wenn die Deckenplatten asbestfrei sind (siehe „Deckenuntersicht klären“): abstauben, Risse schließen, abdecken. Asbesthaltige Platten nicht reinigen, schleifen oder streichen.", "Malern", "Ganze Halle", null, 2],
+  [4, "Decke streichen", "Mit Hubarbeitsbühne oder Rollgerüst – vor dem neuen Boden. Nur auf asbestfreien Flächen.", "Malern", "Ganze Halle", null, 2],
+  [4, "Neue Lampen Gottesdienstraum", "Lichtplanung (Helligkeit, dimmbar, Bühnenlicht getrennt). Befestigung an der Stahlkonstruktion, nicht in die Dachplatten. Anschluss durch Elektriker aus der Gemeinde.", "Elektrik", "Gottesdienstraum", "Elektrik", 2],
+  [4, "Neue Lampen Gemeinschaftsraum", "Auswahl und Montage; Befestigung wie im Gottesdienstraum nur an der Stahlkonstruktion.", "Elektrik", "Gemeinschaftsraum", "Elektrik", 2],
   [4, "Wände verputzen bzw. spachteln", "Neue Wände; Bestandswände ausbessern.", "Trockenbau", "Ganze Halle", null, 2],
   [4, "Wände streichen", "", "Malern", "Ganze Halle", null, 2],
-  [4, "Raumakustik Gottesdienstraum", "Absorber an Decke oder Wänden gegen Nachhall planen.", "Bühne & Technik", "Gottesdienstraum", null, 2],
+  [4, "Raumakustik Gottesdienstraum", "Absorber gegen Nachhall planen – an Wänden oder an den Stahlträgern, nicht an den Dachplatten.", "Bühne & Technik", "Gottesdienstraum", null, 2],
   [4, "Fliesen WC-Block", "Boden und Wände.", "Fliesen", "WC-Block", "Fliesen", 2],
   [4, "Fliesen Küche", "Boden und Spritzschutz.", "Fliesen", "Küche", "Fliesen", 2],
   [4, "Neue Küche planen und bestellen", "Lieferzeit beachten.", "Küche", "Küche", null, 1],
-  [4, "Küche montieren und anschließen", "Elektro- und Wasseranschluss durch Fachleute.", "Küche", "Küche", null, 2],
+  [4, "Küche montieren und anschließen", "Elektro- und Wasseranschluss durch die Fachleute aus der Gemeinde.", "Küche", "Küche", null, 2],
   [4, "Untergrund für den Boden prüfen", "Ebenheit, Feuchte, Ölreste; ggf. ausgleichen oder Estrich.", "Boden", "Ganze Halle", null, 2],
   [4, "Bodenbelag auswählen", "Belastbar, rutschhemmend, mindestens schwer entflammbar (falls gefordert).", "Boden", "Ganze Halle", null, 2],
   [4, "Neuen Boden verlegen", "Inkl. Sockelleisten.", "Boden", "Ganze Halle", null, 2],
@@ -247,16 +253,16 @@ const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich,
   [5, "Bühne bauen", "Ca. 14 × 4 m, ca. 0,6 m hoch, mit Treppe; Rampe bzw. Zugang für Rollstuhl prüfen. Seitlich je 14 Stühle mit rotem Bezug (Lobpreisteam | Pastoren).", "Bühne & Technik", "Bühne", null, 2],
   [5, "Bühnenkante sichern, Kabeldurchführungen", "", "Bühne & Technik", "Bühne", null, 2],
   [5, "LED-Wand auswählen, Angebot einholen", "Pixelabstand für den Sichtabstand, Gewicht, Stromverbrauch.", "Bühne & Technik", "Bühne", null, 1],
-  [5, "Unterkonstruktion LED-Wand", "10 × 3 m an der Wand hinter der Bühne, Unterkante ca. 0,9 m. Vorher vom Statiker freigeben lassen.", "Bühne & Technik", "Bühne", null, 2],
-  [5, "LED-Wand montieren und anschließen", "Strom und Signal; Fachbetrieb bzw. Lieferant.", "Bühne & Technik", "Bühne", "Elektrik", 2],
+  [5, "Unterkonstruktion LED-Wand", "10 × 3 m an der Wand hinter der Bühne, Unterkante ca. 0,9 m. Vorher statisch freigeben lassen.", "Bühne & Technik", "Bühne", null, 2],
+  [5, "LED-Wand montieren und anschließen", "Strom und Signal. Montage durch die Gemeinde, Einweisung durch den Lieferanten.", "Bühne & Technik", "Bühne", "Elektrik", 2],
   [5, "Technikbereich einrichten", "Ca. 2,4 × 6,4 m an der Rückseite: Pult für Ton, Licht und Video, Strom, Netzwerk, Verbindung zur Bühne.", "Bühne & Technik", "Gottesdienstraum", null, 2],
   [5, "Tonanlage", "Lautsprecherpositionen, Kabelwege, Monitor auf der Bühne.", "Bühne & Technik", "Gottesdienstraum", null, 2],
   [5, "Bestuhlung festlegen", "300, 400 oder 500 Stühle in 3 Blöcken – in der App unter „Halle“ umschaltbar; Rettungswegbreiten mit der Genehmigung abgleichen.", "Planung & Organisation", "Gottesdienstraum", null, 3],
   [6, "Rettungswege und Notausgänge", "Frei, gekennzeichnet und beleuchtet.", "Planung & Organisation", "Ganze Halle", null, 1],
   [6, "Feuerlöscher und Rauchmelder", "Bzw. Brandmeldeanlage nach Auflage.", "Planung & Organisation", "Ganze Halle", null, 2],
   [6, "Barrierefreiheit prüfen", "Eingang, WC, Zugang Bühne.", "Planung & Organisation", "Ganze Halle", null, 2],
-  [6, "Abnahme Elektrik", "Messprotokoll. Fachbetrieb nötig.", "Elektrik", "Ganze Halle", "Elektrik", 1],
-  [6, "Abnahme Gastherme", "Durch den Schornsteinfeger. Fachbetrieb nötig.", "Heizung & Gas", "Ganze Halle", null, 1],
+  [6, "Abnahme Elektrik", "Messprotokoll durch den eingetragenen Elektriker aus der Gemeinde.", "Elektrik", "Ganze Halle", "Elektrik", 1],
+  [6, "Abnahme Gastherme", "Durch den Bezirksschornsteinfeger (gesetzlich vorgeschrieben).", "Heizung & Gas", "Ganze Halle", null, 1],
   [6, "Schlussabnahme Bauaufsicht", "Stadt Mannheim, falls im Bescheid gefordert.", "Planung & Organisation", "Ganze Halle", null, 1],
   [6, "Restarbeiten und Endreinigung", "", "Aufräumen & Entsorgen", "Ganze Halle", "Rückbau", 2],
   [6, "Unterlagen sammeln", "Pläne, Protokolle, Rechnungen, Garantien.", "Planung & Organisation", "Ganze Halle", null, 3],
@@ -511,32 +517,61 @@ ANSICHTEN.benutzer = () => {
   const liste=[...S.profil].sort((a,b)=>(!!a.gesperrt-!!b.gesperrt)||a.name.localeCompare(b.name));
   const aktiv=liste.filter(p=>!p.gesperrt).length;
   return `<div class="kopf"><div><p class="etikett">Admin</p><h1>Benutzer</h1><p class="unter">${aktiv} aktiv${liste.length-aktiv?` · ${liste.length-aktiv} gesperrt`:""}. Jeder hat ein eigenes Konto (E-Mail + Passwort) und kann sich damit auf beliebig vielen Geräten anmelden.</p></div>
-    <button class="btn" data-a="benutzerNeuLaden">${icon("drehen")}Aktualisieren</button></div>
+    <div class="zeile"><button class="btn primaer" data-a="zugangNeu">${icon("plus")}Zugang anlegen</button><button class="btn" data-a="benutzerNeuLaden">${icon("drehen")}Aktualisieren</button></div></div>
   ${benutzerInfo?.fehler?`<div class="hinweis klein">E-Mail-Adressen und letzte Anmeldung konnten nicht geladen werden (${esc(benutzerInfo.fehler)}). Ist die Datenbank-Erweiterung 2 eingespielt?</div>`:""}
   <section class="karte"><div class="tabelle-rahmen"><table><thead><tr><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Zuletzt angemeldet</th><th>Zugang</th></tr></thead><tbody>
   ${liste.map(p=>{ const i=info[p.id]||{}; const ich=p.id===S.me.id;
     return `<tr${p.gesperrt?' style="opacity:.55"':""}><td><span class="zeile" style="flex-wrap:nowrap">${ava(p.id,26)}<b>${esc(p.name)}</b>${ich?'<span class="pille">du</span>':""}</span></td>
       <td class="klein">${esc(i.email||"–")}</td>
       <td>${!ich?`<select data-a="rolle" data-id="${p.id}" style="width:auto">${["mitglied","bauleitung","admin"].map(r=>`<option value="${r}" ${p.rolle===r?"selected":""}>${rolleText(r)}</option>`).join("")}</select>`:`<span class="pille">${rolleText(p.rolle)}</span>`}</td>
-      <td class="klein mass">${datumZeit(i.zuletzt)}</td>
+      <td class="klein mass">${datumZeit(i.zuletzt)}${p.pw_wechseln?`<br><span class="pille">Startpasswort</span>`:""}</td>
       <td>${ich?"":p.gesperrt?`<button class="btn klein" data-a="sperren" data-id="${p.id}" data-k="0">Entsperren</button>`:`<button class="btn klein gefahr" data-a="sperren" data-id="${p.id}" data-k="1">Sperren</button>`}</td></tr>`; }).join("")}
   </tbody></table></div></section>
   <div class="raster r2" style="margin-top:16px">
-    <section class="karte stapel"><h2>Neue Leute einladen</h2><p class="klein">Schick ihnen den Link zur Seite und den Gemeinde-Code. Sie registrieren sich selbst mit E-Mail und Passwort. Wer zur Leitungsgruppe gehört, wird beim Beitritt automatisch Bauleitung.</p>
-      ${B.modus==="live"?`<form class="zeile" data-form="code"><input type="text" name="code" id="b-code" required placeholder="neuer Gemeinde-Code" style="flex:1;min-width:160px"><button class="btn" type="submit">Code ändern</button></form>`:`<p class="klein leise">In der Vorschau nicht aktiv.</p>`}</section>
-    <section class="karte stapel"><h2>Passwort vergessen?</h2><p class="klein">Auf der Anmeldeseite gibt es „Passwort vergessen“. Dann kommt eine E-Mail mit einem Link. Gesperrte Personen können sich nicht mehr anmelden. Ihre Einträge, Fotos und ihr Werkzeug bleiben aber sichtbar.</p></section>
+    <section class="karte stapel"><h2>Selbst registrieren lassen</h2><p class="klein">Gemeindemitglieder legen sich ihren Zugang selbst an: Link öffnen, Name, E-Mail und Passwort eingeben – der Gemeinde-Code steckt schon im Link. Wer zur Leitungsgruppe gehört, wird beim Beitritt automatisch Bauleitung.</p>
+      <form class="stapel" data-form="einladung"><label class="feld">Aktueller Gemeinde-Code<input type="text" name="code" id="b-einl" required value="${esc(merkeCode())}" autocomplete="off"></label>
+        <div class="zeile"><button class="btn primaer" type="submit" name="wie" value="wa">Per WhatsApp einladen</button><button class="btn" type="submit" name="wie" value="kopie">Einladung kopieren</button></div></form>
+      ${B.modus==="live"?`<details><summary class="klein">Gemeinde-Code ändern</summary><form class="zeile" data-form="code" style="margin-top:8px"><input type="text" name="code" id="b-code" required placeholder="neuer Gemeinde-Code" style="flex:1;min-width:160px"><button class="btn" type="submit">Code ändern</button></form><p class="klein leise">Ändern, wenn der Code die Runde gemacht hat. Bestehende Zugänge bleiben.</p></details>`:""}</section>
+    <section class="karte stapel"><h2>Zugang selbst anlegen</h2><p class="klein">Mit „Zugang anlegen“ erstellst du ein Konto mit E-Mail und Startpasswort und schickst die Zugangsdaten per WhatsApp. Beim ersten Anmelden legt die Person ihr eigenes Passwort fest.</p>
+      <p class="klein">Gesperrte Personen können sich nicht mehr anmelden. Ihre Einträge, Fotos und ihr Werkzeug bleiben aber sichtbar.</p></section>
   </div>`;
 };
 
+const APP_URL = "https://tobiasauer777.github.io/gemeindebau/";
+const merkeCode = (c) => { try{ if(c) localStorage.setItem("gb-code",c); return localStorage.getItem("gb-code")||""; }catch(e){ return c||""; } };
+function startpasswort(){ const w=["Kelle","Ziegel","Balken","Hammer","Leiter","Eimer","Bohrer","Mauer","Fenster","Zange","Saege","Moertel"];
+  const r=new Uint32Array(3); crypto.getRandomValues(r); return `${w[r[0]%w.length]}-${String(1000+r[1]%9000)}-${w[r[2]%w.length]}`; }
+function zugangDialog(fehler="",werte={}){
+  oeffne("Zugang anlegen",`<form class="stapel" data-form="zugang">
+    <div class="felder"><label class="feld">Name<input type="text" name="name" id="z-name" required autocomplete="off" placeholder="Vorname Nachname" value="${esc(werte.name||"")}"></label>
+    <label class="feld">E-Mail<input type="email" name="email" id="z-email" required autocomplete="off" value="${esc(werte.email||"")}"></label></div>
+    <div class="felder"><label class="feld">Rolle<select name="rolle" id="z-rolle">${["mitglied","bauleitung","admin"].map(r=>`<option value="${r}" ${(werte.rolle||"mitglied")===r?"selected":""}>${rolleText(r)}</option>`).join("")}</select></label>
+    <label class="feld">Startpasswort<span class="zeile" style="flex-wrap:nowrap"><input type="text" name="pw" id="z-pw" required minlength="8" autocomplete="off" value="${esc(werte.pw||startpasswort())}" style="flex:1"><button type="button" class="btn still" data-a="pwWuerfeln" aria-label="Anderes Startpasswort vorschlagen" title="Anderes vorschlagen">${icon("drehen")}</button></span></label></div>
+    <p class="klein leise">Die Person meldet sich mit E-Mail und Startpasswort an und legt dann ihr eigenes Passwort fest.</p>
+    ${fehler?`<p class="fehler">${esc(fehler)}</p>`:""}
+    <button class="btn primaer" type="submit">${icon("check")}Zugang anlegen</button></form>`);
+}
+function zugangFertig(w,ergebnis){
+  const text=`Hallo ${w.name.split(" ")[0]}, hier ist dein Zugang zur Gemeindebau-App der Tabernacle Church:\n\n${APP_URL}\nE-Mail: ${w.email}\nStartpasswort: ${w.pw}\n\nBeim ersten Anmelden legst du dein eigenes Passwort fest. Das Konto gilt auf Handy, Tablet und PC.`;
+  const s=oeffne("Zugang angelegt",`<div class="stapel">
+    <p><b>${esc(w.name)}</b> ist als ${esc(rolleText(w.rolle))} angelegt. Schick ihr bzw. ihm die Zugangsdaten:</p>
+    <pre class="vorlage" id="z-text">${esc(text)}</pre>
+    ${ergebnis?.bestaetigen?`<div class="hinweis klein"><b>Achtung:</b> In Supabase ist „Confirm email“ noch eingeschaltet. Dann kann sich die Person erst nach einer Bestätigungs-E-Mail anmelden, die bei der kostenlosen Variante nicht ankommt. Bitte in Supabase unter Authentication → Sign In / Providers → Email „Confirm email“ ausschalten.</div>`:""}
+    <div class="zeile"><a class="btn primaer" href="https://wa.me/?text=${encodeURIComponent(text)}" target="_blank" rel="noopener">Per WhatsApp senden</a><button class="btn" data-a="kopieren" data-quelle="z-text">Kopieren</button></div>
+    <div class="zeile"><button class="btn still" data-a="zugangNeu">Noch einen anlegen</button><button class="btn still" data-a="zu">Fertig</button></div></div>`);
+  return s;
+}
+
 /* ---------- Anmeldung (live) ---------- */
+let torCode=new URLSearchParams(location.search).get("einladung")||"";
 function zeigeTor(art,fehler="",info=""){
-  const reg=art==="registrieren", beit=art==="beitreten", verg=art==="vergessen", neuPw=art==="neuesPasswort";
+  const reg=art==="registrieren", beit=art==="beitreten", verg=art==="vergessen", erstPw=art==="erstesPasswort", neuPw=art==="neuesPasswort"||erstPw;
   document.getElementById("wurzel").innerHTML=`<div class="tor"><div class="karte">
     <div class="marke"><img src="${LOGO}" alt="Logo Tabernacle Church"><div><b>Gemeindebau</b><span>Tabernacle Church · Konzstraße 9</span></div></div>
     ${verg?`<form class="stapel" data-form="vergessen"><p>Gib deine E-Mail ein. Du bekommst einen Link, mit dem du ein neues Passwort festlegst.</p>
       <label class="feld">E-Mail<input type="email" name="email" id="t-e" required autocomplete="email"></label>
       ${fehler?`<p class="fehler">${esc(fehler)}</p>`:""}<button class="btn primaer" type="submit">Link schicken</button><button class="btn still" type="button" data-a="tor" data-k="anmelden">Zurück zur Anmeldung</button></form>`:
-    neuPw?`<form class="stapel" data-form="neuesPasswort"><p>Lege dein neues Passwort fest.</p>
+    neuPw?`<form class="stapel" data-form="neuesPasswort">${erstPw?`<p><b>Willkommen${S.me?.name?", "+esc(S.me.name.split(" ")[0]):""}!</b> Du hast dich mit dem Startpasswort angemeldet. Lege jetzt dein eigenes Passwort fest – mindestens 8 Zeichen.</p>`:`<p>Lege dein neues Passwort fest.</p>`}
       <label class="feld">Neues Passwort<input type="password" name="pw1" id="t-p1" minlength="8" required autocomplete="new-password"></label>
       <label class="feld">Wiederholen<input type="password" name="pw2" id="t-p2" minlength="8" required autocomplete="new-password"></label>
       ${fehler?`<p class="fehler">${esc(fehler)}</p>`:""}<button class="btn primaer" type="submit">Speichern und weiter</button></form>`:
@@ -549,7 +584,7 @@ function zeigeTor(art,fehler="",info=""){
       ${reg?`<label class="feld">Dein Name<input type="text" name="name" id="t-n" required autocomplete="name" placeholder="Vorname Nachname"></label>`:""}
       <label class="feld">E-Mail<input type="email" name="email" id="t-e" required autocomplete="email"></label>
       <label class="feld">Passwort<input type="password" name="pw" id="t-p" required minlength="${reg?8:6}" autocomplete="${reg?"new-password":"current-password"}"></label>${reg?"":`<button type="button" class="link klein" data-a="tor" data-k="vergessen" style="align-self:flex-end">Passwort vergessen?</button>`}
-      ${reg?`<label class="feld">Gemeinde-Code<input type="text" name="code" id="t-c" required placeholder="bekommst du von der Bauleitung"></label>`:""}
+      ${reg?`<label class="feld">Gemeinde-Code<input type="text" name="code" id="t-c" required placeholder="bekommst du von der Bauleitung" value="${esc(torCode)}"></label>`:""}
       ${fehler?`<p class="fehler">${esc(fehler)}</p>`:""}${info?`<p class="hinweis">${esc(info)}</p>`:""}
       <button class="btn primaer" type="submit">${reg?"Registrieren":"Anmelden"}</button></form>
     <p class="klein leise" style="margin-top:14px;text-align:center">${reg?"Nur für die Tabernacle Church. Den Code bekommst du von der Bauleitung.":"Noch kein Zugang? Tippe oben auf „Neu registrieren“. Ein Konto gilt für alle deine Geräte."}</p>`}
@@ -615,6 +650,9 @@ const AKT = {
   blick:t=>dreiD?.ansicht(t.dataset.k),
   tor:t=>zeigeTor(t.dataset.k),
   abmelden:async ()=>{ await B.abmelden(); location.reload(); },
+  zugangNeu:()=>zugangDialog(),
+  pwWuerfeln:t=>{ const i=t.closest("form").querySelector("#z-pw"); i.value=startpasswort(); i.focus(); },
+  kopieren:async t=>{ const txt=document.getElementById(t.dataset.quelle)?.textContent||""; try{ await navigator.clipboard.writeText(txt); toast("Kopiert"); }catch(e){ toast("Kopieren ging nicht – Text bitte markieren"); } },
   benutzerNeuLaden:()=>{ benutzerInfo=null; neu("profil").then(render); },
   sperren:async t=>{ const an=t.dataset.k==="1"; await speichere(()=>B.sperren(t.dataset.id,an),an?"Zugang gesperrt":"Zugang wieder frei"); await neu("profil"); render(); }
 };
@@ -657,27 +695,38 @@ const FORM = {
   profil:async f=>{ const sw=$$('[data-a="schwer"][aria-pressed="true"]',f).map(b=>b.dataset.t);
     await speichere(()=>B.aendern("profil",S.me.id,{name:f.elements.name.value.trim(),telefon:f.telefon.value.trim()||null,hinweis:f.hinweis.value.trim()||null,schwerpunkte:sw}),"Profil gespeichert");
     await neu("profil"); S.me=S.profil.find(p=>p.id===S.me.id)||S.me; render(); },
-  code:async f=>{ await speichere(()=>B.codeSetzen(f.code.value),"Code geändert"); f.reset(); },
+  code:async f=>{ await speichere(()=>B.codeSetzen(f.code.value),"Code geändert"); merkeCode(f.code.value.trim()); f.reset(); render(); },
+  zugang:async f=>{ const w={name:f.elements.name.value.trim(),email:f.email.value.trim().toLowerCase(),rolle:f.rolle.value,pw:f.pw.value.trim()};
+    const knopf=f.querySelector("[type=submit]"); knopf.disabled=true; knopf.textContent="Legt an …";
+    try{ const r=await B.zugangAnlegen(w); await neu("profil"); benutzerInfo=null; render(); zugangFertig(w,r); }
+    catch(e){ zugangDialog(e.message||String(e),w); } },
+  einladung:async (f,e)=>{ const code=f.code.value.trim(); merkeCode(code); const wie=e?.submitter?.value||"wa";
+    const link=APP_URL+"?einladung="+encodeURIComponent(code);
+    const text=`Hallo! Für den Umbau unserer Halle (Konzstraße 9) gibt es eine App für Aufgaben, Kalender und Bautagebuch. Leg dir dort deinen Zugang an:\n\n${link}\n\nName, E-Mail und ein Passwort eingeben – fertig. Der Gemeinde-Code ist schon eingetragen (${code}).`;
+    if(wie==="kopie"){ try{ await navigator.clipboard.writeText(text); toast("Einladung kopiert"); }catch(_){ toast("Kopieren ging nicht"); } }
+    else window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank","noopener"); },
   pwAendern:async f=>{ if(f.pw1.value!==f.pw2.value) return toast("Die Passwörter stimmen nicht überein");
     await speichere(()=>B.passwortAendern(f.pw1.value),"Passwort geändert – gilt ab jetzt auf allen Geräten"); f.reset(); },
   vergessen:async f=>{ try{ await B.passwortVergessen(f.email.value.trim()); zeigeTor("anmelden","","Wenn die E-Mail registriert ist, kommt gleich ein Link. Schau auch im Spam-Ordner nach."); }
     catch(e){ zeigeTor("vergessen",e.message); } },
   neuesPasswort:async f=>{ if(f.pw1.value!==f.pw2.value) return zeigeTor("neuesPasswort","Die Passwörter stimmen nicht überein.");
-    try{ await B.passwortAendern(f.pw1.value); history.replaceState(null,"",location.pathname); await nachAnmeldung(); }catch(e){ zeigeTor("neuesPasswort",e.message); } },
+    const erst=!!S.me?.pw_wechseln;
+    try{ await B.passwortAendern(f.pw1.value); if(erst) await B.pwGewechselt(); history.replaceState(null,"",location.pathname); await nachAnmeldung(); }catch(e){ zeigeTor(erst?"erstesPasswort":"neuesPasswort",e.message); } },
   anmelden:async f=>{ try{ await B.anmelden(f.email.value.trim(),f.pw.value); await nachAnmeldung(); }catch(e){ zeigeTor("anmelden",e.message==="Invalid login credentials"?"E-Mail oder Passwort stimmt nicht.":e.message); } },
   registrieren:async f=>{ const name=f.elements.name.value.trim(), code=f.code.value.trim();
     try{ await B.registrieren(f.email.value.trim(),f.pw.value); await B.beitreten(code,name); await nachAnmeldung(); }
     catch(e){ const m=/registered/i.test(e.message)?"Diese E-Mail ist schon registriert. Bitte anmelden.":e.message; if(await B.sitzung()) zeigeTor("beitreten",m); else zeigeTor("registrieren",m); } },
   beitreten:async f=>{ try{ await B.beitreten(f.code.value.trim(),f.elements.name.value.trim()); await nachAnmeldung(); }catch(e){ zeigeTor("beitreten",e.message); } }
 };
-document.addEventListener("submit",e=>{ const f=e.target; if(!f.dataset?.form) return; e.preventDefault(); FORM[f.dataset.form]?.(f); });
+document.addEventListener("submit",e=>{ const f=e.target; if(!f.dataset?.form) return; e.preventDefault(); FORM[f.dataset.form]?.(f,e); });
 
-async function nachAnmeldung(){ const p=await B.meinProfil(); if(!p) return zeigeTor("beitreten"); if(p.gesperrt) return zeigeTor("beitreten","Dein Zugang ist gesperrt. Bitte wende dich an die Bauleitung."); S.me=p; B.abonnieren(nachladen); await ladeAlles(); render(); }
+async function nachAnmeldung(){ const p=await B.meinProfil(); if(!p) return zeigeTor("beitreten"); if(p.gesperrt) return zeigeTor("beitreten","Dein Zugang ist gesperrt. Bitte wende dich an die Bauleitung."); S.me=p;
+  if(p.pw_wechseln&&B.modus==="live") return zeigeTor("erstesPasswort"); B.abonnieren(nachladen); await ladeAlles(); render(); }
 
 /* ================= Start ================= */
 async function starten(){
   let live=false; try{ live = !!(window.GB_KONFIG&&GB_KONFIG.url) && await LiveBackend.init(); }catch(e){ live=false; }
-  if(live){ B=LiveBackend; const s=await B.sitzung(); if(!s) return zeigeTor("anmelden");
+  if(live){ B=LiveBackend; const s=await B.sitzung(); if(!s) return zeigeTor(torCode?"registrieren":"anmelden");
     if(B.wiederherstellung) return zeigeTor("neuesPasswort"); return nachAnmeldung(); }
   B=DemoBackend; await B.init(); S.me=await B.meinProfil(); await ladeAlles(); render();
 }

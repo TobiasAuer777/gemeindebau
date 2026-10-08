@@ -68,9 +68,9 @@ function demoDaten(){
 
 const DemoBackend = {
   modus:"demo", d:null,
-  async init(){ let roh=null; try{ roh=localStorage.getItem("gb-demo-v6"); }catch(e){}
+  async init(){ let roh=null; try{ roh=localStorage.getItem("gb-demo-v7"); }catch(e){}
     this.d = roh ? JSON.parse(roh) : demoDaten(); this.speichern(); return true; },
-  speichern(){ try{ const kopie={...this.d}; localStorage.setItem("gb-demo-v6",JSON.stringify(kopie)); }catch(e){} },
+  speichern(){ try{ const kopie={...this.d}; localStorage.setItem("gb-demo-v7",JSON.stringify(kopie)); }catch(e){} },
   zuruecksetzen(){ this.d=demoDaten(); this.speichern(); },
   async sitzung(){ return {user:{id:this.d.me}}; },
   async meinProfil(){ return this.d.profil.find(p=>p.id===this.d.me)||null; },
@@ -84,9 +84,11 @@ const DemoBackend = {
   async fotoUrls(pfade){ const o={}; pfade.forEach(p=>o[p]=p); return o; },
   abonnieren(){}, async abmelden(){}, async codeSetzen(){ return true; },
   email(){ return "tobi@beispiel.de"; },
-  async benutzerListe(){ const t0=Date.now(); return this.d.profil.map((p,i)=>({id:p.id,email:p.name.toLowerCase().split(" ")[0]+"@beispiel.de",zuletzt:i%4===3?null:new Date(t0-i*7200e3).toISOString(),registriert:p.erstellt})); },
+  async benutzerListe(){ const t0=Date.now(); return this.d.profil.map((p,i)=>({id:p.id,email:p._email||p.name.toLowerCase().split(" ")[0]+"@beispiel.de",zuletzt:p._email||i%4===3?null:new Date(t0-i*7200e3).toISOString(),registriert:p.erstellt})); },
   async sperren(id,an){ const p=this.d.profil.find(x=>x.id===id); if(p){ p.gesperrt=an; this.speichern(); } },
-  async passwortAendern(){}, async passwortVergessen(){}
+  async passwortAendern(){}, async passwortVergessen(){}, async pwGewechselt(){},
+  async zugangAnlegen({name,email,rolle}){ if(this.d.profil.some(p=>p._email===email)) throw new Error("Diese E-Mail hat schon einen Zugang.");
+    this.d.profil.push({id:uid(),name,rolle,schwerpunkte:[],hinweis:null,telefon:null,gesperrt:false,pw_wechseln:true,_email:email,erstellt:new Date().toISOString()}); this.speichern(); return {bestaetigen:false}; }
 };
 
 /* ---------- Live (Supabase) ---------- */
@@ -101,6 +103,16 @@ const LiveBackend = {
   async benutzerListe(){ const {data,error}=await this.sb.rpc("benutzer_liste"); if(error) throw new Error(error.message); return data; },
   async sperren(id,an){ const {error}=await this.sb.rpc("benutzer_sperren",{p_id:id,p_sperren:an}); if(error) throw new Error(error.message); },
   async passwortAendern(pw){ const {error}=await this.sb.auth.updateUser({password:pw}); if(error) throw new Error(error.message==="New password should be different from the old password."?"Das neue Passwort muss sich vom alten unterscheiden.":error.message); this.wiederherstellung=false; },
+  async pwGewechselt(){ await this.sb.rpc("passwort_gewechselt"); },
+  // Zugang anlegen: Konto über einen zweiten Client ohne gespeicherte Sitzung registrieren (die Admin-Sitzung bleibt), danach Profil mit Rolle per RPC
+  async zugangAnlegen({name,email,pw,rolle}){
+    const zweit=window.supabase.createClient(GB_KONFIG.url,GB_KONFIG.anonKey,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storageKey:"gb-zugang-anlegen"}});
+    const {data,error}=await zweit.auth.signUp({email,password:pw});
+    if(error) throw new Error(/registered|already/i.test(error.message)?"Diese E-Mail hat schon einen Zugang.":error.message);
+    const u=data.user; if(!u||(Array.isArray(u.identities)&&!u.identities.length)) throw new Error("Diese E-Mail hat schon einen Zugang.");
+    if(data.session){ try{ await zweit.auth.signOut({scope:"local"}); }catch(e){} }
+    const {error:e2}=await this.sb.rpc("zugang_anlegen",{p_id:u.id,p_name:name,p_rolle:rolle}); if(e2) throw new Error(e2.message);
+    return {bestaetigen:!data.session}; },
   async passwortVergessen(email){ const {error}=await this.sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname}); if(error) throw new Error(error.message); },
   async sitzung(){ const {data}=await this.sb.auth.getSession(); if(data.session) this._email=data.session.user.email; return data.session; },
   async anmelden(email,pw){ const {data,error}=await this.sb.auth.signInWithPassword({email,password:pw}); if(error) throw error; return data; },

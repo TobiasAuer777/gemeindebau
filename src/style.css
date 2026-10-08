@@ -216,3 +216,6 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blau);bo
 .tor .marke{justify-content:center;flex-direction:column;text-align:center;padding:0 0 18px}
 .tor .marke img{height:84px}
 .tor .marke b{font-size:28px}
+/* Zugangsdaten zum Weiterschicken */
+.vorlage{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;padding:12px 14px;border-radius:12px;border:1px solid var(--linie);background:var(--flaeche2);font:inherit;font-size:.92rem;line-height:1.5}
+a.btn{text-decoration:none}
