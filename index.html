@@ -1512,7 +1512,7 @@ ANSICHTEN.benutzer = () => {
       <td class="klein">${esc(i.email||"–")}</td>
       <td>${!ich?`<select data-a="rolle" data-id="${p.id}" style="width:auto">${["mitglied","bauleitung","admin"].map(r=>`<option value="${r}" ${p.rolle===r?"selected":""}>${rolleText(r)}</option>`).join("")}</select>`:`<span class="pille">${rolleText(p.rolle)}</span>`}</td>
       <td class="klein mass">${datumZeit(i.zuletzt)}${p.pw_wechseln?`<br><span class="pille">Startpasswort</span>`:""}</td>
-      <td>${ich?"":p.gesperrt?`<button class="btn klein" data-a="sperren" data-id="${p.id}" data-k="0">Entsperren</button>`:`<button class="btn klein gefahr" data-a="sperren" data-id="${p.id}" data-k="1">Sperren</button>`}</td></tr>`; }).join("")}
+      <td><div class="zeile" style="flex-wrap:nowrap;gap:6px">${!ich&&!p.gesperrt&&i.email?`<button class="btn klein" data-a="pwLink" data-id="${p.id}" title="Schickt einen Link, mit dem ${esc(p.name.split(" ")[0])} ein neues Passwort festlegt">Passwort-Link</button>`:""}${ich?"":p.gesperrt?`<button class="btn klein" data-a="sperren" data-id="${p.id}" data-k="0">Entsperren</button>`:`<button class="btn klein gefahr" data-a="sperren" data-id="${p.id}" data-k="1">Sperren</button>`}</div></td></tr>`; }).join("")}
   </tbody></table></div></section>
   ${bekannteKarte()}
   <div class="raster r2" style="margin-top:16px">
@@ -1520,6 +1520,7 @@ ANSICHTEN.benutzer = () => {
       <form class="stapel" data-form="einladung"><label class="feld">Aktueller Gemeinde-Code<input type="text" name="code" id="b-einl" required value="${esc(merkeCode())}" autocomplete="off"></label>
         <div class="zeile"><button class="btn primaer" type="submit" name="wie" value="wa">Per WhatsApp einladen</button><button class="btn" type="submit" name="wie" value="kopie">Einladung kopieren</button></div></form>
       ${B.modus==="live"?`<details><summary class="klein">Gemeinde-Code ändern</summary><form class="zeile" data-form="code" style="margin-top:8px"><input type="text" name="code" id="b-code" required placeholder="neuer Gemeinde-Code" style="flex:1;min-width:160px"><button class="btn" type="submit">Code ändern</button></form><p class="klein leise">Ändern, wenn der Code die Runde gemacht hat. Bestehende Zugänge bleiben.</p></details>`:""}</section>
+    <section class="karte stapel"><h2>Passwort vergessen?</h2><p class="klein">Bei der Person auf „Passwort-Link“ tippen. Sie bekommt eine E-Mail mit einem Link, öffnet ihn und legt direkt in der App ein neues Passwort fest. Das alte Passwort gilt dann nicht mehr.</p></section>
     <section class="karte stapel"><h2>Zugang selbst anlegen</h2><p class="klein">Mit „Zugang anlegen“ erstellst du ein Konto mit E-Mail und Startpasswort und schickst die Zugangsdaten per WhatsApp. Beim ersten Anmelden legt die Person ihr eigenes Passwort fest.</p>
       <p class="klein">Gesperrte Personen können sich nicht mehr anmelden. Ihre Einträge, Fotos und ihr Werkzeug bleiben aber sichtbar.</p></section>
   </div>`;
@@ -1581,6 +1582,8 @@ function fehlerDeutsch(m){ m=String(m||"");
   if(/invalid login credentials/i.test(m)) return "E-Mail oder Passwort stimmt nicht.";
   if(/already (been )?registered|already exists/i.test(m)) return "Diese E-Mail ist schon registriert. Bitte anmelden.";
   if(/password should be at least|weak password/i.test(m)) return "Das Passwort ist zu kurz oder zu einfach – bitte mindestens 8 Zeichen.";
+  if(/only request this after|security purposes/i.test(m)) return "Bitte eine Minute warten, bevor ein weiterer Link an diese Adresse geht.";
+  if(/error sending|smtp|recovery email/i.test(m)) return "Die E-Mail konnte nicht verschickt werden. Ist in Supabase der E-Mail-Versand (SMTP) eingerichtet?";
   if(/rate limit|too many requests|over_.*_limit/i.test(m)) return "Zu viele Versuche in kurzer Zeit. Bitte ein paar Minuten warten.";
   if(/gemeinde-code stimmt nicht/i.test(m)) return "Der Gemeinde-Code stimmt nicht. Bitte genau so eingeben, wie du ihn bekommen hast (Groß- und Kleinschreibung zählt).";
   if(/email not confirmed/i.test(m)) return "Die E-Mail ist noch nicht bestätigt.";
@@ -1711,6 +1714,10 @@ const AKT = {
   pwWuerfeln:t=>{ const i=t.closest("form").querySelector("#z-pw"); i.value=startpasswort(); i.focus(); },
   kopieren:async t=>{ const txt=document.getElementById(t.dataset.quelle)?.textContent||""; try{ await navigator.clipboard.writeText(txt); toast("Kopiert"); }catch(e){ toast("Kopieren ging nicht – Text bitte markieren"); } },
   benutzerNeuLaden:()=>{ benutzerInfo=null; neu("profil").then(render); },
+  pwLink:async t=>{ const p=S.profil.find(x=>x.id===t.dataset.id), mail=benutzerInfo?.[t.dataset.id]?.email; if(!p||!mail) return toast("Keine E-Mail-Adresse bekannt");
+    t.disabled=true; t.textContent="Schickt …";
+    try{ await B.passwortVergessen(mail); toast(`Link an ${mail} geschickt – ${p.name.split(" ")[0]} legt damit ein neues Passwort fest`); t.textContent="Geschickt ✓"; }
+    catch(e){ t.disabled=false; t.textContent="Passwort-Link"; toast(fehlerDeutsch(e.message||e)); } },
   sperren:async t=>{ const an=t.dataset.k==="1"; await speichere(()=>B.sperren(t.dataset.id,an),an?"Zugang gesperrt":"Zugang wieder frei"); await neu("profil"); render(); }
 };
 async function neu(t){ try{ S[t]=await B.alle(t); }catch(e){} }
