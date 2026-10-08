@@ -244,7 +244,7 @@ const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich,
   [4, "Bodenbelag auswählen", "Belastbar, rutschhemmend, mindestens schwer entflammbar (falls gefordert).", "Boden", "Ganze Halle", null, 2],
   [4, "Neuen Boden verlegen", "Inkl. Sockelleisten.", "Boden", "Ganze Halle", null, 2],
   [4, "Türen einbauen", "", "Trockenbau", "Ganze Halle", null, 2],
-  [5, "Bühne bauen", "Ca. 2,9 × 9,9 m, ca. 0,6 m hoch, mit Treppe; Rampe bzw. Zugang für Rollstuhl prüfen.", "Bühne & Technik", "Bühne", null, 2],
+  [5, "Bühne bauen", "Ca. 14 × 4 m, ca. 0,6 m hoch, mit Treppe; Rampe bzw. Zugang für Rollstuhl prüfen. Seitlich je 14 Stühle mit rotem Bezug (Lobpreisteam | Pastoren).", "Bühne & Technik", "Bühne", null, 2],
   [5, "Bühnenkante sichern, Kabeldurchführungen", "", "Bühne & Technik", "Bühne", null, 2],
   [5, "LED-Wand auswählen, Angebot einholen", "Pixelabstand für den Sichtabstand, Gewicht, Stromverbrauch.", "Bühne & Technik", "Bühne", null, 1],
   [5, "Unterkonstruktion LED-Wand", "10 × 3 m an der Wand hinter der Bühne, Unterkante ca. 0,9 m. Vorher vom Statiker freigeben lassen.", "Bühne & Technik", "Bühne", null, 2],
@@ -419,7 +419,10 @@ function werkzeugDialog(){
 /* ---------- Halle ---------- */
 const bestuhlungObj = () => S.planobjekt.find(o=>o.typ==="bestuhlung");
 const bestuhlungN = () => +(bestuhlungObj()?.label||0);
-const sitzText = () => { const st=stuhlPositionen(bestuhlungN()).length, ti=S.planobjekt.reduce((s,o)=>s+(OBJEKTE[o.typ]?.plaetze||0),0); return st&&ti?`${st} Stühle + ${ti} an Tischen`:`${st+ti} Sitzplätze`; };
+const seitenObj = () => S.planobjekt.find(o=>o.typ==="seiten");
+const seitenAn = () => seitenObj()?.label==="1";
+const sitzText = () => { const st=stuhlPositionen(bestuhlungN()).length, se=seitenAn()?seitenPositionen().length:0, ti=S.planobjekt.reduce((s,o)=>s+(OBJEKTE[o.typ]?.plaetze||0),0);
+  const teile=[st?`${st} Stühle`:"", se?`${se} an der Bühne`:"", ti?`${ti} an Tischen`:""].filter(Boolean); return teile.join(" + ")||"0 Sitzplätze"; };
 const sitzplaetze = () => S.planobjekt.reduce((s,o)=>s+(OBJEKTE[o.typ]?.plaetze||0),0)+stuhlPositionen(bestuhlungN()).length;
 ANSICHTEN.halle = () => {
   const plaetze=sitzplaetze(), bn=bestuhlungN(), bi=bestuhlungInfo(bn);
@@ -431,10 +434,11 @@ ANSICHTEN.halle = () => {
       <div class="zeile"><button class="btn klein" data-a="grundeinrichtung">Bühne & Esstische einrichten</button><button class="btn klein still" data-a="planLeerenFrage">Alles entfernen</button></div></header>
       <div class="zeile" style="gap:12px;margin-bottom:12px"><span class="etikett" style="margin:0">Bestuhlung Gottesdienstraum</span>
         <div class="reiter" role="group" aria-label="Bestuhlung">${[0,300,400,500].map(n=>`<button data-a="bestuhlungWahl" data-k="${n}" aria-pressed="${bn===n}">${n?n+" Stühle":"Keine"}</button>`).join("")}</div>
+        <button class="chip" data-a="seitenWahl" aria-pressed="${seitenAn()}"><span style="width:10px;height:10px;border-radius:2px;background:${STUHL.rot};display:inline-block"></span>Seitenplätze an der Bühne</button>
         <span class="klein leise" id="bestuhlung-info">${bi?`3 Blöcke (${bi.bloecke.join(" | ")}), ${bi.reihen} Reihen, Reihenabstand ${String(bi.abstand).replace(".",",")} m, Gänge ${String(bi.gang).replace(".",",")} m`:""}</span></div>
       <div class="palette" style="margin-bottom:12px">${Object.entries(OBJEKTE).map(([k,o])=>`<button class="chip" data-a="objNeu" data-typ="${k}">${icon("plus")}${esc(o.n)}</button>`).join("")}</div>
       <div data-leerfrage></div>
-      <div class="halle-rahmen" id="plan-rahmen" style="overflow-x:auto"><div style="min-width:760px" id="plan-svg">${planSvg(S.planobjekt,{bearbeiten:true,auswahl:planAuswahl,bestuhlung:bn})}</div></div>
+      <div class="halle-rahmen" id="plan-rahmen" style="overflow-x:auto"><div style="min-width:760px" id="plan-svg">${planSvg(S.planobjekt,{bearbeiten:true,auswahl:planAuswahl,bestuhlung:bn,seiten:seitenAn()})}</div></div>
       <div id="auswahl-leiste" style="margin-top:12px">${auswahlLeiste()}</div>
       <div class="zeile klein leise" style="margin-top:14px;gap:16px">
         <span class="zeile" style="gap:6px"><span style="width:22px;height:5px;background:var(--gold);display:inline-block;border-radius:2px"></span>Neue Wände (Ytong)</span>
@@ -446,7 +450,7 @@ ANSICHTEN.halle = () => {
         <span>1 Kästchen = 1 m · Objekte ziehen zum Verschieben</span></div></section>
   </div>`:`
   <section class="karte" style="padding:10px">
-    <div class="dreid" id="dreid"><div class="hud"><div class="zeile" style="gap:6px">${[["eingang","Eingang"],["raum","Gottesdienstraum"],["buehne","Auf der Bühne"],["gemein","Gemeinschaftsraum"],["oben","Von oben"],["aussen","Von außen"]].map(([k,l])=>`<button class="btn klein" data-a="blick" data-k="${k}">${l}</button>`).join("")}</div>
+    <div class="dreid" id="dreid"><div class="hud"><div class="zeile" style="gap:6px">${[["eingang","Eingang"],["raum","Gottesdienstraum"],["vorn","Zur Bühne"],["buehne","Auf der Bühne"],["gemein","Gemeinschaftsraum"],["oben","Von oben"],["aussen","Von außen"]].map(([k,l])=>`<button class="btn klein" data-a="blick" data-k="${k}">${l}</button>`).join("")}</div>
       <div class="tafel">Ziehen = umsehen · W A S D oder Pfeile = gehen · Shift = schneller · Mausrad = vor/zurück</div></div><div class="joy" aria-hidden="true"><i></i></div></div>
     <div class="zeile weit klein leise" style="margin-top:10px;padding:0 4px"><label class="zeile" style="gap:6px"><input type="checkbox" id="neu-gelb" checked data-a="neuGelb"> Neue Wände gelb zeigen</label><span>Eingerichtete Objekte aus dem Grundriss erscheinen hier mit.</span></div>
   </section>`}`;
@@ -454,12 +458,12 @@ ANSICHTEN.halle = () => {
 function auswahlLeiste(){ const o=S.planobjekt.find(x=>x.id===planAuswahl); if(!o) return `<p class="klein leise">Tippe ein Objekt an, um es zu drehen oder zu entfernen.</p>`;
   return `<div class="zeile"><b>${esc(OBJEKTE[o.typ]?.n||o.typ)}</b><span class="mass leise">x ${o.x.toFixed(1).replace(".",",")} m · y ${o.y.toFixed(1).replace(".",",")} m · ${Math.round(o.rot||0)}°</span>
     <button class="btn klein" data-a="objDreh" data-g="15">${icon("drehen")}15°</button><button class="btn klein" data-a="objDreh" data-g="90">${icon("drehen")}90°</button><button class="btn klein gefahr" data-a="objWeg">${icon("papierkorb")}Entfernen</button></div>`; }
-function halleAktualisieren(){ const p=$("#plan-svg"); if(p&&!planZug){ p.innerHTML=planSvg(S.planobjekt,{bearbeiten:true,auswahl:planAuswahl,bestuhlung:bestuhlungN()}); const a=$("#auswahl-leiste"); if(a) a.innerHTML=auswahlLeiste();
+function halleAktualisieren(){ const p=$("#plan-svg"); if(p&&!planZug){ p.innerHTML=planSvg(S.planobjekt,{bearbeiten:true,auswahl:planAuswahl,bestuhlung:bestuhlungN(),seiten:seitenAn()}); const a=$("#auswahl-leiste"); if(a) a.innerHTML=auswahlLeiste();
   const z=$("#plaetze"); if(z) z.textContent=sitzText(); }
-  if(dreiD){ dreiD.objekte(S.planobjekt); if(dreiD._n!==bestuhlungN()){ dreiD._n=bestuhlungN(); dreiD.bestuhlung(dreiD._n); } } }
+  if(dreiD){ dreiD.objekte(S.planobjekt); if(dreiD._n!==bestuhlungN()){ dreiD._n=bestuhlungN(); dreiD.bestuhlung(dreiD._n); } if(dreiD._s!==seitenAn()){ dreiD._s=seitenAn(); dreiD.seiten(dreiD._s); } } }
 let planZug=null;
 function halleStarten(){
-  if(halleReiter==="3d"){ const c=$("#dreid"); if(c){ dreiD=halle3d(c,S.planobjekt,{logo:LOGO,stoff:STOFF,bestuhlung:bestuhlungN()}); dreiD._n=bestuhlungN(); } return; }
+  if(halleReiter==="3d"){ const c=$("#dreid"); if(c){ dreiD=halle3d(c,S.planobjekt,{logo:LOGO,stoff:STOFF,bestuhlung:bestuhlungN(),seiten:seitenAn()}); dreiD._n=bestuhlungN(); dreiD._s=seitenAn(); } return; }
   const rahmen=$("#plan-svg"); if(!rahmen) return;
   const punkt=(svg,e)=>{ const pt=svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY; const m=pt.matrixTransform(svg.getScreenCTM().inverse()); return {x:(m.x-40)/20,y:(m.y-40)/20}; };
   rahmen.addEventListener("pointerdown",e=>{ const g=e.target.closest("[data-obj]"); const svg=rahmen.querySelector("svg"); if(!g){ if(planAuswahl){ planAuswahl=null; halleAktualisieren(); } return; }
@@ -599,6 +603,9 @@ const AKT = {
   objWeg:async ()=>{ const id=planAuswahl; planAuswahl=null; await speichere(()=>B.loeschen("planobjekt",id),"Entfernt"); await neu("planobjekt"); halleAktualisieren(); },
   bestuhlungWahl:async t=>{ const n=+t.dataset.k, o=bestuhlungObj();
     await speichere(()=>o?B.aendern("planobjekt",o.id,{label:String(n),geaendert:new Date().toISOString()}):B.neu("planobjekt",{typ:"bestuhlung",x:0,y:0,rot:0,label:String(n)}),n?n+" Stühle gestellt":"Bestuhlung entfernt");
+    await neu("planobjekt"); render(); },
+  seitenWahl:async ()=>{ const o=seitenObj(), an=!seitenAn();
+    await speichere(()=>o?B.aendern("planobjekt",o.id,{label:an?"1":"0",geaendert:new Date().toISOString()}):B.neu("planobjekt",{typ:"seiten",x:0,y:0,rot:0,label:"1"}),an?"Seitenplätze gestellt":"Seitenplätze entfernt");
     await neu("planobjekt"); render(); },
   grundeinrichtung:async ()=>{ const da=new Set(S.planobjekt.map(o=>o.typ)); const neue=grundeinrichtung().filter(o=>!da.has(o.typ));
     if(!neue.length) return toast("Bühne und Esstische sind schon eingerichtet");

@@ -4,12 +4,18 @@ const HALLE = { L:47.40, B:19.90, traufe:3.70, first:5.09, wand:0.24 };
 
 // Wände: [x1,y1,x2,y2, art]   art: bestand | neu (gelb im Plan) | neu-ra (gelb, mit Ringanker) | abriss (rot im Plan = wird entfernt)
 const WAENDE = [
-  // linker Block (Bestand)
-  [9.0,0,9.0,3.0,"bestand"],[9.0,4.0,9.0,7.0,"bestand"],[9.0,8.1,9.0,16.0,"bestand"],[9.0,17.0,9.0,19.9,"bestand"],
-  [0,4.0,4.3,4.0,"bestand"],[4.3,0,4.3,3.0,"bestand"],[4.6,0,4.6,5.3,"bestand"],[4.6,5.3,7.7,5.3,"bestand"],[8.5,5.3,9.0,5.3,"bestand"],
-  [0,9.8,4.4,9.8,"bestand"],[4.4,9.8,4.4,10.8,"bestand"],[4.4,11.7,4.4,14.5,"bestand"],[0,14.5,3.2,14.5,"bestand"],[4.0,14.5,4.4,14.5,"bestand"],
-  [4.6,7.4,9.0,7.4,"bestand"],[4.6,7.4,4.6,16.1,"bestand"],[4.6,16.1,6.4,16.1,"bestand"],[7.3,16.1,9.0,16.1,"bestand"],
-  [4.4,16.4,4.4,19.9,"bestand"],[0,12.2,2.4,12.2,"bestand"],
+  // linker Block (Bestand) – nach Tobis aktuellem Plan (08.10.)
+  [2.4,0,2.4,2.55,"bestand"],[1.45,2.55,2.4,2.55,"bestand"],[2.4,3.2,2.4,4.0,"bestand"],            // Bad | Waschraum
+  [0,4.0,2.4,4.0,"bestand"],[2.4,4.0,3.1,4.0,"bestand"],[3.7,4.0,4.48,4.0,"bestand"],               // Bad/Wasch unten (Tür zum Flur)
+  [4.48,0,4.48,5.7,"bestand"],[4.48,5.34,6.85,5.34,"bestand"],[7.65,5.34,8.96,5.34,"bestand"],      // Stillraum
+  [8.96,0,8.96,5.34,"bestand"],
+  [3.04,4.13,3.04,6.87,"neu"],                                                                      // Flur | Kinderraum (gelb im Plan)
+  [3.04,6.87,3.2,6.87,"bestand"],[3.95,6.87,4.48,6.87,"bestand"],[4.48,6.75,4.48,10.3,"bestand"],  // Flur unten, Wand Kinderraum | Jugendraum
+  [0,10.0,4.48,10.0,"bestand"],[4.48,7.5,8.96,7.5,"bestand"],                                       // Kinderraum unten, Gang | Jugendraum
+  [4.0,10.3,4.48,10.3,"bestand"],[4.0,11.0,4.0,12.7,"bestand"],[4.0,13.5,4.0,16.45,"bestand"],[4.0,17.3,4.0,19.9,"bestand"],
+  [0,11.77,4.0,11.77,"bestand"],[2.15,11.77,2.15,14.44,"bestand"],[0,14.44,0.7,14.44,"bestand"],[1.55,14.44,4.0,14.44,"bestand"],
+  [4.0,16.4,5.97,16.4,"bestand"],[6.92,16.4,8.96,16.4,"bestand"],                                  // Jugendraum | Warteraum
+  [8.96,7.5,8.96,16.4,"bestand"],[8.96,17.3,8.96,19.9,"bestand"],                                  // Blockwand zum Gemeinschaftsraum
   // Küche + WC-Block (neu, gelb)
   [9.0,3.9,11.9,3.9,"neu"],[12.8,3.9,14.4,3.9,"neu"],[14.4,0,14.4,3.9,"neu"],
   [15.7,0,15.7,3.9,"neu"],[15.7,3.9,16.8,3.9,"neu"],[17.7,3.9,21.2,3.9,"neu"],
@@ -26,14 +32,17 @@ const RAEUME = [
   {n:"Gottesdienstraum",x:21.2,y:0,w:25.5,h:19.9,m2:"528,97",haupt:true,ly:1.6},
   {n:"Gemeinschaftsraum",x:9.0,y:3.9,w:12.2,h:13.8,m2:"209,21",haupt:true},
   {n:"Küche",x:9.0,y:0,w:5.4,h:3.9,m2:"20,96"},{n:"WC-Block",x:15.7,y:0,w:5.5,h:3.9,m2:"20,96"},
-  {n:"Bad / Waschraum",x:0,y:0,w:4.3,h:4.0},{n:"Stillraum",x:4.6,y:0,w:4.4,h:5.3},{n:"Kinderraum",x:0,y:4.0,w:4.4,h:5.8},
-  {n:"WC · Pastor-Bad",x:0,y:9.8,w:4.4,h:4.7,klein:true},{n:"Jugendraum",x:4.6,y:7.4,w:4.4,h:8.7},
-  {n:"Pastor-Büro",x:0,y:14.5,w:4.4,h:5.4},{n:"Warteraum",x:4.6,y:16.4,w:4.4,h:3.5},{n:"Flur & Eingang",x:9.0,y:17.7,w:12.2,h:2.2,klein:true}
+  {n:"Bad (3 × DA)",x:0,y:0,w:2.4,h:4.0,klein:true},{n:"Waschraum",x:2.4,y:0,w:2.08,h:4.0,klein:true},{n:"Stillraum",x:4.48,y:0,w:4.48,h:5.34},
+  {n:"Flur",x:3.04,y:4.0,w:1.44,h:2.87,klein:true},{n:"Kinderraum",x:0,y:4.0,w:3.04,h:6.0},{n:"Gang",x:4.48,y:5.34,w:4.48,h:2.16,klein:true},
+  {n:"WC Unisex",x:0,y:10.0,w:4.0,h:1.77,klein:true},{n:"Pastor Bad/WC",x:0,y:11.77,w:2.15,h:2.67,klein:true},{n:"Küche Jugend",x:2.15,y:11.77,w:1.85,h:2.67,klein:true},
+  {n:"Jugendraum",x:4.48,y:7.5,w:4.48,h:8.9},{n:"Pastor-Büro",x:0,y:14.44,w:4.0,h:5.46},{n:"Warteraum",x:4.0,y:16.4,w:4.96,h:3.5},
+  {n:"Flur & Eingang",x:9.0,y:17.7,w:12.2,h:2.2,klein:true}
 ];
-const BUEHNE = {x:43.8,y:4.9,w:2.9,h:9.9,hoehe:0.6};
+const BUEHNE = {x:42.7,y:2.85,w:4.0,h:14.0,hoehe:0.6};   // 14 m breit, 4 m tief (Tobi, 08.10.)
 const LED = {y1:4.9,y2:14.8,unten:0.9,oben:3.9};     // 10 m × 3 m an der Wand hinter der Bühne
 const TECHNIK = {x:21.8,y:6.6,w:2.4,h:6.4};            // im Plan gepunktet: Technikbereich (Ton, Licht, Video)
 const istNeu = a => a==="neu"||a==="neu-ra";
+const TREPPEN = [{x:9.12,y:4.05,w:0.62,h:0.95},{x:9.12,y:9.92,w:0.62,h:1.0},{x:9.12,y:17.3,w:0.62,h:1.3}];  // je 6 Stufen
 const TUEREN_AUSSEN = [{x1:32.6,x2:40.0,y:19.9,n:"Haupteingang"},{x1:40.9,x2:41.9,y:0,n:"Notausgang"}];
 
 const OBJEKTE = {
@@ -95,6 +104,12 @@ function planSvg(objekte, opt={}){
   s+=`<text x="${p((TUEREN_AUSSEN[0].x1+TUEREN_AUSSEN[0].x2)/2)}" y="${p(HALLE.B)+18}" text-anchor="middle" font-size="10" font-weight="600" fill="var(--flamme)">▲ Haupteingang</text>`;
   // Maßkette
   s+=`<g font-family="var(--f-mass)" font-size="10" fill="var(--text2)"><text x="${R+6}" y="${R-4}">0</text><text x="${p(HALLE.L)-30}" y="${R-4}">47,40 m</text></g>`;
+  // Treppen
+  TREPPEN.forEach(tr=>{ s+=`<rect x="${p(tr.x)}" y="${p(tr.y)}" width="${(tr.w*S).toFixed(1)}" height="${(tr.h*S).toFixed(1)}" fill="var(--flaeche)" stroke="var(--text2)" stroke-width="1"/>`;
+    for(let i=1;i<6;i++) s+=`<line x1="${p(tr.x)}" y1="${p(tr.y+tr.h*i/6)}" x2="${p(tr.x+tr.w)}" y2="${p(tr.y+tr.h*i/6)}" stroke="var(--text2)" stroke-width=".8"/>`; });
+  // Seitenplätze an der Bühne (rote Bezüge)
+  if(opt.seiten){ s+=`<g fill="${STUHL.rot}">`; seitenPositionen().forEach(c=>{ const sw=(STUHL.breite-0.06)*S, sd=(STUHL.tiefe-0.04)*S; s+=`<rect x="${(c.x*S+R-sw/2).toFixed(1)}" y="${(c.y*S+R-sd/2).toFixed(1)}" width="${sw.toFixed(1)}" height="${sd.toFixed(1)}" rx="1.5"/>`; }); s+=`</g>`;
+    SEITEN.forEach(g=>{ s+=`<text x="${p(BUEHNE.x+BUEHNE.w/2)}" y="${p(g.text)}" text-anchor="middle" font-family="var(--f-text)" font-weight="700" font-size="9" fill="${STUHL.rot}">${g.n}</text>`; }); }
   // Bestuhlung (umschaltbar)
   if(opt.bestuhlung){ const sw=(STUHL.breite-0.06)*S, sd=(STUHL.tiefe-0.04)*S; s+=`<g fill="${STUHL.farbe}">`;
     stuhlPositionen(opt.bestuhlung).forEach(c=>{ s+=`<rect x="${(c.x*S+R-sd/2).toFixed(1)}" y="${(c.y*S+R-sw/2).toFixed(1)}" width="${sd.toFixed(1)}" height="${sw.toFixed(1)}" rx="1.5"/>`; }); s+=`</g>`; }
@@ -116,11 +131,17 @@ function planSvg(objekte, opt={}){
 }
 
 /* Bestuhlung Gottesdienstraum: 3 Blöcke, Blick zur Bühne. Stuhlbreite 0,50 m. */
-const STUHL = {breite:0.5, tiefe:0.48, farbe:"#33508f"};
+const STUHL = {breite:0.5, tiefe:0.48, farbe:"#33508f", rot:"#a3262a"};
+/* Seitenplätze neben der Bühne: je 2 Reihen à 7, Blick zur Bühnenmitte; Lobpreisteam bei den Pianos, Pastoren gegenüber */
+const SEITEN = [
+  {n:"Lobpreisteam", reihen:[BUEHNE_Y0()-0.55, BUEHNE_Y0()-1.5], blick:1,  text:0.35},
+  {n:"Pastoren",     reihen:[BUEHNE_Y1()+0.55, BUEHNE_Y1()+1.5], blick:-1, text:19.75}];
+function BUEHNE_Y0(){ return BUEHNE.y; } function BUEHNE_Y1(){ return BUEHNE.y+BUEHNE.h; }
+function seitenPositionen(){ const out=[]; SEITEN.forEach(g=>g.reihen.forEach(y=>{ for(let i=0;i<7;i++) out.push({x:BUEHNE.x+0.4+i*STUHL.breite, y, theta:g.blick>0?-Math.PI/2:Math.PI/2, rot:true}); })); return out; }
 const BESTUHLUNG = {
-  300:{bloecke:[8,10,8],  abstand:0.95, gang:1.5, vorne:3.0},
-  400:{bloecke:[9,12,9],  abstand:0.95, gang:1.2, vorne:3.0},
-  500:{bloecke:[9,12,9],  abstand:0.90, gang:1.2, vorne:2.5}
+  300:{bloecke:[8,10,8],  abstand:0.95, gang:1.5, vorne:5.0},
+  400:{bloecke:[9,12,9],  abstand:0.95, gang:1.2, vorne:4.5},
+  500:{bloecke:[9,12,9],  abstand:0.85, gang:1.2, vorne:3.4}   // 0,85 m = 0,45 Sitz + 0,40 Durchgang (Minimum)
 };
 function bestuhlungInfo(n){ const b=BESTUHLUNG[n]; if(!b) return null; const proReihe=b.bloecke.reduce((s,x)=>s+x,0);
   const breite=proReihe*STUHL.breite+2*b.gang; const reihen=Math.ceil(n/proReihe);
@@ -141,11 +162,13 @@ function stuhlPositionen(n){
 /* Grundeinrichtung: Rednerpult vorne Mitte, Instrumente hinten im Halbkreis, Esstische im Gemeinschaftsraum */
 function grundeinrichtung(){
   const mitte=BUEHNE.y+BUEHNE.h/2, o=[];
-  o.push({typ:"pult",x:BUEHNE.x+0.45,y:mitte,rot:0,label:"Rednerpult"});
-  // Halbkreis an der Bühnenrückseite, offen zum Saal (Mittelpunkt vorne)
-  const cx=BUEHNE.x+0.15, rx=2.15, ry=3.7;
-  [["piano",-62,"Piano 1"],["schlagzeug",-18,"Schlagzeug"],["bass",18,"Bassgitarre"],["piano",62,"Piano 2"]].forEach(([typ,w,label])=>{
-    const a=w*Math.PI/180; o.push({typ,x:+(cx+rx*Math.cos(a)).toFixed(2),y:+(mitte+ry*Math.sin(a)).toFixed(2),rot:Math.round(-w*0.6),label}); });
+  o.push({typ:"pult",x:+(BUEHNE.x+0.45).toFixed(2),y:mitte,rot:0,label:"Rednerpult"});
+  // hinten im Halbkreis: Pianos nebeneinander (um 90° gedreht, Spieler blickt zur Kanzel), Schlagzeug Mitte, Bass rechts
+  const hinten=BUEHNE.x+BUEHNE.w;
+  o.push({typ:"piano",x:+(hinten-2.95).toFixed(2),y:+(BUEHNE.y+1.7).toFixed(2),rot:90,label:"Piano 1"});
+  o.push({typ:"piano",x:+(hinten-1.35).toFixed(2),y:+(BUEHNE.y+1.7).toFixed(2),rot:90,label:"Piano 2"});
+  o.push({typ:"schlagzeug",x:+(hinten-1.0).toFixed(2),y:mitte,rot:0,label:"Schlagzeug"});
+  o.push({typ:"bass",x:+(hinten-1.1).toFixed(2),y:+(mitte+3.4).toFixed(2),rot:-30,label:"Bassgitarre"});
   // Gemeinschaftsraum: 4 × 4 Esstische, Buffet an der Küche
   [11.0,13.9,16.8,19.7].forEach(x=>[7.0,9.8,12.6,15.4].forEach(y=>o.push({typ:"esstisch",x,y,rot:0,label:"Esstisch"})));
   o.push({typ:"buffet",x:12.6,y:4.75,rot:0,label:"Buffet"});
@@ -235,24 +258,29 @@ function halle3d(container, objekte, opt={}){
   const stoffMat=M(STUHL.farbe);
   const logoTex=opt.stoff?new THREE.TextureLoader().load(opt.stoff):null;
   const logoMat=logoTex?new THREE.MeshLambertMaterial({map:logoTex}):stoffMat;
-  // Bestuhlung (InstancedMesh, bis 500 Stühle)
+  // Bestuhlung (InstancedMesh, bis 500 Stühle) + rote Seitenplätze an der Bühne
+  const rotMat=M(STUHL.rot), gestell=M("#2b2f36");
   const stuhlGruppe=new THREE.Group(); szene.add(stuhlGruppe);
-  function bestuhlungZeichnen(n){
-    while(stuhlGruppe.children.length){ const c=stuhlGruppe.children[0]; stuhlGruppe.remove(c); c.geometry.dispose(); }
-    const pos=stuhlPositionen(n); if(!pos.length) return;
-    const gestell=M("#2b2f36");
-    const teile=[ // [Geometrie, Material, dx, y, dz, gedreht] – Blick zur Bühne (+x), Lehne hinten (−x)
-      [new THREE.BoxGeometry(0.46,0.07,0.46),stoffMat,0.02,0.46,0],
-      [new THREE.BoxGeometry(0.06,0.5,0.46),stoffMat,-0.2,0.74,0],
-      [new THREE.PlaneGeometry(0.44,0.37),logoMat,-0.232,0.77,0,true],
+  const seitenGruppe=new THREE.Group(); szene.add(seitenGruppe);
+  function stuehleSetzen(gruppe,pos,stoff,logo){
+    while(gruppe.children.length){ const c=gruppe.children[0]; gruppe.remove(c); c.geometry.dispose(); }
+    if(!pos.length) return;
+    const teile=[ // [Geometrie, Material, dx, y, dz, Logo] – Grundform blickt nach +x, Lehne hinten (−x), Logo vorne an der Lehne
+      [new THREE.BoxGeometry(0.46,0.07,0.46),stoff,0.02,0.46,0],
+      [new THREE.BoxGeometry(0.06,0.5,0.46),stoff,-0.2,0.74,0],
       [new THREE.BoxGeometry(0.42,0.42,0.025),gestell,0.02,0.21,-0.21],
       [new THREE.BoxGeometry(0.42,0.42,0.025),gestell,0.02,0.21,0.21]];
+    if(logo) teile.push([new THREE.PlaneGeometry(0.44,0.37),logo,-0.168,0.77,0,true]);
     const dummy=new THREE.Object3D();
-    teile.forEach(([geo,mat,dx,y,dz,ruecken])=>{
+    teile.forEach(([geo,mat,dx,y,dz,istLogo])=>{
       const inst=new THREE.InstancedMesh(geo,mat,pos.length);
-      pos.forEach((c,i)=>{ dummy.position.set(c.x+dx,y,c.y+dz); dummy.rotation.set(0,ruecken?-Math.PI/2:0,0); dummy.updateMatrix(); inst.setMatrixAt(i,dummy.matrix); });
-      stuhlGruppe.add(inst); });
+      pos.forEach((c,i)=>{ const th=c.theta||0, co=Math.cos(th), si=Math.sin(th);
+        dummy.position.set(c.x+dx*co+dz*si,y,c.y-dx*si+dz*co); dummy.rotation.set(0,th+(istLogo?Math.PI/2:0),0); dummy.updateMatrix(); inst.setMatrixAt(i,dummy.matrix); });
+      gruppe.add(inst); });
   }
+  const bestuhlungZeichnen=n=>stuehleSetzen(stuhlGruppe,stuhlPositionen(n),stoffMat,logoMat);
+  const seitenZeichnen=an=>stuehleSetzen(seitenGruppe,an?seitenPositionen():[],rotMat,null);
+  seitenZeichnen(!!opt.seiten);
   bestuhlungZeichnen(opt.bestuhlung||0);
   // Planobjekte
   const objGruppe=new THREE.Group(); szene.add(objGruppe);
@@ -284,7 +312,7 @@ function halle3d(container, objekte, opt={}){
   objekteZeichnen(objekte);
   // Steuerung (Ich-Perspektive)
   const blick={x:30,z:15.5,gier:-Math.PI*0.62,nick:-0.04,auge:1.65,oben:false};
-  const ansichten={eingang:{x:36.3,z:18.6,gier:Math.PI*1.0,nick:-0.03},buehne:{x:45.1,z:8.4,gier:Math.PI/2-0.12,nick:-0.1,auge:2.25},
+  const ansichten={eingang:{x:36.3,z:18.6,gier:Math.PI*1.0,nick:-0.03},buehne:{x:44.2,z:12.2,gier:Math.PI/2-0.25,nick:-0.12,auge:2.25},vorn:{x:37.5,z:9.85,gier:-Math.PI/2,nick:0.02},
     raum:{x:26,z:9.85,gier:-Math.PI/2,nick:-0.02},gemein:{x:9.9,z:16.9,gier:-0.9,nick:-0.06},oben:{oben:true},aussen:{oben:true,aussen:true}};
   function setze(n){ const a=ansichten[n]; if(!a) return; if(a.oben){ blick.oben=true; blick.aussen=!!a.aussen; } else { Object.assign(blick,{oben:false,aussen:false,auge:1.65},a); } }
   const taste={}; const ab=e=>{ if(["INPUT","TEXTAREA","SELECT"].includes(document.activeElement?.tagName)) return; taste[e.key.toLowerCase()]=e.type==="keydown"; if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(e.key.toLowerCase())&&e.type==="keydown"&&container.matches(":hover")) e.preventDefault(); };
@@ -326,5 +354,5 @@ function halle3d(container, objekte, opt={}){
   function groesse(){ const w=container.clientWidth, h=container.clientHeight; renderer.setSize(w,h,false); kam.aspect=w/h; kam.updateProjectionMatrix(); }
   const ro=new ResizeObserver(groesse); ro.observe(container); groesse(); requestAnimationFrame(bild);
   return { stop(){ laeuft=false; ro.disconnect(); window.removeEventListener("keydown",ab); window.removeEventListener("keyup",ab); renderer.dispose(); },
-    ansicht:setze, objekte:objekteZeichnen, bestuhlung:bestuhlungZeichnen, neueHervorheben(an){ neueWaende.forEach(m=>m.material=an?neuMat:bestandMat); } };
+    ansicht:setze, objekte:objekteZeichnen, bestuhlung:bestuhlungZeichnen, seiten:seitenZeichnen, neueHervorheben(an){ neueWaende.forEach(m=>m.material=an?neuMat:bestandMat); } };
 }
