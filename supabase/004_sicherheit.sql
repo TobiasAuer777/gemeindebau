@@ -164,6 +164,11 @@ alter table public.eintrag add constraint eintrag_fotos_pfad check (array_to_str
 
 -- ---------- 6: Rechte und Suchpfad ----------
 revoke all on all tables in schema public from anon;
+alter default privileges in schema public revoke all on tables from anon;
+drop policy if exists aendern on public.aufgabe;
+create policy aendern on public.aufgabe for update to authenticated
+  using (public.ist_leitung() or (public.ist_mitglied() and auth.uid() = any (zugewiesen)))
+  with check (public.ist_leitung() or (public.ist_mitglied() and auth.uid() = any (zugewiesen)));
 alter function public.ist_mitglied() set search_path = public, pg_temp;
 alter function public.ist_leitung() set search_path = public, pg_temp;
 alter function public.ist_admin() set search_path = public, pg_temp;
