@@ -290,7 +290,8 @@ select * from (values
   ('Daniel Lutz',     'Elektrik', null, 8),
   ('Linda',           'Verpflegung', null, 9),
   ('Jonas',           'Verpflegung', null, 10),
-  ('Parfait',         'Pastor (übergeordnet, kein Bautrupp)', null, 11)
+  ('Parfait',         'Pastor (übergeordnet, kein Bautrupp)', null, 11),
+  ('Gabriel Nachtnebel', 'alles', null, 12)
 ) v(name, schwerpunkt, hinweis, sort)
 where not exists (select 1 from public.leitung);
 

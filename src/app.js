@@ -416,7 +416,7 @@ function eintragDialog(aufgabeId){
 ANSICHTEN.teams = () => {
   const L=[...S.leitung].sort((a,b)=>a.sort-b.sort);
   return `<div class="kopf"><div><p class="etikett">Wer macht was</p><h1>Teams & Leitung</h1><p class="unter">Tritt einem Team bei, damit die Teamleiter wissen, auf wen sie zählen können.</p></div>${istLeitung()?`<button class="btn primaer" data-a="teamNeu">${icon("plus")}Team anlegen</button>`:""}</div>
-  <section class="karte" style="margin-bottom:16px"><header><h2>Leitungsgruppe</h2><span class="pille">${L.length}</span></header>
+  <section class="karte" style="margin-bottom:16px"><header><h2>Leitungsgruppe</h2><div class="zeile"><span class="pille">${L.length}</span>${istLeitung()?`<button class="btn still klein" data-a="leitungNeu">${icon("plus")}Person</button>`:""}</div></header>
     <div class="raster r3" style="gap:10px">${L.map(l=>`<div class="zeile" style="align-items:flex-start">${l.profil_id?ava(l.profil_id):`<span class="avatar" style="background:var(--text3)">${esc(l.name.split(" ").map(w=>w[0]).join("").slice(0,2))}</span>`}<div><b>${esc(l.name)}</b><div class="klein leise">${esc(l.schwerpunkt||"")}</div>${l.hinweis?`<div class="klein" style="color:var(--warn)">${esc(l.hinweis)}</div>`:""}${!l.profil_id?`<div class="klein leise">noch nicht angemeldet</div>`:""}</div></div>`).join("")}</div></section>
   <div class="raster r3">${[...S.team].sort((a,b)=>a.sort-b.sort).map(t=>{ const m=S.team_mitglied.filter(x=>x.team_id===t.id).map(x=>x.profil_id); const drin=m.includes(S.me.id);
     return `<section class="karte" style="border-top:4px solid ${t.farbe||"var(--linie)"}"><header><div><h2>${esc(t.name)}</h2><p class="klein leise">Leitung: ${esc(t.leiter||"–")}</p></div>${istLeitung()?`<button class="btn still klein" data-a="teamBearbeiten" data-id="${t.id}">Bearbeiten</button>`:""}</header>
@@ -764,6 +764,12 @@ const AKT = {
     $$(".thema-knopf").forEach(k=>k.outerHTML=themaKnopf()); if(ansicht==="halle"&&!document.querySelector(".tor")) render(); },
   abmelden:async ()=>{ await B.abmelden(); location.reload(); },
   zugangNeu:()=>zugangDialog(),
+  leitungNeu:()=>oeffne("Person zur Leitungsgruppe",`<form class="stapel" data-form="leitung">
+    <label class="feld">Name<input type="text" name="name" id="l-name" required placeholder="Vorname Nachname" autocomplete="off"></label>
+    <label class="feld">Schwerpunkt<input type="text" name="schwerpunkt" id="l-schwer" value="alles" autocomplete="off"></label>
+    <label class="feld">Hinweis (optional)<input type="text" name="hinweis" id="l-hinweis" placeholder="z. B. lange Anreise – eher am Wochenende" autocomplete="off"></label>
+    <p class="klein leise">Danach erscheint die Person unter Benutzer → „Bekannte Personen“, dort legst du ihren Zugang an.</p>
+    <button class="btn primaer" type="submit">${icon("plus")}Hinzufügen</button></form>`),
   bkKopieren:async ()=>{ const txt=neueZugaenge.map(w=>`${w.name} (${rolleText(w.rolle)})\nE-Mail: ${w.email}\nStartpasswort: ${w.pw}`).join("\n\n")+`\n\nSeite: ${APP_URL}`;
     try{ await navigator.clipboard.writeText(txt); toast("Zugangsdaten kopiert"); }catch(e){ toast("Kopieren ging nicht"); } },
   bkDrucken:()=>{ document.body.classList.add("druck-zugaenge"); const vorher=document.documentElement.dataset.theme; themaSetzen("light");
@@ -827,6 +833,9 @@ const FORM = {
       else toast(l.name.split(" ")[0]+" hat jetzt einen Zugang");
       await neu("profil"); await neu("leitung"); benutzerInfo=null; render(); document.getElementById("bekannte")?.scrollIntoView({block:"start"}); }
     catch(e){ knopf.disabled=false; knopf.textContent="Anlegen"; toast(fehlerDeutsch(e.message||e)); } },
+  leitung:async f=>{ const name=f.elements.name.value.trim(); if(!name) return;
+    await speichere(()=>B.neu("leitung",{name,schwerpunkt:f.schwerpunkt.value.trim()||null,hinweis:f.hinweis.value.trim()||null,sort:Math.max(0,...S.leitung.map(l=>l.sort||0))+1}),name.split(" ")[0]+" ist in der Leitungsgruppe");
+    await neu("leitung"); schliesse(); render(); },
   zugang:async f=>{ const w={name:f.elements.name.value.trim(),email:f.email.value.trim().toLowerCase(),rolle:f.rolle.value,pw:f.pw.value.trim()};
     const knopf=f.querySelector("[type=submit]"); knopf.disabled=true; knopf.textContent="Legt an …";
     try{ const r=await B.zugangAnlegen(w); await neu("profil"); benutzerInfo=null; render(); zugangFertig(w,r); }

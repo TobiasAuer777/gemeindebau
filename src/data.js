@@ -52,7 +52,8 @@ function demoDaten(){
   const leitung=[L(tobi,"alles",null,1),L(andreas,"alles",null,2),L(roland,"alles",null,3),L(christoph,"alles",null,4),
     L(bernd,"alles","lange Anreise – eher am Wochenende",5),L(igor,"alles, vor allem Mauern","lange Anreise – eher am Wochenende",6),
     L(andre,"alles, vor allem Mauern und Fliesenlegen",null,7),L(daniel,"Elektrik",null,8),L(linda,"Verpflegung",null,9),
-    L(jonas,"Verpflegung",null,10),L(parfait,"Pastor (übergeordnet, kein Bautrupp)",null,11)];
+    L(jonas,"Verpflegung",null,10),L(parfait,"Pastor (übergeordnet, kein Bautrupp)",null,11),
+    {id:uid(),name:"Gabriel Nachtnebel",schwerpunkt:"alles",hinweis:null,profil_id:null,sort:12}];
   const T=(name,gewerk,beschreibung,leiter,farbe,sort)=>({id:uid(),name,gewerk,beschreibung,leiter,farbe,sort});
   const tMauer=T("Mauerwerk & Ytong","Mauern","Neue Wände (gelb im Plan) in Ytong; Ringanker an beiden langen Wänden","Andre, Igor","#c2410c",1),
     tFliesen=T("Fliesen","Fliesen","WC-Block, Küche, Sanitär","Andre","#0e7490",2),
@@ -96,9 +97,9 @@ function demoDaten(){
 
 const DemoBackend = {
   modus:"demo", d:null,
-  async init(){ let roh=null; try{ roh=localStorage.getItem("gb-demo-v8"); }catch(e){}
+  async init(){ let roh=null; try{ roh=localStorage.getItem("gb-demo-v9"); }catch(e){}
     this.d = roh ? JSON.parse(roh) : demoDaten(); this.speichern(); return true; },
-  speichern(){ try{ const kopie={...this.d}; localStorage.setItem("gb-demo-v8",JSON.stringify(kopie)); }catch(e){} },
+  speichern(){ try{ const kopie={...this.d}; localStorage.setItem("gb-demo-v9",JSON.stringify(kopie)); }catch(e){} },
   zuruecksetzen(){ this.d=demoDaten(); this.speichern(); },
   async sitzung(){ return {user:{id:this.d.me}}; },
   async meinProfil(){ return this.d.profil.find(p=>p.id===this.d.me)||null; },
