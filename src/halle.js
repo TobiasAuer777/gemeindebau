@@ -152,7 +152,8 @@ function planSvg(objekte, opt={}){
     s+=`<text x="${cx}" y="${cy}" text-anchor="middle" font-family="var(--f-titel)" font-weight="600" font-size="${fs}" fill="var(--tinte)">${r.n}</text>`;
     if(r.m2) s+=`<text x="${cx}" y="${(+cy+fs+2).toFixed(1)}" text-anchor="middle" font-family="var(--f-mass)" font-size="9.5" fill="var(--text2)">${arch?"":"NGF "}${r.m2} m²</text>`; });
   buehnenTreppen().forEach(tr=>{ s+=`<rect x="${p(tr.x)}" y="${p(tr.y)}" width="${(tr.w*S).toFixed(1)}" height="${(tr.h*S).toFixed(1)}" fill="var(--flaeche)" stroke="var(--tinte)" stroke-width="1.2"/>`;
-    for(let i=1;i<TREPPE_STUFEN;i++) s+=`<line x1="${p(tr.x+i*TREPPE_AUFTRITT)}" y1="${p(tr.y)}" x2="${p(tr.x+i*TREPPE_AUFTRITT)}" y2="${p(tr.y+tr.h)}" stroke="var(--tinte)" stroke-width=".8"/>`; });
+    for(let i=1;i<TREPPE_STUFEN;i++){ if(tr.richtung==="x") s+=`<line x1="${p(tr.x+i*TREPPE_AUFTRITT)}" y1="${p(tr.y)}" x2="${p(tr.x+i*TREPPE_AUFTRITT)}" y2="${p(tr.y+tr.h)}" stroke="var(--tinte)" stroke-width=".8"/>`;
+      else s+=`<line x1="${p(tr.x)}" y1="${p(tr.y+i*TREPPE_AUFTRITT)}" x2="${p(tr.x+tr.w)}" y2="${p(tr.y+i*TREPPE_AUFTRITT)}" stroke="var(--tinte)" stroke-width=".8"/>`; } });
   s+=`<text x="${p(BUEHNE.x+BUEHNE.w/2)}" y="${p(BUEHNE.y+BUEHNE.h/2)}" text-anchor="middle" font-family="var(--f-titel)" font-weight="700" font-size="13" fill="var(--tinte)" transform="rotate(-90 ${p(BUEHNE.x+BUEHNE.w/2)} ${p(BUEHNE.y+BUEHNE.h/2)})">BÜHNE · LED-Wand 10 × 3 m</text>`;
   // Umgebung
   const ue=(x,y,t,rot)=>`<text x="${x}" y="${y}" text-anchor="middle" font-family="var(--f-text)" font-weight="600" font-size="11" letter-spacing="1.2" fill="var(--text3)" ${rot?`transform="rotate(${rot} ${x} ${y})"`:''}>${t}</text>`;
@@ -166,7 +167,7 @@ function planSvg(objekte, opt={}){
     for(let i=1;i<6;i++) s+=`<line x1="${p(tr.x)}" y1="${p(tr.y+tr.h*i/6)}" x2="${p(tr.x+tr.w)}" y2="${p(tr.y+tr.h*i/6)}" stroke="var(--text2)" stroke-width=".8"/>`; });
   // Seitenplätze an der Bühne (rote Bezüge)
   if(opt.seiten){ s+=`<g fill="${STUHL.rot}">`; seitenPositionen().forEach(c=>{ const sw=(STUHL.breite-0.06)*S, sd=(STUHL.tiefe-0.04)*S; s+=`<rect x="${(c.x*S+R-sw/2).toFixed(1)}" y="${(c.y*S+R-sd/2).toFixed(1)}" width="${sw.toFixed(1)}" height="${sd.toFixed(1)}" rx="1.5"/>`; }); s+=`</g>`;
-    SEITEN.forEach(g=>{ s+=`<text x="${p(BUEHNE.x+BUEHNE.w/2)}" y="${p(typeof g.text==="function"?g.text():g.text)}" text-anchor="middle" font-family="var(--f-text)" font-weight="700" font-size="9" fill="${STUHL.rot}">${g.n}</text>`; }); }
+    SEITEN.forEach(g=>{ s+=`<text x="${p(BUEHNE.x+0.4+seitenVersatz()+1.5)}" y="${p(typeof g.text==="function"?g.text():g.text)}" text-anchor="middle" font-family="var(--f-text)" font-weight="700" font-size="9" fill="${STUHL.rot}">${g.n}</text>`; }); }
   // Bestuhlung (umschaltbar)
   if(opt.bestuhlung){ const sw=(STUHL.breite-0.06)*S, sd=(STUHL.tiefe-0.04)*S; s+=`<g fill="${STUHL.farbe}">`;
     stuhlPositionen(opt.bestuhlung).forEach(c=>{ s+=`<rect x="${(c.x*S+R-sd/2).toFixed(1)}" y="${(c.y*S+R-sw/2).toFixed(1)}" width="${sd.toFixed(1)}" height="${sw.toFixed(1)}" rx="1.5"/>`; }); s+=`</g>`; }
@@ -195,10 +196,19 @@ const SEITEN = [
   {n:"Pastoren",     reihen:[HALLE.B-1.5, HALLE.B-0.6], blick:-1, text:()=>BUEHNE_Y1()+0.75}];
 /* Treppen an den beiden vorderen Ecken der Bühne: 4 Stufen à 15 cm, Auftritt 30 cm, 1,5 m breit */
 const TREPPE_STUFEN=4, TREPPE_AUFTRITT=0.3, TREPPE_BREITE=1.5;
-function buehnenTreppen(){ const l=TREPPE_STUFEN*TREPPE_AUFTRITT;
-  return [{x:BUEHNE.x-l,y:BUEHNE.y+0.3,w:l,h:TREPPE_BREITE},{x:BUEHNE.x-l,y:BUEHNE.y+BUEHNE.h-0.3-TREPPE_BREITE,w:l,h:TREPPE_BREITE}]; }
+// Varianten: "ecken" (2 vorn an den Ecken), "A" (Ecken + Kanzel links/rechts + seitlich), "B" (Kanzel links/rechts + seitlich), "C" (breite Kanzeltreppe + seitlich)
+let TREPPEN_VARIANTE="C";   // Tobi, 08.10.: breite Kanzeltreppe + Seitentreppen
+function buehnenTreppen(){ const l=TREPPE_STUFEN*TREPPE_AUFTRITT, b=BUEHNE, m=b.y+b.h/2, v=TREPPEN_VARIANTE, out=[];
+  const vorne=(y,breite)=>({x:b.x-l,y,w:l,h:breite,richtung:"x"});
+  const seite=oben=>({x:b.x+b.w-1.35,y:oben?b.y-l:b.y+b.h,w:1.2,h:l,richtung:oben?"+y":"-y"});   // hinten an den Stirnseiten, zum Lobpreis-/Pastorenbereich
+  if(v==="ecken"||v==="A") out.push(vorne(b.y+0.3,TREPPE_BREITE),vorne(b.y+b.h-0.3-TREPPE_BREITE,TREPPE_BREITE));
+  if(v==="A"||v==="B") out.push(vorne(m-1.0-1.2,1.2),vorne(m+1.0,1.2));          // links und rechts der Kanzel, 2 m Platz für das Pult
+  if(v==="C") out.push(vorne(m-2.5,5.0));                                          // eine breite Treppe vor der Kanzel
+  if(v!=="ecken") out.push(seite(true),seite(false));
+  return out; }
+const seitenVersatz = () => TREPPEN_VARIANTE==="ecken" ? 0 : -1.3;   // mit Seitentreppen rücken die Seitenplätze nach vorn
 function BUEHNE_Y0(){ return BUEHNE.y; } function BUEHNE_Y1(){ return BUEHNE.y+BUEHNE.h; }
-function seitenPositionen(){ const out=[]; SEITEN.forEach(g=>g.reihen.forEach(y=>{ for(let i=0;i<7;i++) out.push({x:BUEHNE.x+0.4+i*STUHL.breite, y, theta:g.blick>0?-Math.PI/2:Math.PI/2, rot:true}); })); return out; }
+function seitenPositionen(){ const out=[]; SEITEN.forEach(g=>g.reihen.forEach(y=>{ for(let i=0;i<7;i++) out.push({x:BUEHNE.x+0.4+seitenVersatz()+i*STUHL.breite, y, theta:g.blick>0?-Math.PI/2:Math.PI/2, rot:true}); })); return out; }
 const BESTUHLUNG = {
   300:{bloecke:[8,10,8],  abstand:0.95, gang:1.5, vorne:5.0},
   400:{bloecke:[9,12,9],  abstand:0.95, gang:1.2, vorne:4.5},
@@ -304,8 +314,9 @@ function halle3d(container, objekte, opt={}){
   const arch=istArch();
   // Bühne + LED-Wand
   box(BUEHNE.w,BUEHNE.hoehe,BUEHNE.h,M("#3b2f2a"),BUEHNE.x+BUEHNE.w/2,BUEHNE.hoehe/2,BUEHNE.y+BUEHNE.h/2);
-  buehnenTreppen().forEach(tr=>{ for(let i=0;i<TREPPE_STUFEN;i++){ const hh=BUEHNE.hoehe*(i+1)/TREPPE_STUFEN;
-    box(TREPPE_AUFTRITT,hh,tr.h,M(i%2?"#46382f":"#4d3e34"),tr.x+i*TREPPE_AUFTRITT+TREPPE_AUFTRITT/2,hh/2,tr.y+tr.h/2); } });
+  buehnenTreppen().forEach(tr=>{ for(let i=0;i<TREPPE_STUFEN;i++){ const hh=BUEHNE.hoehe*(i+1)/TREPPE_STUFEN, mat=M(i%2?"#46382f":"#4d3e34");
+    if(tr.richtung==="x") box(TREPPE_AUFTRITT,hh,tr.h,mat,tr.x+i*TREPPE_AUFTRITT+TREPPE_AUFTRITT/2,hh/2,tr.y+tr.h/2);
+    else { const yy=tr.richtung==="+y" ? tr.y+i*TREPPE_AUFTRITT+TREPPE_AUFTRITT/2 : tr.y+tr.h-i*TREPPE_AUFTRITT-TREPPE_AUFTRITT/2; box(tr.w,hh,TREPPE_AUFTRITT,mat,tr.x+tr.w/2,hh/2,yy); } } });
   const ledCanvas=document.createElement("canvas"); ledCanvas.width=1600; ledCanvas.height=480;
   const g=ledCanvas.getContext("2d"); const grad=g.createLinearGradient(0,0,1600,480); grad.addColorStop(0,"#0b1a45"); grad.addColorStop(.55,"#1d3f94"); grad.addColorStop(1,"#e2641a");
   g.fillStyle=grad; g.fillRect(0,0,1600,480);
