@@ -116,7 +116,9 @@ const DemoBackend = {
   async sperren(id,an){ const p=this.d.profil.find(x=>x.id===id); if(p){ p.gesperrt=an; this.speichern(); } },
   async passwortAendern(){}, async passwortVergessen(){}, async pwGewechselt(){},
   async zugangAnlegen({name,email,rolle}){ if(this.d.profil.some(p=>p._email===email)) throw new Error("Diese E-Mail hat schon einen Zugang.");
-    this.d.profil.push({id:uid(),name,rolle,schwerpunkte:[],hinweis:null,telefon:null,gesperrt:false,pw_wechseln:true,_email:email,erstellt:new Date().toISOString()}); this.speichern(); return {bestaetigen:false}; }
+    const p={id:uid(),name,rolle,schwerpunkte:[],hinweis:null,telefon:null,gesperrt:false,pw_wechseln:true,_email:email,erstellt:new Date().toISOString()}; this.d.profil.push(p);
+    const l=this.d.leitung.find(x=>!x.profil_id&&x.name.split(" ")[0].toLowerCase()===name.split(" ")[0].toLowerCase()); if(l) l.profil_id=p.id;
+    this.speichern(); return {bestaetigen:false}; }
 };
 
 /* ---------- Live (Supabase) ---------- */

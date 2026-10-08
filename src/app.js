@@ -589,6 +589,7 @@ ANSICHTEN.benutzer = () => {
       <td class="klein mass">${datumZeit(i.zuletzt)}${p.pw_wechseln?`<br><span class="pille">Startpasswort</span>`:""}</td>
       <td>${ich?"":p.gesperrt?`<button class="btn klein" data-a="sperren" data-id="${p.id}" data-k="0">Entsperren</button>`:`<button class="btn klein gefahr" data-a="sperren" data-id="${p.id}" data-k="1">Sperren</button>`}</td></tr>`; }).join("")}
   </tbody></table></div></section>
+  ${bekannteKarte()}
   <div class="raster r2" style="margin-top:16px">
     <section class="karte stapel"><h2>Selbst registrieren lassen</h2><p class="klein">Gemeindemitglieder legen sich ihren Zugang selbst an: Link öffnen, Name, E-Mail und Passwort eingeben – der Gemeinde-Code steckt schon im Link. Wer zur Leitungsgruppe gehört, wird beim Beitritt automatisch Bauleitung.</p>
       <form class="stapel" data-form="einladung"><label class="feld">Aktueller Gemeinde-Code<input type="text" name="code" id="b-einl" required value="${esc(merkeCode())}" autocomplete="off"></label>
@@ -613,8 +614,32 @@ function zugangDialog(fehler="",werte={}){
     ${fehler?`<p class="fehler">${esc(fehler)}</p>`:""}
     <button class="btn primaer" type="submit">${icon("check")}Zugang anlegen</button></form>`);
 }
+const zugangsText = w => `Hallo ${w.name.split(" ")[0]}, hier ist dein Zugang zur Gemeindebau-App der Tabernacle Church:\n\n${APP_URL}\nE-Mail: ${w.email}\nStartpasswort: ${w.pw}\n\nBeim ersten Anmelden legst du dein eigenes Passwort fest. Das Konto gilt auf Handy, Tablet und PC.`;
+// Bekannte Personen (Leitungsgruppe) ohne Zugang: Startpasswörter je Person einmal erzeugen; angelegte Zugangsdaten nur im Speicher dieser Sitzung
+const bkPw={}; const neueZugaenge=[];
+const bkRolle = l => /pastor/i.test(l.schwerpunkt||"") ? "mitglied" : "bauleitung";
+function bekannteOhneZugang(){ const namen=new Set(S.profil.map(p=>p.name.split(" ")[0].toLowerCase()));
+  return [...S.leitung].filter(l=>!l.profil_id&&!namen.has(l.name.split(" ")[0].toLowerCase())).sort((x,y)=>(x.sort??99)-(y.sort??99)); }
+function bekannteKarte(){
+  const offen=bekannteOhneZugang();
+  const zeile=l=>{ const pw=bkPw[l.id]||(bkPw[l.id]=startpasswort());
+    return `<form class="bk-zeile" data-form="bekannt" data-id="${l.id}">
+      <div class="bk-name"><b>${esc(l.name)}</b><span class="klein leise">${esc(l.schwerpunkt||"")}${l.hinweis?" · "+esc(l.hinweis):""}</span></div>
+      <input type="email" name="email" id="bk-mail-${l.id}" required placeholder="E-Mail" aria-label="E-Mail von ${esc(l.name)}" autocomplete="off">
+      <select name="rolle" id="bk-rolle-${l.id}" aria-label="Rolle von ${esc(l.name)}">${["mitglied","bauleitung","admin"].map(r=>`<option value="${r}" ${bkRolle(l)===r?"selected":""}>${rolleText(r)}</option>`).join("")}</select>
+      <input type="text" name="pw" id="bk-pw-${l.id}" required minlength="8" value="${esc(pw)}" aria-label="Startpasswort von ${esc(l.name)}" class="mass" autocomplete="off">
+      <button class="btn primaer klein" type="submit">Anlegen</button></form>`; };
+  const liste=neueZugaenge.map((w,i)=>`<div class="bk-fertig"><div><b>${esc(w.name)}</b> <span class="pille">${esc(rolleText(w.rolle))}</span>
+      <div class="klein">${esc(w.email)} · Startpasswort <span class="mass"><b>${esc(w.pw)}</b></span></div></div>
+      <div class="zeile"><a class="btn klein" href="https://wa.me/?text=${encodeURIComponent(zugangsText(w))}" target="_blank" rel="noopener">WhatsApp</a></div></div>`).join("");
+  return `<section class="karte stapel" id="bekannte" style="margin-top:16px"><header style="margin:0"><div><h2>Bekannte Personen</h2><p class="klein leise" style="margin-top:4px">Leitungsgruppe ohne Zugang. E-Mail eintragen, Rolle prüfen, „Anlegen“ – das Startpasswort ist schon vorgeschlagen.</p></div><span class="pille">${offen.length} offen</span></header>
+    ${offen.length?`<div class="bk-liste">${offen.map(zeile).join("")}</div>`:`<div class="leer">Alle bekannten Personen haben einen Zugang.</div>`}
+    ${neueZugaenge.length?`<div class="stapel bk-druck" style="margin-top:6px"><div class="zeile weit"><h3>Zugangsdaten zum Weitergeben</h3><div class="zeile"><button class="btn klein" data-a="bkKopieren">Alle kopieren</button><button class="btn klein" data-a="bkDrucken">Drucken</button></div></div>
+      <div class="bk-fertige">${liste}</div>
+      <p class="klein leise">Die Startpasswörter werden nirgends gespeichert. Nach dem Neuladen der Seite sind sie hier weg – beim ersten Anmelden legt jeder sein eigenes Passwort fest.</p></div>`:""}</section>`;
+}
 function zugangFertig(w,ergebnis){
-  const text=`Hallo ${w.name.split(" ")[0]}, hier ist dein Zugang zur Gemeindebau-App der Tabernacle Church:\n\n${APP_URL}\nE-Mail: ${w.email}\nStartpasswort: ${w.pw}\n\nBeim ersten Anmelden legst du dein eigenes Passwort fest. Das Konto gilt auf Handy, Tablet und PC.`;
+  const text=zugangsText(w);
   const s=oeffne("Zugang angelegt",`<div class="stapel">
     <p><b>${esc(w.name)}</b> ist als ${esc(rolleText(w.rolle))} angelegt. Schick ihr bzw. ihm die Zugangsdaten:</p>
     <pre class="vorlage" id="z-text">${esc(text)}</pre>
@@ -728,6 +753,10 @@ const AKT = {
     $$(".thema-knopf").forEach(k=>k.outerHTML=themaKnopf()); if(ansicht==="halle"&&!document.querySelector(".tor")) render(); },
   abmelden:async ()=>{ await B.abmelden(); location.reload(); },
   zugangNeu:()=>zugangDialog(),
+  bkKopieren:async ()=>{ const txt=neueZugaenge.map(w=>`${w.name} (${rolleText(w.rolle)})\nE-Mail: ${w.email}\nStartpasswort: ${w.pw}`).join("\n\n")+`\n\nSeite: ${APP_URL}`;
+    try{ await navigator.clipboard.writeText(txt); toast("Zugangsdaten kopiert"); }catch(e){ toast("Kopieren ging nicht"); } },
+  bkDrucken:()=>{ document.body.classList.add("druck-zugaenge"); const vorher=document.documentElement.dataset.theme; themaSetzen("light");
+    setTimeout(()=>{ window.print(); document.body.classList.remove("druck-zugaenge"); themaSetzen(vorher||null); },50); },
   pwWuerfeln:t=>{ const i=t.closest("form").querySelector("#z-pw"); i.value=startpasswort(); i.focus(); },
   kopieren:async t=>{ const txt=document.getElementById(t.dataset.quelle)?.textContent||""; try{ await navigator.clipboard.writeText(txt); toast("Kopiert"); }catch(e){ toast("Kopieren ging nicht – Text bitte markieren"); } },
   benutzerNeuLaden:()=>{ benutzerInfo=null; neu("profil").then(render); },
@@ -780,6 +809,13 @@ const FORM = {
     const notiz=f.notiz.value.trim()||(auf?.gewerk==="Mauern (Ytong)"?TP_MAUERN:null);
     await speichere(()=>B.neu("tagesplan_punkt",{datum:tpDatum,abschnitt,titel,wer:f.wer.value.trim()||null,notiz,aufgabe_id:auf?.id||null,sort:Math.max(-1,...pk.map(x=>x.sort))+1,erledigt:false}),"Hinzugefügt");
     await neu("tagesplan_punkt"); schliesse(); render(); },
+  bekannt:async f=>{ const l=S.leitung.find(x=>x.id===f.dataset.id); if(!l) return;
+    const w={name:l.name,email:f.email.value.trim().toLowerCase(),rolle:f.rolle.value,pw:f.pw.value.trim()};
+    const knopf=f.querySelector("[type=submit]"); knopf.disabled=true; knopf.textContent="Legt an …";
+    try{ const r=await B.zugangAnlegen(w); neueZugaenge.push(w); if(r?.bestaetigen) toast("Achtung: In Supabase ist „Confirm email“ noch an");
+      else toast(l.name.split(" ")[0]+" hat jetzt einen Zugang");
+      await neu("profil"); await neu("leitung"); benutzerInfo=null; render(); document.getElementById("bekannte")?.scrollIntoView({block:"start"}); }
+    catch(e){ knopf.disabled=false; knopf.textContent="Anlegen"; toast(e.message||String(e)); } },
   zugang:async f=>{ const w={name:f.elements.name.value.trim(),email:f.email.value.trim().toLowerCase(),rolle:f.rolle.value,pw:f.pw.value.trim()};
     const knopf=f.querySelector("[type=submit]"); knopf.disabled=true; knopf.textContent="Legt an …";
     try{ const r=await B.zugangAnlegen(w); await neu("profil"); benutzerInfo=null; render(); zugangFertig(w,r); }

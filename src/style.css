@@ -256,3 +256,16 @@ a.btn{text-decoration:none}
   .karte{box-shadow:none;break-inside:avoid;border-color:#ccc} .tp-haken{border-color:#555}
 }
 .zahl{white-space:nowrap}
+/* Bekannte Personen: Zugänge anlegen */
+.bk-liste{display:flex;flex-direction:column}
+.bk-zeile{display:grid;grid-template-columns:minmax(150px,1.1fr) minmax(170px,1.4fr) minmax(130px,.9fr) minmax(150px,1fr) auto;gap:10px;align-items:center;padding:12px 0;border-top:1px solid var(--linie)}
+.bk-zeile:first-child{border-top:0}
+.bk-name{display:flex;flex-direction:column;min-width:0}
+.bk-zeile input,.bk-zeile select{padding:8px 10px;font-size:14px}
+@media (max-width:980px){.bk-zeile{grid-template-columns:1fr 1fr}.bk-name{grid-column:1/-1}.bk-zeile .btn{grid-column:1/-1}}
+.bk-fertige{display:flex;flex-direction:column;gap:8px}
+.bk-fertig{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border-radius:12px;background:var(--flaeche2)}
+@media print{
+  body.druck-zugaenge #ansicht > :not(#bekannte){display:none!important}
+  body.druck-zugaenge #bekannte .bk-liste,body.druck-zugaenge #bekannte header .pille,body.druck-zugaenge #bekannte .bk-druck .zeile .btn,body.druck-zugaenge #bekannte .bk-fertig .btn{display:none!important}
+}
