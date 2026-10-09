@@ -4,7 +4,7 @@
 -- Was sich ändert:
 --  1. Beitritt mit Gemeinde-Code macht niemanden mehr automatisch zur Bauleitung (vorher reichte der passende Vorname).
 --     Die Rolle vergibt nur noch der Admin (Benutzer → Bekannte Personen → „Zuordnen“ oder Rolle in der Liste).
---  2. Falsche Gemeinde-Codes werden gezählt: 5 Fehlversuche pro Konto bzw. 50 insgesamt pro Stunde, dann Pause.
+--  2. Falsche Gemeinde-Codes werden gezählt: 5 Fehlversuche pro Konto bzw. 100 insgesamt pro Stunde, dann Pause.
 --  3. Wer einer Aufgabe zugewiesen ist, darf nur noch den Status ändern – nicht Titel, Zuweisung, Datum usw.
 --  4. Gesperrte Benutzer können nirgends mehr schreiben und sehen beim Anmelden, dass sie gesperrt sind.
 --  5. Produktlinks nur noch mit http(s), Teamfarben nur als Farbcode (Schutz vor eingeschleustem Code).
@@ -30,7 +30,7 @@ begin
   end if;
   select fehl into v_fehl from beitritt_versuch where uid = auth.uid() and zuletzt > now() - interval '1 hour';
   select coalesce(sum(fehl), 0) into v_gesamt from beitritt_versuch where zuletzt > now() - interval '1 hour';
-  if coalesce(v_fehl, 0) >= 5 or v_gesamt >= 50 then return 'zu_viele'; end if;
+  if coalesce(v_fehl, 0) >= 5 or v_gesamt >= 100 then return 'zu_viele'; end if;
   if p_code is distinct from (select wert from einstellung where schluessel = 'beitrittscode') then
     -- zählen und mit RETURN beenden (ein RAISE würde den Zähler zurückrollen)
     insert into beitritt_versuch (uid, fehl, zuletzt) values (auth.uid(), 1, now())

@@ -29,7 +29,7 @@ const WAENDE_EIGEN = [
   [40.2,0,40.2,4.25,"abriss"],[40.2,15.55,46.7,15.55,"abriss"],[40.2,15.55,40.2,19.9,"abriss"]
 ];
 const RAEUME_EIGEN = [
-  {n:"Gottesdienstraum",x:21.2,y:0,w:25.5,h:19.9,m2:"528,97",haupt:true,ly:1.6},
+  {n:"Gottesdienstraum",x:21.2,y:0,w:25.5,h:19.9,m2:"528,97",haupt:true,ly:0.75},
   {n:"Gemeinschaftsraum",x:9.0,y:3.9,w:12.2,h:13.8,m2:"209,21",haupt:true},
   {n:"Küche",x:9.0,y:0,w:5.4,h:3.9,m2:"20,96"},{n:"WC-Block",x:15.7,y:0,w:5.5,h:3.9,m2:"20,96"},
   {n:"Bad (3 × DA)",kurz:"Bad",x:0,y:0,w:2.4,h:4.0,klein:true},{n:"Waschraum",x:2.4,y:0,w:2.08,h:4.0,klein:true},{n:"Stillraum",x:4.48,y:0,w:4.48,h:5.34},
@@ -161,8 +161,8 @@ function planSvg(objekte, opt={}){
     s+=`<line x1="${p(x1)}" y1="${p(y1)}" x2="${p(x2)}" y2="${p(y2)}" stroke="${c}" stroke-width="${istNeu(a)?6:4.5}" stroke-linecap="square"/>`;
     if(a==="neu-ra") s+=`<line x1="${p(x1)}" y1="${p(y1)}" x2="${p(x2)}" y2="${p(y2)}" stroke="var(--tinte)" stroke-width="1.6" stroke-dasharray="10 6"/>`; });
   // Beschriftung Rückbau + Ringanker
-  if(!arch){ s+=`<text x="${p(40.2)-6}" y="${p(2.1)}" text-anchor="end" font-family="var(--f-text)" font-weight="700" font-size="9.5" fill="var(--glut)">✕ Rückbau</text>`;
-  s+=`<text x="${p(40.2)-6}" y="${p(17.8)}" text-anchor="end" font-family="var(--f-text)" font-weight="700" font-size="9.5" fill="var(--glut)">✕ Rückbau</text>`;
+  // „Rückbau“ senkrecht neben der gestrichelten Wand, im freien Streifen zwischen Wand und Seitenplätzen
+  if(!arch){ [2.1,17.7].forEach(y=>{ const x=p(40.2)+9, yy=p(y); s+=`<text x="${x}" y="${yy}" text-anchor="middle" font-family="var(--f-text)" font-weight="700" font-size="9" fill="var(--glut)" paint-order="stroke" stroke="var(--flaeche)" stroke-width="3" transform="rotate(90 ${x} ${yy})">✕ RÜCKBAU</text>`; });
   [[46.7,13,2.6],[21.2,13,11.6]].forEach(([wx,dx,wy])=>{ const rx=p(wx)+dx, ry=p(wy); s+=`<text x="${rx}" y="${ry}" text-anchor="middle" font-family="var(--f-text)" font-weight="700" font-size="9" fill="var(--tinte)" paint-order="stroke" stroke="var(--flaeche)" stroke-width="3" transform="rotate(90 ${rx} ${ry})">RINGANKER</text>`; }); }
   buehnenTreppen().forEach(tr=>{ s+=`<rect x="${p(tr.x)}" y="${p(tr.y)}" width="${(tr.w*S).toFixed(1)}" height="${(tr.h*S).toFixed(1)}" fill="var(--flaeche)" stroke="var(--tinte)" stroke-width="1.2"/>`;
     for(let i=1;i<TREPPE_STUFEN;i++){ if(tr.richtung==="x") s+=`<line x1="${p(tr.x+i*TREPPE_AUFTRITT)}" y1="${p(tr.y)}" x2="${p(tr.x+i*TREPPE_AUFTRITT)}" y2="${p(tr.y+tr.h)}" stroke="var(--tinte)" stroke-width=".8"/>`;
@@ -241,7 +241,7 @@ function seitenPositionen(){ const out=[];
 const BESTUHLUNG = {
   300:{bloecke:[8,10,8],  abstand:0.95, gang:1.5, vorne:5.0},
   400:{bloecke:[9,12,9],  abstand:0.95, gang:1.2, vorne:4.5},
-  500:{bloecke:[9,12,9],  abstand:0.85, gang:1.2, vorne:3.4}   // 0,85 m = 0,45 Sitz + 0,40 Durchgang (Minimum)
+  500:{bloecke:[10,12,10], abstand:0.95, gang:1.2, vorne:3.2}   // 0,95 m = Stuhl bis 0,55 m + 0,40 m Durchgang (VStättVO § 10); außen max. 10 Plätze am Gang
 };
 function bestuhlungInfo(n){ const q=!!BUEHNE.quer, b=(q?BESTUHLUNG_QUER:BESTUHLUNG)[n]; if(!b) return null; const proReihe=b.bloecke.reduce((s,x)=>s+x,0);
   const breite=proReihe*STUHL.breite+2*b.gang; const reihen=Math.ceil(n/proReihe);
@@ -278,7 +278,7 @@ function grundeinrichtung(){
 }
 /* ---------- 3D (Three.js) ---------- */
 function halle3d(container, objekte, opt={}){
-  const THREE = window.THREE; if(!THREE){ container.innerHTML='<div class="leer">3D konnte nicht geladen werden.</div>'; return {stop(){}}; }
+  const THREE = window.THREE; if(!THREE){ container.innerHTML='<div class="leer">3D konnte nicht geladen werden.</div>'; return {stop(){},objekte(){},bestuhlung(){},seiten(){},ansicht(){},neueHervorheben(){}}; }
   const cssVar=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
   container.prepend(renderer.domElement);

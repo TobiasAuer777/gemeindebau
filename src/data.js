@@ -9,21 +9,23 @@ const MSTATUS = {bedarf:"Bedarf",angefragt:"Angefragt",freigegeben:"Freigegeben"
 const TABELLEN = ["profil","leitung","team","team_mitglied","aufgabe","eintrag","verfuegbarkeit","material","werkzeug","planobjekt","tagesplan_punkt"];
 
 /* ---------- Tagesplan: feste Punkte für jeden Bautag ---------- */
-const TP_ABSCHNITTE = [["start","Zum Start"],["arbeit","Arbeiten heute"],["ende","Zum Schluss"]];
+const TP_ABSCHNITTE = [["start","Zum Start"],["arbeit","Arbeiten an diesem Tag"],["ende","Zum Schluss"]];
 const TP_START = [
   ["Halle aufschließen, Baustrom und Licht an", null],
   ["Kurze Einweisung", "Tagesziel, Teams einteilen, Regeln: nichts am Dach (Asbest), Erste-Hilfe-Kasten und Feuerlöscher zeigen"],
+  ["Ersthelfer des Tages benennen", "Wer kümmert sich bei einem Unfall? Niemand arbeitet allein, vor allem nicht auf dem Gerüst"],
   ["Werkzeug und Material bereitlegen", "Was fehlt, gleich als Material-Anfrage eintragen"],
   ["Gerüste prüfen", "Standsicher, Rollen gebremst, Geländer dran – vor jeder Arbeit in der Höhe"]];
 const TP_ENDE = [
   ["Werkzeug reinigen", "Mörtelkübel, Kellen, Rührer, Farbsprüher auswaschen, solange es noch frisch ist"],
   ["Werkzeug aufräumen", "Zurück an seinen Platz bzw. zum Besitzer; Leihwerkzeug zählen"],
   ["Arbeitsbereiche sauber machen", "Fegen, Laufwege und Fluchtwege frei, Kabel aufrollen"],
+  ["Brandwache nach Flex- und Heißarbeiten", "Wo geflext, geschweißt oder heiß gearbeitet wurde: eine Stunde danach noch einmal kontrollieren"],
   ["Müll trennen und wegbringen", "Bauschutt, Holz, Metall, Restmüll"],
   ["Fotos und Notiz ins Bautagebuch", "Was ist heute geschafft, was ist offen?"],
   ["Material für den nächsten Bautag melden", null],
   ["Baustrom aus, Fenster und Tore zu, abschließen", null]];
-const TP_MAUERN = "Mindestens 2 Teams gleichzeitig: Sobald Team 1 ein paar Steine der Reihe gesetzt hat, beginnt Team 2 die nächste Reihe dahinter. Versatz mindestens 0,4 × Steinhöhe. Ab Arbeitshöhe von den Gerüsten aus.";
+const TP_MAUERN = "Mindestens 2 Teams gleichzeitig: Sobald Team 1 ein paar Steine der Reihe gesetzt hat, beginnt Team 2 die nächste Reihe dahinter. Versatz mindestens 0,4 × Steinhöhe. Ab Arbeitshöhe von den Gerüsten aus. Beim Sägen der Steine: Staubmaske FFP2/FFP3, möglichst absaugen.";
 // Punkte für einen neuen Tagesplan: Start, die Aufgaben dieses Tages, Schluss
 function tagesplanEntwurf(datum, aufgaben, nameVonId){
   const P=(abschnitt,titel,notiz,sort,extra={})=>({datum,abschnitt,titel,notiz:notiz||null,wer:null,aufgabe_id:null,sort,erledigt:false,erledigt_von:null,erledigt_um:null,...extra});
@@ -159,7 +161,8 @@ const LiveBackend = {
   async meinProfil(){ const s=await this.sitzung(); if(!s) return null;
     const {data}=await this.sb.from("profil").select("*").eq("id",s.user.id).maybeSingle(); return data; },
   // seitenweise laden: Supabase liefert höchstens 1000 Zeilen pro Abfrage (Tagesplan-Punkte, Eintragungen wachsen schnell)
-  async alle(t){ const alle=[]; for(let von=0;;von+=1000){ const {data,error}=await this.sb.from(t).select("*").range(von,von+999); if(error) throw error;
+  async alle(t){ const alle=[]; for(let von=0;;von+=1000){ let q=this.sb.from(t).select("*"); q=t==="team_mitglied"?q.order("team_id").order("profil_id"):q.order("id");   // feste Reihenfolge, sonst können Seiten Zeilen doppeln oder auslassen
+      const {data,error}=await q.range(von,von+999); if(error) throw error;
       alle.push(...data); if(data.length<1000) return alle; } },
   async neu(t,o){ const {data,error}=await this.sb.from(t).insert(o).select().maybeSingle(); if(error) throw error; return data; },
   async neuViele(t,liste){ const {error}=await this.sb.from(t).insert(liste); if(error) throw error; },

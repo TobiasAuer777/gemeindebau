@@ -60,15 +60,16 @@ async function ladeAlles(){ await Promise.all(TABELLEN.map(async t=>{ try{ S[t]=
 /* Live-Abgleich: Änderungen anderer neu zeichnen – aber nie, während jemand gerade etwas eintippt */
 let nachladenTimer={}, renderOffen=false;
 const hallenSchluessel = () => `${bestuhlungN()}|${seitenAn()}|${buehneLage()}`;
-function darfRendern(){ if(document.querySelector(".schleier")||planZug) return false;
+function darfRendern(){ if(!document.getElementById("ansicht")||document.querySelector(".schleier")||planZug) return false;
   const a=document.activeElement, w=document.getElementById("ansicht");
   if(w&&a&&w.contains(a)&&a.matches("input:not([type=checkbox]):not([type=radio]),textarea,select")) return false;
   if(w&&w.querySelector("form[data-geaendert]")) return false;
   return true; }
 function spaeterRendern(){ if(darfRendern()){ renderOffen=false; render(); } else renderOffen=true; }
 function nachladen(t){ clearTimeout(nachladenTimer[t]); nachladenTimer[t]=setTimeout(async()=>{
-    const vorher=ansicht==="halle"&&t==="planobjekt"?hallenSchluessel():null;
+    const vorher=ansicht==="halle"&&(t==="planobjekt"||t==="*")?hallenSchluessel():null;
     try{ if(t==="*") await ladeAlles(); else { S[t]=await B.alle(t); if(t==="profil"){ const ich=S.profil.find(p=>p.id===S.me.id); if(ich) S.me=ich; } } }catch(e){ return; }
+    if(S.me?.gesperrt&&B.modus==="live"){ schliesse(); return zeigeTor("gesperrt"); }
     if(ansicht==="halle"){
       if(t==="planobjekt"||t==="*"){ if(vorher!==hallenSchluessel()||(istArch()&&halleReiter==="plan")) spaeterRendern(); else halleAktualisieren(); }
       return; }
@@ -77,7 +78,7 @@ function nachladen(t){ clearTimeout(nachladenTimer[t]); nachladenTimer[t]=setTim
 document.addEventListener("focusout",()=>setTimeout(()=>{ if(renderOffen&&darfRendern()){ renderOffen=false; render(); } },400));
 // Handy aus dem Standby, Netz wieder da: alles frisch laden (verpasste Live-Änderungen, abgelaufene Foto-Links, neuer Tag)
 let letzterTag=null;
-async function auffrischen(){ if(!B||!S.me||document.hidden) return; const tag=heuteIso();
+async function auffrischen(){ if(!B||!S.me||document.hidden||!document.getElementById("ansicht")) return; const tag=heuteIso();
   if(letzterTag&&tag!==letzterTag){ tpDatum=null; } letzterTag=tag;
   if(Date.now()-geladenUm<60e3) return; S.urls={}; nachladen("*"); }
 document.addEventListener("visibilitychange",auffrischen); window.addEventListener("online",auffrischen);
@@ -111,7 +112,7 @@ function rahmen(){
 </div>`;
 }
 const rolleText = r => ({admin:"Admin · Bauleitung",bauleitung:"Bauleitung",mitglied:"Gemeindemitglied"})[r]||r;
-function render(){ if(dreiD){ dreiD.stop(); dreiD=null; } lageSetzen(buehneLage());
+function render(){ renderOffen=false; if(dreiD){ dreiD.stop(); dreiD=null; } lageSetzen(buehneLage());
   document.getElementById("wurzel").innerHTML = rahmen(); nachRender(); }
 function nachRender(){
   if(ansicht==="halle") halleStarten();
@@ -202,7 +203,7 @@ function eintragBearbeiten(id){ const e=S.eintrag.find(x=>x.id===id); if(!e) ret
   oeffne("Eintrag bearbeiten",`<form class="stapel" data-form="eAendern" data-id="${esc(e.id)}">
     <label class="feld">Datum<input type="date" name="datum" id="eb-datum" value="${esc(e.datum)}"></label>
     <label class="feld">Text<textarea name="text" id="eb-text">${esc(e.text||"")}</textarea></label>
-    ${e.fotos.length?`<div class="stapel" style="gap:6px"><span class="etikett">Fotos – antippen zum Entfernen</span><div class="foto-reihe foto-wahl">${e.fotos.map((p,i)=>`<label class="foto-weg"><input type="checkbox" name="weg" value="${i}"><img data-foto="${esc(p)}" alt="Foto ${i+1}"><span>${icon("papierkorb")}</span></label>`).join("")}</div></div>`:""}
+    ${e.fotos.length?`<div class="stapel" style="gap:6px"><span class="etikett">Fotos – antippen zum Entfernen</span><div class="foto-reihe foto-wahl">${e.fotos.map((p,i)=>`<label class="foto-weg"><input type="checkbox" name="weg" value="${esc(p)}"><img data-foto="${esc(p)}" alt="Foto ${i+1}"><span>${icon("papierkorb")}</span></label>`).join("")}</div></div>`:""}
     <div class="zeile"><button class="btn primaer" type="submit">${icon("check")}Speichern</button><button class="btn gefahr" type="button" data-a="eLoeschen" data-id="${esc(e.id)}">${icon("papierkorb")}Eintrag löschen</button></div></form>`); }
 
 /* ---------- Tagesplan ---------- */
@@ -256,12 +257,12 @@ ANSICHTEN.kalender = () => {
   const heute=heuteIso(); const zellen=[];
   for(let i=0;i<42;i++){ const d=new Date(start); d.setDate(start.getDate()+i); const s=iso(d); const da=S.verfuegbarkeit.filter(v=>v.datum===s);
     const ich=da.some(v=>v.profil_id===S.me.id), gew=mehrfach&&mehrfach.has(s); const plan=S.aufgabe.filter(a=>a.datum===s).length;
-    zellen.push(`<button class="tag ${d.getMonth()!==m?"fremd":""} ${d.getDay()===6?"sa":""} ${s===heute?"heute":""} ${ich?"ich-da":""}" style="${gew?"outline:3px solid var(--flamme);outline-offset:-3px":""}" data-a="${mehrfach?"mehrTag":"tagOeffnen"}" data-datum="${s}" aria-label="${dLang(s)}, ${da.length} Personen">
+    zellen.push(`<button class="tag ${d.getMonth()!==m?"fremd":""} ${d.getDay()===6?"sa":""} ${s===heute?"heute":""} ${ich?"ich-da":""}" style="${gew?"outline:3px solid var(--flamme);outline-offset:-3px":""}" data-a="${mehrfach?"mehrTag":"tagOeffnen"}" data-datum="${s}" aria-label="${dLang(s)}, ${mz(da.length,"Person","Personen")}">
       <span class="nr">${d.getDate()}${da.length?`<span class="anz" title="${mz(da.length,"Person","Personen")}">${icon("profil")}${da.length}</span>`:""}</span>
       <span class="namen">${da.map(v=>esc(vorname(v.profil_id))).join(", ")}</span>${plan?`<span class="pille" style="font-size:10.5px;padding:1px 6px">${plan} Aufg.</span>`:""}</button>`); }
   const monatName=kalMonat.toLocaleDateString("de-DE",{month:"long",year:"numeric"});
   return `<div class="kopf"><div><p class="etikett">Wer ist wann da?</p><h1>Kalender</h1><p class="unter">Tippe auf einen Tag, um zu sehen, wer kommt, und dich selbst einzutragen. <span class="pille" style="background:var(--gold-weich);color:var(--warn)">Samstag = großer Bautag</span></p></div>
-    <div class="zeile">${mehrfach?`<span class="klein leise">${mehrfach.size} Tage gewählt</span><button class="btn primaer" data-a="mehrEintragen" ${mehrfach.size?"":"disabled"}>Für diese Tage eintragen</button><button class="btn still" data-a="mehrAus">Abbrechen</button>`:`<button class="btn" data-a="mehrAn">${icon("kalender")}Mehrere Tage auf einmal</button>`}</div></div>
+    <div class="zeile">${mehrfach?`<span class="klein leise">${mz(mehrfach.size,"Tag","Tage")} gewählt</span><button class="btn primaer" data-a="mehrEintragen" ${mehrfach.size?"":"disabled"}>Für diese Tage eintragen</button><button class="btn still" data-a="mehrAus">Abbrechen</button>`:`<button class="btn" data-a="mehrAn">${icon("kalender")}Mehrere Tage auf einmal</button>`}</div></div>
   <section class="karte"><header><div class="zeile kal-kopf"><button class="btn still" data-a="monat" data-d="-1" aria-label="Voriger Monat">${icon("links")}</button><h2>${monatName}</h2><button class="btn still" data-a="monat" data-d="1" aria-label="Nächster Monat">${icon("rechts")}</button></div>
     <button class="btn klein" data-a="monat" data-d="0">Heute</button></header>
     <div class="kal">${["Mo","Di","Mi","Do","Fr","Sa","So"].map(w=>`<div class="wt">${w}</div>`).join("")}${zellen.join("")}</div>
@@ -307,10 +308,17 @@ const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich,
   [0, "Unfallschutz für die Helfer klären", "Alle helfen ehrenamtlich und sind nicht bei der BG Bau angemeldet. Prüfen, ob eine Gruppen-Unfallversicherung (z. B. über den Gemeindeverband) oder die Sammelversicherung des Landes Baden-Württemberg für Ehrenamtliche greift – sonst eine Unfallversicherung für Bauhelfer abschließen.", "Planung & Organisation", "Ganze Halle", null, 1],
   [0, "Notfallplan für die Bautage", "Je Bautag einen Ersthelfer benennen. Erste-Hilfe-Kasten und Feuerlöscher an festem Platz. Aushang: Notruf 112, Adresse Konzstraße 9, nächstes Krankenhaus, wer die Schlüssel hat.", "Planung & Organisation", "Ganze Halle", null, 1],
   [0, "Schlüssel und Auf-/Abschließen regeln", "Wer hat Schlüssel, wer schließt an Bautagen auf und ab? Liste führen.", "Planung & Organisation", "Ganze Halle", null, 2],
+  [0, "Baufreigabe abwarten, Bauleiter benennen", "Mit genehmigungspflichtigen Arbeiten erst nach Baugenehmigung und Baufreigabeschein beginnen; Bauleiter nach § 45 LBO benennen.", "Planung & Organisation", "Ganze Halle", null, 1],
+  [0, "Prüfstatik und Wanddicke klären", "Bei einer Versammlungsstätte wird die Statik oft bauaufsichtlich geprüft. Wanddicke klären: 17,5 cm bei bis zu 5 m Höhe ist knapp – ggf. 24 cm.", "Planung & Organisation", "Ganze Halle", null, 1],
+  [0, "Gefährdungsbeurteilung und Unterweisung", "Kurz schriftlich: Gerüst, Sägen, Staub, Farbsprüher, Strom. Jeder Helfer bestätigt die Einweisung mit Unterschrift.", "Planung & Organisation", "Ganze Halle", null, 1],
+  [0, "Koordinator (SiGeKo) klären", "Arbeiten mehrere Firmen aus der Gemeinde gleichzeitig, kann nach Baustellenverordnung ein Sicherheits- und Gesundheitsschutzkoordinator nötig sein – prüfen und ggf. ein geeignetes Gemeindemitglied benennen.", "Planung & Organisation", "Ganze Halle", null, 2],
+  [0, "Schadstoff-Proben vor dem Rückbau", "Alte Fugenmassen (PCB), Mineralwolle von vor 1996 (KMF), Altanstriche (Blei) und Bodenkleber (PAK) beproben lassen, bevor abgebrochen wird.", "Planung & Organisation", "Ganze Halle", null, 1],
+  [0, "Rauchableitung klären", "Der Saal muss entraucht werden können – über öffenbare Fenster oder Türen in den Wänden (Dach bleibt tabu). Größe mit dem Bescheid abgleichen.", "Planung & Organisation", "Gottesdienstraum", null, 2],
+  [0, "Anzahl der Toiletten abgleichen", "Für Versammlungsstätten gibt es Mindestzahlen je Besucher (bei 500 deutlich mehr als 2 + 1 barrierefrei). Mit dem Bescheid klären.", "Planung & Organisation", "WC-Block", null, 2],
   [0, "Nachbarn informieren, Ruhezeiten beachten", "Nachbarn und Betriebe nebenan über die Bautage informieren. Laute Arbeiten nicht an Sonn- und Feiertagen.", "Planung & Organisation", "Außenbereich", null, 3],
   [0, "Zufahrt, Anlieferung und Parken klären", "Stellplatz für Container und Paletten, Parken an Bautagen, Stellplatznachweis aus dem Bauantrag.", "Einkauf & Transport", "Außenbereich", null, 2],
   [0, "Heizkonzept festlegen", "Heizlast gesamtes Objekt: 89 kW. Wie kommt die Wärme in die Räume – Heizkörper, Fußbodenheizung (muss vor dem neuen Boden liegen!) oder Lüftungsgerät mit Heizregister? Für Gottesdienste zählt schnelles Aufheizen. Mit den Heizungsleuten der Gemeinde entscheiden.", "Heizung & Gas", "Ganze Halle", null, 1],
-  [0, "Tore und Ausgänge abgleichen", "Die großen roten Schiebetore: bleiben sie, werden sie verschlossen oder durch Türen ersetzt? Schiebetore zählen in der Regel nicht als Notausgang – mit dem Bescheid abgleichen.", "Planung & Organisation", "Ganze Halle", null, 2],
+  [0, "Tore und Ausgänge abgleichen", "Die großen roten Schiebetore: bleiben sie, werden sie verschlossen oder durch Türen ersetzt? Schiebetore zählen in der Regel nicht als Notausgang – mit dem Bescheid abgleichen. Rettungswege: je Ausgang mind. 1,20 m, insgesamt 1,20 m je 200 Personen (500 Personen: 3,00 m); der Notausgang im eigenen Plan ist nur ca. 1,0 m breit.", "Planung & Organisation", "Ganze Halle", null, 2],
   [0, "Hausanschluss und Leistung prüfen", "Netzbetreiber: Leistung für Küche, LED-Wand und Technik; ggf. Leistungserhöhung beantragen. Durch Elektriker aus der Gemeinde mit Eintragung beim Netzbetreiber.", "Elektrik", "Ganze Halle", "Elektrik", 2],
   [0, "Bestandsaufnahme mit Fotos", "Alle Räume fotografieren, Zählerstände notieren.", "Planung & Organisation", "Ganze Halle", null, 2],
   [0, "Restbestände des Vormieters klären", "Gabelstapler, Druckluftkessel, Feuerlöscher, Schilder: Was gehört wem, was bleibt, was wird abgeholt?", "Planung & Organisation", "Ganze Halle", null, 2],
@@ -319,7 +327,7 @@ const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich,
   [0, "Materialliste und Lieferzeiten erfassen", "Vor allem Küche, Gastherme, Bodenbelag, LED-Wand und Türen.", "Einkauf & Transport", "Ganze Halle", null, 2],
   [1, "Strom abschalten, alte Elektrik stilllegen", "Betroffene Bereiche spannungsfrei schalten und sichern. Durch Elektriker aus der Gemeinde.", "Elektrik", "Ganze Halle", "Elektrik", 1],
   [1, "Gas absperren, alte Heizgeräte demontieren", "Durch Gemeindemitglied mit Gas-Konzession.", "Heizung & Gas", "Ganze Halle", null, 1],
-  [1, "Alte Hallenheizung und Lüftungsrohre abbauen", "Deckenlufterhitzer und lange Blechrohre unter der Decke. Vorher Gas bzw. Strom sicher trennen. Dachplatten dabei nicht beschädigen.", "Heizung & Gas", "Ganze Halle", "Rückbau", 2],
+  [1, "Alte Hallenheizung und Lüftungsrohre abbauen", "Deckenlufterhitzer und lange Blechrohre unter der Decke. Vorher Gas bzw. Strom sicher trennen. Dachplatten dabei nicht beschädigen: Abgasrohre, die durchs Dach gehen, unterhalb des Dachs abtrennen, die Dachdurchführung bleibt und bekommt eine Regenhaube.", "Heizung & Gas", "Ganze Halle", "Rückbau", 2],
   [1, "Druckluftanlage abbauen", "Druckluftkessel und Leitungen an Wänden und Decke. Kessel vorher drucklos machen.", "Rückbau & Abbruch", "Ganze Halle", "Rückbau", 2],
   [1, "Alte Lampen abbauen", "Gottesdienstraum und Gemeinschaftsraum.", "Rückbau & Abbruch", "Ganze Halle", "Rückbau", 2],
   [1, "Alte Leitungen, Dosen und Verteiler zurückbauen", "Elektrik kommt komplett neu.", "Elektrik", "Ganze Halle", "Elektrik", 2],
@@ -328,9 +336,10 @@ const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich,
   [1, "Alte Küche bzw. Einbauten ausbauen", "Sofern vorhanden.", "Rückbau & Abbruch", "Küche", "Rückbau", 2],
   [1, "Alte Bodenbeläge entfernen", "Kleberreste auf Schadstoffe prüfen.", "Rückbau & Abbruch", "Ganze Halle", "Rückbau", 2],
   [1, "Schutt getrennt entsorgen", "Bauschutt, Holz, Metall, Elektroschrott, Mischabfall.", "Aufräumen & Entsorgen", "Ganze Halle", "Rückbau", 2],
+  [1, "Entsorgung belegen", "Wiegescheine und Entsorgungsbelege sammeln; Mineralwolle (KMF) und PCB-haltiges getrennt als gefährlichen Abfall entsorgen.", "Aufräumen & Entsorgen", "Ganze Halle", "Rückbau", 2],
   [1, "Halle besenrein, Fotos ins Bautagebuch", "", "Aufräumen & Entsorgen", "Ganze Halle", "Rückbau", 3],
   [1, "Decke sprühen vorbereiten", "Nur wenn die Deckenplatten asbestfrei sind (siehe „Deckenuntersicht klären“) – am Asbest wird nicht gearbeitet. Am besten jetzt, solange die Halle leer ist: Fenster, Tore und Boden abdecken bzw. abkleben, Gerüste von Igor und Tobi aufbauen.", "Malern", "Ganze Halle", null, 2],
-  [1, "Decke mit dem Farbsprüher streichen", "Airless-Sprühgerät; Atemschutz gegen Sprühnebel, Schutzbrille, gut lüften. Vor neuen Wänden, Kabeltrassen und Lampen – dann muss kaum etwas abgeklebt werden.", "Malern", "Ganze Halle", null, 2],
+  [1, "Decke mit dem Farbsprüher streichen", "Airless-Sprühgerät; Atemschutz gegen Sprühnebel, Schutzbrille, gut lüften. Pistole nie auf Menschen richten (Hochdruck – Verletzungsgefahr unter der Haut), in Pausen sichern. Vor neuen Wänden, Kabeltrassen und Lampen – dann muss kaum etwas abgeklebt werden.", "Malern", "Ganze Halle", null, 2],
   [2, "Neue Wände anreißen", "Mit dem aktuellen Plan abgleichen: Türbreiten, Fluchtwege.", "Mauern (Ytong)", "Ganze Halle", "Mauern", 1],
   [2, "Wände bis unter die Decke", "Alle neuen Wände gehen bis unter das Dach; die Oberkante folgt der Dachneigung (3,70 m an der Traufe bis 5,09 m am First). Oben an die Stahlkonstruktion anschließen bzw. mit elastischer Fuge – nichts in die asbesthaltigen Dachplatten befestigen. Ab Arbeitshöhe von den Gerüsten aus; Steine für die Schräge zuschneiden.", "Mauern (Ytong)", "Ganze Halle", "Mauern", 1],
   [2, "Mauer-Teams einteilen", "Mindestens 2 Teams mauern gleichzeitig. Zuerst die erste Steinlage genau in Waage setzen. Dann versetzt: Sobald Team 1 ein paar Steine der Reihe gesetzt hat, beginnt Team 2 die nächste Reihe dahinter. Versatz der Stoßfugen mindestens 0,4 × Steinhöhe. Ab Arbeitshöhe von den Gerüsten aus. Steht im Tagesplan bei jeder Mauer-Aufgabe.", "Mauern (Ytong)", "Ganze Halle", "Mauern", 1],
@@ -341,10 +350,11 @@ const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich,
   [2, "Wand zum Flur im Gemeinschaftsraum", "Ca. 11 m, Ytong.", "Mauern (Ytong)", "Gemeinschaftsraum", "Mauern", 2],
   [2, "Wände Küche", "NGF 20,96 m², mit Türöffnung.", "Mauern (Ytong)", "Küche", "Mauern", 2],
   [2, "Wände WC-Block", "2 × WC D/H + 1 × barrierefrei, NGF 20,96 m².", "Mauern (Ytong)", "WC-Block", "Mauern", 2],
-  [2, "Erste Steinlage mit Sperrbahn", "Ausgleichsmörtel und Sperrbahn gegen aufsteigende Feuchte – bei allen neuen Wänden.", "Mauern (Ytong)", "Ganze Halle", "Mauern", 2],
+  [2, "Erste Steinlage mit Sperrbahn", "Ausgleichsmörtel und Sperrbahn gegen aufsteigende Feuchte – bei allen neuen Wänden, vor dem Hochmauern.", "Mauern (Ytong)", "Ganze Halle", "Mauern", 1],
+  [2, "Kopfanschluss brandschutzgerecht", "Fuge oben zur Stahlkonstruktion mit nicht brennbarer Mineralwolle (A1) füllen. Hohe Wände bis zum Ringanker abstützen.", "Mauern (Ytong)", "Ganze Halle", "Mauern", 2],
   [2, "Durchbrüche vorsehen", "Abwasser, Wasser, Abgas und Lüftung für Küche, WC und Therme.", "Mauern (Ytong)", "Ganze Halle", "Mauern", 2],
   [2, "Türzargen bzw. Türmaße", "Maße für Türbestellung nehmen; Brandschutztüren nach Auflage.", "Trockenbau", "Ganze Halle", null, 2],
-  [3, "Elektroplan erstellen", "Stromkreise je Raum, Steckdosen, Schalter, Licht, Küche, Therme, Bühne, LED-Wand, Technikbereich.", "Elektrik", "Ganze Halle", "Elektrik", 1],
+  [2, "Elektroplan erstellen", "Stromkreise je Raum, Steckdosen, Schalter, Licht, Küche, Therme, Bühne, LED-Wand, Technikbereich.", "Elektrik", "Ganze Halle", "Elektrik", 1],
   [3, "Neue Unterverteilung", "FI/LS-Schutz, Zählerplatz prüfen. Durch Elektriker aus der Gemeinde.", "Elektrik", "Ganze Halle", "Elektrik", 1],
   [3, "Neue Leitungen ziehen", "Kabeltrassen an den Stahlträgern (nicht in die Dachplatten), Leerrohre in den Wänden.", "Elektrik", "Ganze Halle", "Elektrik", 2],
   [3, "Bühnenstrom und Stromkreis LED-Wand", "Steckdosen und ggf. CEE-Anschluss an der Bühne, eigener Stromkreis für die LED-Wand.", "Elektrik", "Bühne", "Elektrik", 2],
@@ -352,12 +362,15 @@ const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich,
   [3, "Netzwerk und WLAN", "Für Technik und Gemeinde.", "Elektrik", "Ganze Halle", "Elektrik", 3],
   [3, "Sicherheitsbeleuchtung und Rettungszeichen", "Nach Auflage aus der Genehmigung.", "Elektrik", "Ganze Halle", "Elektrik", 2],
   [3, "Elektro-Prüfung und Messprotokoll", "Fertigmeldung an den Netzbetreiber durch den eingetragenen Elektriker aus der Gemeinde.", "Elektrik", "Ganze Halle", "Elektrik", 1],
-  [3, "Therme auswählen (Heizlast 89 kW)", "Heizlast gesamtes Objekt: 89 kW. Brennwert, raumluftunabhängig. Eine Therme um 90–100 kW oder 2 Geräte als Kaskade (je ca. 45–50 kW): läuft bei wenig Bedarf sparsamer und fällt nie ganz aus. Unter 100 kW ist kein eigener Heizraum nötig; raumluftabhängig betrieben braucht der Aufstellraum ab 50 kW eine Zuluftöffnung ins Freie von mindestens 228 cm² (FeuVO BW § 3).", "Heizung & Gas", "Ganze Halle", null, 1],
-  [3, "Neue Gastherme einbauen", "Gasleitung, Abgasführung, Kondensat-Ablauf. Durch Gemeindemitglied mit Gas-Konzession. Neue Gasheizung ist nach dem Gebäudemodernisierungsgesetz (seit 29.07.2026) erlaubt; ab 2029 muss ein steigender Anteil Biogas bzw. Wasserstoff dabei sein – beim Gastarif beachten.", "Heizung & Gas", "Ganze Halle", null, 1],
+  [0, "Therme auswählen (Heizlast 89 kW)", "Heizlast gesamtes Objekt: 89 kW. Brennwert, raumluftunabhängig. Eine Therme um 90–100 kW oder 2 Geräte als Kaskade (je ca. 45–50 kW): läuft bei wenig Bedarf sparsamer und fällt nie ganz aus. Bis 100 kW Nennleistung ist kein besonderer Aufstellraum nötig – bei einer Kaskade zählt die Summe beider Geräte. Raumluftabhängig betrieben braucht der Aufstellraum ab 50 kW eine Zuluftöffnung ins Freie von 150 cm² + 2 cm² je kW Nennleistung über 50 kW (bei 100 kW: 250 cm²; FeuVO BW § 3).", "Heizung & Gas", "Ganze Halle", null, 1],
+  [3, "Neue Gastherme einbauen", "Gasleitung, Abgasführung, Kondensat-Ablauf. Durch Gemeindemitglied mit Gas-Konzession. Neue Gasheizung ist nach dem Gebäudemodernisierungsgesetz (GModG, seit 29.07.2026) erlaubt; ab 2029 muss ein steigender Anteil Biogas bzw. Wasserstoff dabei sein (2029: 10 %, danach mehr) – beim Gastarif beachten. Gasleitung mit Dichtheits- und Belastungsprüfung nach TRGI und Protokoll.", "Heizung & Gas", "Ganze Halle", null, 1],
   [3, "Heizflächen einbauen", "Nach dem Heizkonzept: Heizkörper, Fußbodenheizung oder Lüftungsgerät mit Heizregister.", "Heizung & Gas", "Ganze Halle", null, 2],
+  [3, "Kondensat der Therme ableiten", "Ob eine Neutralisation nötig ist, mit der Stadtentwässerung klären.", "Heizung & Gas", "Ganze Halle", null, 2],
+  [3, "Warmwasser hygienisch planen", "Dezentral mit Durchlauferhitzern vermeidet große Speicher und Legionellen-Prüfpflichten; bei seltener Nutzung Leitungen regelmäßig spülen.", "Sanitär", "Ganze Halle", null, 2],
+  [3, "Durchführungen in Brandwänden abschotten", "Kabel und Rohre durch Brandschutzwände mit zugelassenem Schott bzw. Manschette schließen.", "Elektrik", "Ganze Halle", "Elektrik", 2],
   [3, "Sanitär WC-Block", "Wasser, Abwasser, Warmwasser; barrierefreies WC.", "Sanitär", "WC-Block", null, 2],
   [3, "Sanitär Küche", "Wasser, Abwasser, Spülmaschine.", "Sanitär", "Küche", null, 2],
-  [3, "Lüftung", "Konzept für den Saal, Abluft WC, Dunstabzug Küche.", "Planung & Organisation", "Ganze Halle", null, 2],
+  [0, "Lüftung", "Konzept für den Saal, Abluft WC, Dunstabzug Küche – vor dem Mauern, damit die Durchbrüche feststehen.", "Planung & Organisation", "Ganze Halle", null, 2],
   [3, "Fettabscheider für die Küche klären", "Bei Gemeindeküchen mit regelmäßigem Essen kann die Stadtentwässerung einen Fettabscheider verlangen – vor dem Abwasseranschluss der Küche nachfragen.", "Sanitär", "Küche", null, 2],
   [4, "Neue Lampen Gottesdienstraum", "Lichtplanung (Helligkeit, dimmbar, Bühnenlicht getrennt). Befestigung an der Stahlkonstruktion, nicht in die Dachplatten. Anschluss durch Elektriker aus der Gemeinde.", "Elektrik", "Gottesdienstraum", "Elektrik", 2],
   [4, "Neue Lampen Gemeinschaftsraum", "Auswahl und Montage; Befestigung wie im Gottesdienstraum nur an der Stahlkonstruktion.", "Elektrik", "Gemeinschaftsraum", "Elektrik", 2],
@@ -371,6 +384,7 @@ const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich,
   [4, "Untergrund für den Boden prüfen", "Ebenheit, Feuchte, Ölreste; ggf. ausgleichen oder Estrich.", "Boden", "Ganze Halle", null, 2],
   [4, "Bodenbelag auswählen", "Belastbar, rutschhemmend, mindestens schwer entflammbar (falls gefordert).", "Boden", "Ganze Halle", null, 2],
   [4, "Neuen Boden verlegen", "Inkl. Sockelleisten.", "Boden", "Ganze Halle", null, 2],
+  [4, "Türen in Rettungswegen", "In Fluchtrichtung aufschlagend, ohne Schlüssel in voller Breite zu öffnen (Panikbeschlag), mind. 1,20 m breit.", "Trockenbau", "Ganze Halle", null, 1],
   [4, "Türen einbauen", "", "Trockenbau", "Ganze Halle", null, 2],
   [5, "Bühne bauen", "Ca. 14 × 4 m, ca. 0,6 m hoch. Treppen: eine breite Kanzeltreppe vorn (5 m, 4 Stufen à 15 cm) und je eine Seitentreppe hinten bei Lobpreisteam und Pastoren. Rampe bzw. Zugang für Rollstuhl prüfen. Seitlich je 14 Stühle mit rotem Bezug (Lobpreisteam | Pastoren).", "Bühne & Technik", "Bühne", null, 2],
   [5, "Bühnenkante sichern, Kabeldurchführungen", "", "Bühne & Technik", "Bühne", null, 2],
@@ -379,6 +393,9 @@ const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich,
   [5, "LED-Wand montieren und anschließen", "Strom und Signal. Montage durch die Gemeinde, Einweisung durch den Lieferanten.", "Bühne & Technik", "Bühne", "Elektrik", 2],
   [5, "Technikbereich einrichten", "Ca. 2,4 × 6,4 m an der Rückseite: Pult für Ton, Licht und Video, Strom, Netzwerk, Verbindung zur Bühne.", "Bühne & Technik", "Gottesdienstraum", null, 2],
   [5, "Tonanlage", "Lautsprecherpositionen, Kabelwege, Monitor auf der Bühne.", "Bühne & Technik", "Gottesdienstraum", null, 2],
+  [5, "Bühne: Geländer, Stufen, Deko", "Seiten der Bühne ohne Treppe mit Geländer sichern; Stufenkanten kontrastreich markieren; Vorhänge und Deko mindestens schwer entflammbar; Handlauf an den Treppen.", "Bühne & Technik", "Bühne", null, 2],
+  [5, "Reihenverbinder und Rollstuhlplätze", "Stühle je Reihe fest verbinden; etwa 1 % Rollstuhlplätze (bei 500: 5). Bestuhlungsplan bei der Stadt einreichen, falls gefordert.", "Planung & Organisation", "Gottesdienstraum", null, 2],
+  [5, "Rampe oder Lift zur Bühne", "0,60 m Höhe – eine feste Rampe wäre ca. 10 m lang; mobile Rampe oder Plattformlift prüfen.", "Bühne & Technik", "Bühne", null, 3],
   [5, "Bestuhlung festlegen", "300, 400 oder 500 Stühle in 3 Blöcken – in der App unter „Halle“ umschaltbar; Rettungswegbreiten mit der Genehmigung abgleichen.", "Planung & Organisation", "Gottesdienstraum", null, 3],
   [6, "Rettungswege und Notausgänge", "Frei, gekennzeichnet und beleuchtet.", "Planung & Organisation", "Ganze Halle", null, 1],
   [6, "Feuerlöscher und Rauchmelder", "Bzw. Brandmeldeanlage nach Auflage.", "Planung & Organisation", "Ganze Halle", null, 2],
@@ -388,6 +405,9 @@ const PLAN_VORSCHLAEGE = [  // [phase, titel, beschreibung, tätigkeit, bereich,
   [6, "Abnahme Elektrik", "Messprotokoll durch den eingetragenen Elektriker aus der Gemeinde.", "Elektrik", "Ganze Halle", "Elektrik", 1],
   [6, "Abnahme Gastherme", "Durch den Bezirksschornsteinfeger (gesetzlich vorgeschrieben).", "Heizung & Gas", "Ganze Halle", null, 1],
   [6, "Schlussabnahme Bauaufsicht", "Stadt Mannheim, falls im Bescheid gefordert.", "Planung & Organisation", "Ganze Halle", null, 1],
+  [6, "Brandschutzordnung", "Aushang für alle (Teil A) und Regeln für Ordner (Teil B); Räumung einmal üben.", "Planung & Organisation", "Ganze Halle", null, 2],
+  [6, "Wiederkehrende Prüfungen festlegen", "Feuerlöscher alle 2 Jahre, Sicherheitsbeleuchtung nach Bescheid, Bühnen- und LED-Technik nach DGUV V3, Therme jährlich warten.", "Planung & Organisation", "Ganze Halle", null, 2],
+  [6, "Schall nach außen", "Lautstärke beim Lobpreis gegenüber den Nachbarn im Blick behalten – abends Tore zu, Pegel einmal messen.", "Bühne & Technik", "Ganze Halle", null, 3],
   [6, "Restarbeiten und Endreinigung", "", "Aufräumen & Entsorgen", "Ganze Halle", "Rückbau", 2],
   [6, "Unterlagen sammeln", "Pläne, Protokolle, Rechnungen, Garantien.", "Planung & Organisation", "Ganze Halle", null, 3],
   [6, "Einweihung planen", "", "Planung & Organisation", "Ganze Halle", null, 3]
@@ -400,7 +420,7 @@ ANSICHTEN.aufgaben = () => {
   if(f.phase!=="") liste=liste.filter(a=>a.phase===+f.phase);
   const gewerke=[...new Set(S.aufgabe.map(a=>a.gewerk).filter(Boolean))];
   const spalte=st=>{ const l=liste.filter(a=>a.status===st).sort((a,b)=>((a.phase??9)-(b.phase??9))||(a.prio-b.prio)||((a.datum||"9")<(b.datum||"9")?-1:1));
-    return `<section class="spalte"><h3>${STATUS[st]} <span class="pille ${st}">${l.length}</span></h3>${l.map(aufgabeKarte).join("")||`<p class="klein leise" style="padding:4px">–</p>`}</section>`; };
+    return `<section class="spalte"><h3>${STATUS[st]} <span class="pille ${st}">${l.length}</span></h3>${l.map(aufgabeKarte).join("")||`<p class="klein leise" style="padding:4px">${st==="erledigt"?"Noch nichts erledigt.":"Keine Aufgaben."}</p>`}</section>`; };
   return `<div class="kopf"><div><p class="etikett">Arbeiten & Zuständigkeiten</p><h1>Aufgaben</h1><p class="unter">${istLeitung()?"Lege Arbeiten an, teile Teams und Leute ein.":"Hier siehst du, was ansteht und was dir zugewiesen ist."}</p></div>
     ${istLeitung()?`<div class="zeile">${(()=>{ const fehlt=S.aufgabe.length?PLAN_VORSCHLAEGE.filter(v=>!S.aufgabe.some(a=>a.titel===v[1])).length:0;
       return fehlt?`<button class="btn" data-a="vorschlaege" title="Arbeiten aus dem Plan, die noch nicht in der Liste stehen">${mz(fehlt,"neuer Vorschlag","neue Vorschläge")}</button>`:""; })()}<button class="btn primaer" data-a="aufgabeNeu">${icon("plus")}Aufgabe anlegen</button></div>`:""}</div>
@@ -486,8 +506,8 @@ ANSICHTEN.teams = () => {
       <p class="klein">${esc(t.beschreibung||"")}</p>
       <div class="zeile weit" style="margin-top:12px">${m.length?avas(m,8):`<span class="klein leise">noch niemand</span>`}<button class="btn klein ${drin?"":"primaer"}" data-a="${drin?"austreten":"beitreten"}" data-id="${t.id}">${drin?"Austreten":"Beitreten"}</button></div>
       <p class="klein leise" style="margin-top:8px">${mz(S.aufgabe.filter(a=>a.team_id===t.id&&a.status!=="erledigt").length,"offene Aufgabe","offene Aufgaben")}</p></section>`; }).join("")}</div>
-  <section class="karte" style="margin-top:16px"><header><h2>Alle Mitglieder</h2><span class="pille">${S.profil.length}</span></header>
-    <div class="tabelle-rahmen"><table class="karten-tabelle"><thead><tr><th>Name</th><th>Rolle</th><th>Schwerpunkte</th>${istLeitung()?"<th>Telefon</th>":""}<th>Hinweis</th></tr></thead><tbody>
+  <section class="karte" style="margin-top:16px"><header><h2>Alle Mitglieder</h2><span class="pille">${S.profil.filter(p=>!p.gesperrt).length}</span></header>
+    <div class="tabelle-rahmen"><table class="karten-tabelle"><thead><tr><th>Name</th><th>Rolle</th><th>Kann gut</th>${istLeitung()?"<th>Telefon</th>":""}<th>Hinweis</th></tr></thead><tbody>
     ${[...S.profil].filter(p=>!p.gesperrt).sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<tr><td><span class="zeile" style="flex-wrap:nowrap">${ava(p.id,26)}<b>${esc(p.name)}</b></span></td>
       <td data-titel="Rolle">${istAdmin()&&p.id!==S.me.id?`<select data-a="rolle" data-id="${p.id}" style="width:auto" aria-label="Rolle von ${esc(p.name)}">${["mitglied","bauleitung","admin"].map(r=>`<option value="${r}" ${p.rolle===r?"selected":""}>${rolleText(r)}</option>`).join("")}</select>`:`<span class="pille">${rolleText(p.rolle)}</span>`}</td>
       <td class="klein" data-titel="Kann gut">${(p.schwerpunkte||[]).map(esc).join(", ")||"–"}</td>
@@ -544,11 +564,20 @@ const BAUHAUS_KATALOG = [
   ["Fertigbeton für Ringanker","Sack","Mauern (Ytong)","Fertigbeton"],
   ["Maueranker / Mauerverbinder","Stück","Mauern (Ytong)","Mauerverbinder"],
   ["Porenbeton-Handsäge","Stück","Mauern (Ytong)","Porenbetonsäge"],
+  ["Zahnkelle für Dünnbettmörtel","Stück","Mauern (Ytong)","Dünnbettkelle"],
+  ["Schleifbrett Porenbeton","Stück","Mauern (Ytong)","Schleifbrett Porenbeton"],
+  ["Porenbeton-Flachsturz","Stück","Mauern (Ytong)","Porenbeton Flachsturz"],
+  ["Flachanker für Wandanschluss","Stück","Mauern (Ytong)","Flachanker Mauer"],
+  ["Mineralwolle-Streifen A1 (Kopffuge)","Rolle","Mauern (Ytong)","Mineralwolle Dämmstreifen"],
   ["Deckenfarbe weiß (für Farbsprüher)","Eimer","Malern","Deckenfarbe weiß"],
   ["Abdeckfolie","Rolle","Malern","Abdeckfolie"],
   ["Malerkrepp","Rolle","Malern","Malerkrepp"],
   ["Schuttsäcke","Stück","Rückbau & Abbruch","Schuttsack"],
   ["Staubmasken FFP2","Packung","Rückbau & Abbruch","FFP2 Maske"],
+  ["Staubmasken FFP3 (Sägen, Schleifen)","Packung","Rückbau & Abbruch","FFP3 Maske"],
+  ["Schutzbrillen","Stück","Aufräumen & Entsorgen","Schutzbrille"],
+  ["Gehörschutz","Stück","Aufräumen & Entsorgen","Gehörschutz"],
+  ["Feuerlöscher 6 kg ABC","Stück","Planung & Organisation","Feuerlöscher 6 kg"],
   ["Arbeitshandschuhe","Paar","Aufräumen & Entsorgen","Arbeitshandschuhe"]];
 function materialDialog(aufgabeId,vorlage){
   const a=S.aufgabe.find(x=>x.id===aufgabeId); const v=vorlage||{};
@@ -559,7 +588,7 @@ function materialDialog(aufgabeId,vorlage){
       <label class="feld">Tätigkeit<select name="gewerk" id="m-gewerk"><option value="">–</option>${TAETIGKEITEN.map(t=>`<option ${a?.gewerk===t?"selected":""}>${esc(t)}</option>`).join("")}</select></label>
       <label class="feld">Für Aufgabe<select name="aufgabe_id" id="m-aufgabe"><option value="">–</option>${S.aufgabe.map(x=>`<option value="${x.id}" ${x.id===aufgabeId?"selected":""}>${esc(x.titel)}</option>`).join("")}</select></label></div>
     <div class="bauhaus-feld stapel" style="gap:8px"><div class="zeile weit"><span class="etikett">Bei Bauhaus Mannheim</span><button type="button" class="btn klein" data-a="mBauhausSuche">${icon("rechts")}Bei Bauhaus suchen</button></div>
-      <div class="felder"><label class="feld">Produktlink (optional)<input type="url" name="link" id="m-link" placeholder="https://www.bauhaus.info/…/p/…" value="${esc(v.link||"")}"></label>
+      <div class="felder"><label class="feld">Produktlink (optional)<input type="text" inputmode="url" autocomplete="off" name="link" id="m-link" placeholder="https://www.bauhaus.info/…/p/…" value="${esc(v.link||"")}"></label>
       <label class="feld">Preis je Einheit in € (optional)<input type="number" name="preis" id="m-preis" step="0.01" min="0" value="${v.preis??""}"></label></div>
       <p class="klein leise">Suchen, passendes Produkt öffnen, Adresse kopieren und hier einfügen. Die Artikelnummer liest die App selbst heraus.</p></div>
     <label class="feld">Notiz<input type="text" name="notiz" id="m-notiz" placeholder="Hersteller, Maße, bis wann gebraucht …"></label>
@@ -614,7 +643,7 @@ ANSICHTEN.halle = () => {
       <div class="zeile" style="gap:12px;margin-bottom:12px"><span class="etikett" style="margin:0">Bestuhlung</span>
         <div class="reiter" role="group" aria-label="Bestuhlung">${[0,300,400,500].map(n=>`<button data-a="bestuhlungWahl" data-k="${n}" aria-pressed="${bn===n}">${n?n+" Stühle":"Keine"}</button>`).join("")}</div>
         <button class="chip" data-a="seitenWahl" aria-pressed="${seitenAn()}"><span style="width:10px;height:10px;border-radius:2px;background:${STUHL.rot};display:inline-block"></span>Seitenplätze an der Bühne</button>
-        <span class="klein leise">${bi?`3 Blöcke (${bi.bloecke.join(" | ")}), ${bi.reihen} Reihen, Reihenabstand ${String(bi.abstand).replace(".",",")} m, Gänge ${String(bi.gang).replace(".",",")} m`:""}</span></div>
+        <span class="klein leise">${bestuhlungText(bi)}</span></div>
       <div class="halle-rahmen" style="overflow-x:auto"><div style="min-width:760px">${planSvg(S.planobjekt,{bestuhlung:bn,seiten:seitenAn()})}</div></div>
       <div class="zeile klein leise" style="margin-top:14px;gap:16px">
         <span class="zeile" style="gap:6px"><span style="width:22px;height:4px;background:var(--text2);display:inline-block;border-radius:2px"></span>Wände</span>
@@ -634,7 +663,7 @@ ANSICHTEN.halle = () => {
       <div class="zeile" style="gap:12px;margin-bottom:12px"><span class="etikett" style="margin:0">Bestuhlung Gottesdienstraum</span>
         <div class="reiter" role="group" aria-label="Bestuhlung">${[0,300,400,500].map(n=>`<button data-a="bestuhlungWahl" data-k="${n}" aria-pressed="${bn===n}">${n?n+" Stühle":"Keine"}</button>`).join("")}</div>
         <button class="chip" data-a="seitenWahl" aria-pressed="${seitenAn()}"><span style="width:10px;height:10px;border-radius:2px;background:${STUHL.rot};display:inline-block"></span>Seitenplätze an der Bühne</button>
-        <span class="klein leise" id="bestuhlung-info">${bi?`3 Blöcke (${bi.bloecke.join(" | ")}), ${bi.reihen} Reihen, Reihenabstand ${String(bi.abstand).replace(".",",")} m, Gänge ${String(bi.gang).replace(".",",")} m`:""}</span></div>
+        <span class="klein leise" id="bestuhlung-info">${bestuhlungText(bi)}</span></div>
       <div class="palette" style="margin-bottom:12px">${Object.entries(OBJEKTE).map(([k,o])=>`<button class="chip" data-a="objNeu" data-typ="${k}">${icon("plus")}${esc(o.n)}</button>`).join("")}</div>
       <div data-leerfrage></div>
       <div class="halle-rahmen" id="plan-rahmen" style="overflow-x:auto"><div style="min-width:760px" id="plan-svg">${planSvg(S.planobjekt,{bearbeiten:true,auswahl:planAuswahl,bestuhlung:bn,seiten:seitenAn()})}</div></div>
@@ -665,6 +694,7 @@ function halleStarten(){
   if(halleReiter==="3d"){ const c=$("#dreid"); if(c){ dreiD=halle3d(c,S.planobjekt,{logo:LOGO,stoff:STOFF,bestuhlung:bestuhlungN(),seiten:seitenAn()}); dreiD._n=bestuhlungN(); dreiD._s=seitenAn(); } return; }
   const rahmen=$("#plan-svg"); if(!rahmen) return;
   const punkt=(svg,e)=>{ const pt=svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY; const m=pt.matrixTransform(svg.getScreenCTM().inverse()); return {x:(m.x-40)/20,y:(m.y-40)/20}; };
+  rahmen.addEventListener("touchstart",e=>{ if(e.target.closest("[data-obj]")) e.preventDefault(); },{passive:false});
   rahmen.addEventListener("pointerdown",e=>{ const g=e.target.closest("[data-obj]"); const svg=rahmen.querySelector("svg"); if(!g){ if(planAuswahl){ planAuswahl=null; halleAktualisieren(); } return; }
     const o=S.planobjekt.find(x=>x.id===g.dataset.obj); if(!o) return; const p=punkt(svg,e); planAuswahl=o.id; halleAktualisieren();
     planZug={o,dx:p.x-o.x,dy:p.y-o.y,x0:o.x,y0:o.y,bewegt:false}; rahmen.setPointerCapture(e.pointerId); e.preventDefault(); });
@@ -690,7 +720,7 @@ ANSICHTEN.profil = () => {
       <p class="klein leise">Wird beim Eintragen im Kalender als Wunsch vorgeschlagen.</p></div>
     <button class="btn primaer" type="submit">${icon("check")}Speichern</button></form></section>
   ${istAdmin()?`<section class="karte stapel"><h2>Gemeinde-Code</h2><p class="klein">Neue Mitglieder registrieren sich mit diesem Code. Gib ihn nur an Leute aus der Gemeinde weiter. Wenn er die Runde macht, ändere ihn hier.</p>
-    ${B.modus==="live"?`<form class="zeile" data-form="code"><input type="text" name="code" id="p-code" required placeholder="neuer Code" style="flex:1;min-width:160px"><button class="btn" type="submit">Ändern</button></form>`:`<p class="klein leise">In der Vorschau nicht aktiv.</p>`}
+    ${B.modus==="live"?`<form class="zeile" data-form="code"><input type="text" name="code" id="p-code" required minlength="10" placeholder="neuer Code (mind. 10 Zeichen)" style="flex:1;min-width:160px"><button class="btn" type="submit">Ändern</button></form>`:`<p class="klein leise">In der Vorschau nicht aktiv.</p>`}
     <h2 style="margin-top:8px">Benutzer</h2><p class="klein">Rollen vergeben, Zugänge sperren und sehen, wer zuletzt angemeldet war.</p><button class="btn" data-a="geh" data-ziel="benutzer">${icon("benutzer")}Benutzer verwalten</button></section>`:""}
   <section class="karte stapel"><h2>Zugang & Geräte</h2>
     <p class="klein">Du bist angemeldet als <b>${esc(B.email?.()||"–")}</b>. Mit dieser E-Mail und deinem Passwort meldest du dich auf jedem Gerät an – Handy, Tablet, PC. Alles ist überall gleich, weil es zentral gespeichert wird.</p>
@@ -727,7 +757,7 @@ ANSICHTEN.benutzer = () => {
     <section class="karte stapel"><h2>Selbst registrieren lassen</h2><p class="klein">Gemeindemitglieder legen sich ihren Zugang selbst an: Link öffnen, Name, E-Mail und Passwort eingeben – der Gemeinde-Code steckt schon im Link. Jeder startet als Gemeindemitglied. Wer zur Leitungsgruppe gehört, ordnest du danach oben bei „Bekannte Personen“ mit einem Tipp zu – damit wird er Bauleitung.</p>
       <form class="stapel" data-form="einladung"><label class="feld">Aktueller Gemeinde-Code<input type="text" name="code" id="b-einl" required value="${esc(merkeCode())}" autocomplete="off"></label>
         <div class="zeile"><button class="btn primaer" type="submit" name="wie" value="wa">Per WhatsApp einladen</button><button class="btn" type="submit" name="wie" value="kopie">Einladung kopieren</button></div></form>
-      ${B.modus==="live"?`<details><summary class="klein">Gemeinde-Code ändern</summary><form class="zeile" data-form="code" style="margin-top:8px"><input type="text" name="code" id="b-code" required placeholder="neuer Gemeinde-Code" style="flex:1;min-width:160px"><button class="btn" type="submit">Code ändern</button></form><p class="klein leise">Ändern, wenn der Code die Runde gemacht hat. Bestehende Zugänge bleiben.</p></details>`:""}</section>
+      ${B.modus==="live"?`<details><summary class="klein">Gemeinde-Code ändern</summary><form class="zeile" data-form="code" style="margin-top:8px"><input type="text" name="code" id="b-code" required minlength="10" placeholder="neuer Gemeinde-Code" style="flex:1;min-width:160px"><button class="btn" type="submit">Code ändern</button></form><p class="klein leise">Ändern, wenn der Code die Runde gemacht hat. Bestehende Zugänge bleiben.</p></details>`:""}</section>
     <section class="karte stapel"><h2>Passwort vergessen?</h2><p class="klein">Bei der Person auf „Passwort-Link“ tippen. Sie bekommt eine E-Mail mit einem Link, öffnet ihn und legt direkt in der App ein neues Passwort fest. Das alte Passwort gilt dann nicht mehr.</p></section>
     <section class="karte stapel"><h2>Zugang selbst anlegen</h2><p class="klein">Mit „Zugang anlegen“ erstellst du ein Konto mit E-Mail und Startpasswort und schickst die Zugangsdaten per WhatsApp. Beim ersten Anmelden legt die Person ihr eigenes Passwort fest.</p>
       <p class="klein">Gesperrte Personen können sich nicht mehr anmelden. Ihre Einträge, Fotos und ihr Werkzeug bleiben aber sichtbar.</p></section>
@@ -770,9 +800,9 @@ function bekannteKarte(){
     const pw=bkPw[l.id]||(bkPw[l.id]=startpasswort());
     return `<form class="bk-zeile" data-form="bekannt" data-id="${l.id}">
       <div class="bk-name"><b>${esc(l.name)}</b><span class="klein leise">${esc(l.schwerpunkt||"")}${l.hinweis?" · "+esc(l.hinweis):""}</span></div>
-      <input type="email" name="email" id="bk-mail-${l.id}" required placeholder="E-Mail" aria-label="E-Mail von ${esc(l.name)}" autocomplete="off">
-      <select name="rolle" id="bk-rolle-${l.id}" aria-label="Rolle von ${esc(l.name)}">${["mitglied","bauleitung","admin"].map(r=>`<option value="${r}" ${bkRolle(l)===r?"selected":""}>${rolleText(r)}</option>`).join("")}</select>
-      <input type="text" name="pw" id="bk-pw-${l.id}" required minlength="8" value="${esc(pw)}" aria-label="Startpasswort von ${esc(l.name)}" class="mass" autocomplete="off">
+      <label class="bk-feld"><span>E-Mail</span><input type="email" name="email" id="bk-mail-${l.id}" required placeholder="name@beispiel.de" aria-label="E-Mail von ${esc(l.name)}" autocomplete="off"></label>
+      <label class="bk-feld"><span>Rolle</span><select name="rolle" id="bk-rolle-${l.id}" aria-label="Rolle von ${esc(l.name)}">${["mitglied","bauleitung","admin"].map(r=>`<option value="${r}" ${bkRolle(l)===r?"selected":""}>${rolleText(r)}</option>`).join("")}</select></label>
+      <label class="bk-feld"><span>Startpasswort</span><input type="text" name="pw" id="bk-pw-${l.id}" required minlength="8" value="${esc(pw)}" aria-label="Startpasswort von ${esc(l.name)}" class="mass" autocomplete="off"></label>
       <button class="btn primaer klein" type="submit">Anlegen</button>
       <div class="bk-schon"><button type="button" class="link klein" data-a="bkSchon" data-id="${l.id}">Hat schon einen Zugang?</button></div></form>`; };
   const liste=neueZugaenge.map((w,i)=>`<div class="bk-fertig"><div><b>${esc(w.name)}</b> <span class="pille">${esc(rolleText(w.rolle))}</span>
@@ -822,6 +852,7 @@ function fehlerDeutsch(m){ m=String(m||"");
   return m; }
 let torCode=new URLSearchParams(location.search).get("einladung")||"";
 function zeigeTor(art,fehler="",info=""){
+  const alt={}; ["t-n","t-e","t-c"].forEach(id=>{ const i=document.getElementById(id); if(i&&i.value) alt[id]=i.value; });   // nach einem Fehler nicht alles neu tippen
   const reg=art==="registrieren", beit=art==="beitreten", verg=art==="vergessen", erstPw=art==="erstesPasswort", neuPw=art==="neuesPasswort"||erstPw;
   document.getElementById("wurzel").innerHTML=`<div class="tor">${themaKnopf()}<div class="karte">
     <div class="marke"><img src="${LOGO}" alt="Logo Tabernacle Church"><div><b>Gemeindebau</b><span>Tabernacle Church · Konzstraße 9</span></div></div>
@@ -831,7 +862,7 @@ function zeigeTor(art,fehler="",info=""){
     neuPw?`<form class="stapel" data-form="neuesPasswort">${erstPw?`<p><b>Willkommen${S.me?.name?", "+esc(S.me.name.split(" ")[0]):""}!</b> Du hast dich mit dem Startpasswort angemeldet. Lege jetzt dein eigenes Passwort fest – mindestens 8 Zeichen.</p>`:`<p>Lege dein neues Passwort fest.</p>`}
       <label class="feld">Neues Passwort<input type="password" name="pw1" id="t-p1" minlength="8" required autocomplete="new-password"></label>
       <label class="feld">Wiederholen<input type="password" name="pw2" id="t-p2" minlength="8" required autocomplete="new-password"></label>
-      ${fehler?`<p class="fehler">${esc(fehler)}</p>`:""}<button class="btn primaer" type="submit">Speichern und weiter</button></form>`:
+      ${fehler?`<p class="fehler">${esc(fehler)}</p>`:""}<button class="btn primaer" type="submit">Speichern und weiter</button><button class="btn still" type="button" data-a="abmelden">Abmelden</button></form>`:
     art==="gesperrt"?`<div class="stapel"><h2>Zugang gesperrt</h2><p>Dein Zugang ist gesperrt. Bitte wende dich an die Bauleitung.</p><button class="btn" type="button" data-a="abmelden">Abmelden</button></div>`:
     beit?`<form class="stapel" data-form="beitreten"><p>Fast geschafft. Gib deinen Namen und den Gemeinde-Code ein.</p>
       <label class="feld">Dein Name<input type="text" name="name" id="t-n" required autocomplete="name"></label>
@@ -847,7 +878,7 @@ function zeigeTor(art,fehler="",info=""){
       <button class="btn primaer" type="submit">${reg?"Registrieren":"Anmelden"}</button></form>
     <p class="klein leise" style="margin-top:14px;text-align:center">${reg?"Nur für die Tabernacle Church. Den Code bekommst du von der Bauleitung.":"Noch kein Zugang? Tippe oben auf „Neu registrieren“. Ein Konto gilt für alle deine Geräte."}</p>`}
   </div></div>`;
-}
+  Object.entries(alt).forEach(([id,v])=>{ const i=document.getElementById(id); if(i&&!i.value) i.value=v; }); }
 
 /* ================= Aktionen ================= */
 const AKT = {
@@ -955,12 +986,12 @@ const AKT = {
     <label class="feld">Name<input type="text" name="name" id="l-name" required placeholder="Vorname Nachname" autocomplete="off"></label>
     <label class="feld">Schwerpunkt<input type="text" name="schwerpunkt" id="l-schwer" value="alles" autocomplete="off"></label>
     <label class="feld">Hinweis (optional)<input type="text" name="hinweis" id="l-hinweis" placeholder="z. B. lange Anreise – eher am Wochenende" autocomplete="off"></label>
-    <p class="klein leise">Danach erscheint die Person unter Benutzer → „Bekannte Personen“, dort legst du ihren Zugang an.</p>
+    <p class="klein leise">${istAdmin()?"Danach erscheint die Person unter Benutzer → „Bekannte Personen“, dort legst du ihren Zugang an oder ordnest ihr Konto zu.":"Danach legt ein Admin unter Benutzer → „Bekannte Personen“ ihren Zugang an."}</p>
     <button class="btn primaer" type="submit">${icon("plus")}Hinzufügen</button></form>`),
   bkSchon:t=>{ const l=S.leitung.find(x=>x.id===t.dataset.id); if(!l) return;
-    const frei=S.profil.filter(p=>!S.leitung.some(x=>x.profil_id===p.id)).sort((a,b)=>a.name.localeCompare(b.name));
+    const frei=S.profil.filter(p=>!p.gesperrt&&!S.leitung.some(x=>x.profil_id===p.id)).sort((a,b)=>a.name.localeCompare(b.name));
     oeffne(l.name+" zuordnen",`<form class="stapel" data-form="bkZuordnen" data-id="${l.id}"><p class="klein">Wähl das Konto, mit dem ${esc(l.name.split(" ")[0])} schon registriert ist. Dann gehört es zur Leitungsgruppe und taucht hier nicht mehr auf.</p>
-      <label class="feld">Konto<select name="profil" id="bk-profil" required>${frei.map(p=>`<option value="${p.id}">${esc(p.name)} · ${esc(rolleText(p.rolle))}</option>`).join("")}</select></label>
+      ${frei.length?`<label class="feld">Konto<select name="profil" id="bk-profil" required>${frei.map(p=>`<option value="${p.id}">${esc(p.name)} · ${esc(rolleText(p.rolle))}</option>`).join("")}</select></label>`:""}
       ${frei.length?`<button class="btn primaer" type="submit">${icon("check")}Zuordnen</button>`:`<p class="leise klein">Alle Konten sind schon jemandem aus der Leitungsgruppe zugeordnet.</p>`}</form>`); },
   bkKopieren:async ()=>{ const txt=neueZugaenge.map(w=>`${w.name} (${rolleText(w.rolle)})\nE-Mail: ${w.email}\nStartpasswort: ${w.pw}`).join("\n\n")+`\n\nSeite: ${APP_URL}`;
     try{ await navigator.clipboard.writeText(txt); toast("Zugangsdaten kopiert"); }catch(e){ toast("Kopieren ging nicht"); } },
@@ -978,7 +1009,7 @@ const AKT = {
 async function neu(t){ try{ S[t]=await B.alle(t); }catch(e){} }
 // Löschen per Mülleimer: erst nachfragen (zweiter Tipp innerhalb von 4 Sekunden)
 const SICHER_FRAGEN = new Set(["mLoeschen","wLoeschen","tpLoeschen","eLoeschen","objWeg"]);
-function sicher(t){ if(t.dataset.sicher==="1") return true;
+function sicher(t){ if(t.dataset.sicher==="lauf") return false; if(t.dataset.sicher==="1"){ t.dataset.sicher="lauf"; t.disabled=true; return true; }
   t.dataset.sicher="1"; t._vorher=t.innerHTML; t.innerHTML=`${icon("papierkorb")}Wirklich?`; t.classList.add("frage");
   setTimeout(()=>{ if(t.isConnected&&t.dataset.sicher==="1"){ delete t.dataset.sicher; t.innerHTML=t._vorher; t.classList.remove("frage"); } },4000); return false; }
 document.addEventListener("click",e=>{ const t=e.target.closest("[data-a]"); if(!t||t.tagName==="SELECT"||(t.tagName==="INPUT"&&t.type!=="checkbox")) return; if(t.type==="checkbox"&&t.dataset.a!=="neuGelb") return;
@@ -1028,12 +1059,12 @@ const FORM = {
     }catch(e){ knopf.disabled=false; knopf.textContent="Speichern"; if(!/^Nicht gespeichert/.test($(".toast")?.textContent||"")) toast(e.message||String(e)); } },
   material:async f=>{ const w={name:f.elements.name.value.trim(),menge:f.menge.value?+f.menge.value:null,einheit:f.einheit.value.trim()||null,gewerk:f.gewerk.value||null,aufgabe_id:f.aufgabe_id.value||null,notiz:f.notiz.value.trim()||null,status:"angefragt",angefragt_von:S.me.id};
     const roh=f.link.value.trim(), link=linkOk(roh), preis=f.preis.value?+f.preis.value:null;
-    if(roh&&!link){ toast("Der Produktlink muss mit https:// beginnen"); f.link.focus(); return; }
+    if(roh&&!link){ toast("Der Produktlink muss mit https:// (oder http://) beginnen – am besten die Adresse aus dem Browser kopieren"); f.link.focus(); return; }
     if(link) w.link=link; if(preis!=null) w.preis=preis;
     try{ await B.neu("material",w); toast("Anfrage gesendet"); }
     catch(e){ if(/column|schema cache/i.test(e.message||"")&&(w.link||w.preis!=null)){ // Datenbank noch ohne Erweiterung 3: Link und Preis in die Notiz
         delete w.link; delete w.preis; w.notiz=[w.notiz,link,preis!=null?euro(preis)+" je "+(w.einheit||"Einheit"):""].filter(Boolean).join(" · ");
-        await speichere(()=>B.neu("material",w),"Anfrage gesendet"); } else { toast("Nicht gespeichert: "+(e.message||e)); return; } }
+        await speichere(()=>B.neu("material",w),"Anfrage gesendet"); } else { toast("Nicht gespeichert: "+fehlerDeutsch(e.message||e)); return; } }
     await neu("material"); schliesse(); render(); },
   werkzeug:async f=>{ await speichere(()=>B.neu("werkzeug",{name:f.elements.name.value.trim(),kategorie:f.kategorie.value,anzahl:+f.anzahl.value||1,verfuegbarkeit:f.verfuegbarkeit.value,notiz:f.notiz.value.trim()||null,besitzer:S.me.id}),"Eingetragen. Danke!"); await neu("werkzeug"); schliesse(); render(); },
   team:async f=>{ const w={name:f.elements.name.value.trim(),gewerk:f.gewerk.value||null,leiter:f.leiter.value.trim()||null,farbe:f.farbe.value,beschreibung:f.beschreibung.value.trim()||null};
@@ -1053,11 +1084,11 @@ const FORM = {
     await speichere(()=>B.neuViele("aufgabe",wahl.map(([phase,titel,beschreibung,gewerk,bereich,tg,prio])=>({titel,beschreibung:beschreibung||null,gewerk,bereich,phase,status:"offen",prio,team_id:tg?tm(tg):null,zugewiesen:[],vorschlag:true}))),mz(wahl.length,"Aufgabe","Aufgaben")+" übernommen");
     await neu("aufgabe"); schliesse(); render(); },
   bkZuordnen:async f=>{ await bkVerbinden(f.dataset.id,f.profil.value); },
-  eAendern:async f=>{ const e=S.eintrag.find(x=>x.id===f.dataset.id); if(!e) return; const weg=new Set($$('input[name="weg"]:checked',f).map(c=>+c.value));
-    const fotos=e.fotos.filter((_,i)=>!weg.has(i)); const text=f.text.value.trim()||null;
+  eAendern:async f=>{ const e=S.eintrag.find(x=>x.id===f.dataset.id); if(!e) return; const weg=new Set($$('input[name="weg"]:checked',f).map(c=>c.value));   // nach Pfad, nicht Position (Liste kann sich live ändern)
+    const fotos=e.fotos.filter(p=>!weg.has(p)); const text=f.text.value.trim()||null;
     if(!text&&!fotos.length) return toast("Ein Eintrag braucht Text oder ein Foto – sonst „Eintrag löschen“");
     await speichere(()=>B.aendern("eintrag",e.id,{datum:f.datum.value||e.datum,text,fotos}),"Eintrag gespeichert");
-    if(weg.size) B.fotosWeg?.(e.fotos.filter((_,i)=>weg.has(i))); await neu("eintrag"); schliesse(); render(); },
+    if(weg.size) B.fotosWeg?.(e.fotos.filter(p=>weg.has(p))); await neu("eintrag"); schliesse(); render(); },
   bekannt:async f=>{ const l=S.leitung.find(x=>x.id===f.dataset.id); if(!l) return;
     const w={name:l.name,email:f.email.value.trim().toLowerCase(),rolle:f.rolle.value,pw:f.pw.value.trim()};
     const knopf=f.querySelector("[type=submit]"); knopf.disabled=true; knopf.textContent="Legt an …";
@@ -1076,9 +1107,9 @@ const FORM = {
     const link=APP_URL+"?einladung="+encodeURIComponent(code);
     const text=`Hallo! Für den Umbau unserer Halle (Konzstraße 9) gibt es eine App für Aufgaben, Kalender und Bautagebuch. Leg dir dort deinen Zugang an:\n\n${link}\n\nName, E-Mail und ein Passwort eingeben – fertig. Der Gemeinde-Code ist schon eingetragen (${code}).`;
     if(wie==="kopie"){ try{ await navigator.clipboard.writeText(text); toast("Einladung kopiert"); }catch(_){ toast("Kopieren ging nicht"); } }
-    else window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank","noopener"); },
+    else window.open("https://wa.me/?text="+encodeURIComponent(text),"_blank","noopener"); f.dataset.gespeichert="1"; },
   pwAendern:async f=>{ if(f.pw1.value!==f.pw2.value) return toast("Die Passwörter stimmen nicht überein");
-    await speichere(()=>B.passwortAendern(f.pw1.value),"Passwort geändert – gilt ab jetzt auf allen Geräten"); f.reset(); },
+    await speichere(()=>B.passwortAendern(f.pw1.value),"Passwort geändert – gilt ab jetzt auf allen Geräten"); f.reset(); f.dataset.gespeichert="1"; },
   vergessen:async f=>{ try{ await B.passwortVergessen(f.email.value.trim()); zeigeTor("anmelden","","Wenn die E-Mail registriert ist, kommt gleich ein Link. Schau auch im Spam-Ordner nach."); }
     catch(e){ zeigeTor("vergessen",fehlerDeutsch(e.message)); } },
   neuesPasswort:async f=>{ const erst=!!S.me?.pw_wechseln, art=erst?"erstesPasswort":"neuesPasswort";
@@ -1099,7 +1130,7 @@ const FORM = {
 };
 // Doppelt tippen schickt nichts doppelt ab
 document.addEventListener("submit",async e=>{ const f=e.target; if(!f.dataset?.form) return; e.preventDefault(); if(f.dataset.laeuft) return;
-  f.dataset.laeuft="1"; try{ await FORM[f.dataset.form]?.(f,e); delete f.dataset.geaendert; }catch(err){ console.error(err); } finally{ delete f.dataset.laeuft; } });
+  f.dataset.laeuft="1"; try{ await FORM[f.dataset.form]?.(f,e); if(!f.isConnected||f.dataset.gespeichert){ delete f.dataset.geaendert; delete f.dataset.gespeichert; } }catch(err){ console.error(err); } finally{ delete f.dataset.laeuft; } });
 
 async function nachAnmeldung(){ const p=await B.meinProfil(); if(!p) return zeigeTor("beitreten"); if(p.gesperrt) return zeigeTor("gesperrt"); S.me=p; letzterTag=heuteIso();
   if(p.pw_wechseln&&B.modus==="live") return zeigeTor("erstesPasswort"); B.abonnieren(nachladen); await ladeAlles(); render(); }
